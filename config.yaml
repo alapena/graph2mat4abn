@@ -1,13 +1,11 @@
 device: "cpu"
-results_dir: "./results"
+results_dir: "./results/test"
 dataset:
   path: "./dataset"
-  # training_split_ratio: 0.80
+  train_split_ratio: 0.80
   # test_split_ratio: 0.50
-  # batch_size: 30
-  # cutoff: 3.0
-  # max_samples: null
-  # seed: 42
+  max_samples: 50
+  seed: 42
 
 orbitals:
   1: 13
@@ -19,7 +17,7 @@ orbitals:
   7: 13
   8: 13
 
-model:
+environment_representation:
   # path_trained_model: null
   num_interactions: 2 # Nº layers
   correlation: 3 # Correlation order of the messages
@@ -41,80 +39,83 @@ model:
   MLP_irreps: 2x0e # Nº hidden dim. of last layer readout MLP
   gate: silu # non-linearity of the last layer readout
 
-  nr_bits: 10
+model:
 
-  embedding:
-    hidden_irreps: 8x0e + 8x1o
-    r_max: 10.0
-    num_bessel: 8
-    num_polynomial_cutoff: 6
-    radial_type: "bessel"
-    distance_transform: null
-    max_ell: 3
-    num_elements: 3
-    nr_bits: 10
+  # nr_bits: 10
 
-  atomic_descriptors:
-    hidden_irreps: 8x0e + 8x1o
-    interaction_cls_first: RealAgnosticResidualInteractionBlock
-    interaction_cls: RealAgnosticResidualInteractionBlock
-    avg_num_neighbors: 8
-    radial_mlp: [64, 64, 64]
-    num_interactions: 1
-    correlation: 3
-    num_elements: 3
-    max_ell: 3
-    nr_bits: 10
+  # embedding:
+  #   hidden_irreps: 8x0e + 8x1o
+  #   r_max: 10.0
+  #   num_bessel: 8
+  #   num_polynomial_cutoff: 6
+  #   radial_type: "bessel"
+  #   distance_transform: null
+  #   max_ell: 3
+  #   num_elements: 3
+  #   nr_bits: 10
 
-  edge_extraction:
-    edge_extraction_class: EdgeExtractionUniversalApproximator
-    orbitals:
-      1: 13
-      2: 13
-      3: 13
-      4: 13
-      5: 13
-      6: 13
-      7: 13
-      8: 13
-    hidden_dim_message_passing: 900
-    hidden_dim_matrix_extraction: 900
-    mp_layers: 2
-    share_parameters: true
+  # atomic_descriptors:
+  #   hidden_irreps: 8x0e + 8x1o
+  #   interaction_cls_first: RealAgnosticResidualInteractionBlock
+  #   interaction_cls: RealAgnosticResidualInteractionBlock
+  #   avg_num_neighbors: 8
+  #   radial_mlp: [64, 64, 64]
+  #   num_interactions: 1
+  #   correlation: 3
+  #   num_elements: 3
+  #   max_ell: 3
+  #   nr_bits: 10
 
-  node_extraction:
-    node_extraction_class: NodeExtractionUniversalApproximator
-    orbitals:
-      1: 13
-      2: 13
-      3: 13
-      4: 13
-      5: 13
-      6: 13
-      7: 13
-      8: 13
-    hidden_dim_message_passing: 900
-    hidden_dim_matrix_extraction: 900
-    mp_layers: 2
-    share_parameters: true
+  # edge_extraction:
+  #   edge_extraction_class: EdgeExtractionUniversalApproximator
+  #   orbitals:
+  #     1: 13
+  #     2: 13
+  #     3: 13
+  #     4: 13
+  #     5: 13
+  #     6: 13
+  #     7: 13
+  #     8: 13
+  #   hidden_dim_message_passing: 900
+  #   hidden_dim_matrix_extraction: 900
+  #   mp_layers: 2
+  #   share_parameters: true
+
+  # node_extraction:
+  #   node_extraction_class: NodeExtractionUniversalApproximator
+  #   orbitals:
+  #     1: 13
+  #     2: 13
+  #     3: 13
+  #     4: 13
+  #     5: 13
+  #     6: 13
+  #     7: 13
+  #     8: 13
+  #   hidden_dim_message_passing: 900
+  #   hidden_dim_matrix_extraction: 900
+  #   mp_layers: 2
+  #   share_parameters: true
 
 optimizer:
   lr: 1e-3
   weight_decay: 1e-4
 
 scheduler:
-  T_0: 20
-  T_mult: 2
-  eta_min: 1e-15
+  t_0: 20
+  t_multiplication: 2
+  eta_min: 1e-25
 
 trainer:
-  use_comet: false
+  batch_size: 30
+  checkpoint_freq: 30
+  # use_comet: false
   live_plot: true
-  plot_update_freq: 1
-  plot_matrices_freq: 5
-  grad_clip_value: 0.1
-  num_epochs: 12000
-  filename: "best_model.pt"
-
-cost_function:
-  function: mse_mean_cost_function
+  live_plot_freq: 1
+  live_plot_matrix: true
+  live_plot_matrix_freq: 200
+  # grad_clip_value: 0.1
+  num_epochs: 3
+  # filename: "best_model.pt"
+  loss_function: elementwise_mse

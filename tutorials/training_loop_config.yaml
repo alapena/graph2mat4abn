@@ -1,0 +1,119 @@
+device: "cpu"
+results_dir: "example_results/usetapprox_2mp_sharing_mse_mean_costfn_resume"
+dataset:
+  path: "./Data/aBN_HSX"
+  training_split_ratio: 0.80
+  test_split_ratio: 0.50
+  batch_size: 160
+  cutoff: 3.0
+  max_samples: null
+  seed: 42
+
+orbitals:
+  1: 13
+  2: 13
+  3: 13
+  4: 13
+  5: 13
+  6: 13
+  7: 13
+  8: 13
+
+model:
+  path_trained_model: "pre-trained_models/usetapprox_2mp_sharing_mse_mean_costfn/train_best_model.pt"
+  avg_num_neighbors: 8
+  nr_bits: 10
+
+  embedding:
+    hidden_irreps: "8x0e+8x1o"
+    r_max: 3
+    num_bessel: 8
+    num_polynomial_cutoff: 6
+    radial_type: "bessel"
+    distance_transform: null
+    max_ell: 3
+    num_elements: 10
+    orbitals:
+      1: 13
+      2: 13
+      3: 13
+      4: 13
+      5: 13
+      6: 13
+      7: 13
+      8: 13
+    nr_bits: 10
+
+  atomic_descriptors:
+    hidden_irreps: "8x0e+8x1o"
+    interaction_cls_first: RealAgnosticResidualInteractionBlock
+    interaction_cls: RealAgnosticResidualInteractionBlock
+    avg_num_neighbors: 8
+    radial_mlp: [64, 64, 64]
+    num_interactions: 2
+    correlation: 3
+    num_elements: 10
+    max_ell: 3
+    orbitals:
+      1: 13
+      2: 13
+      3: 13
+      4: 13
+      5: 13
+      6: 13
+      7: 13
+      8: 13
+    nr_bits: 10
+
+  edge_extraction:
+    edge_extraction_class: EdgeExtractionUniversalApproximator
+    orbitals:
+      1: 13
+      2: 13
+      3: 13
+      4: 13
+      5: 13
+      6: 13
+      7: 13
+      8: 13
+    hidden_dim_message_passing: 900
+    hidden_dim_matrix_extraction: 900
+    mp_layers: 2
+    share_parameters: true
+
+  node_extraction:
+    node_extraction_class: NodeExtractionUniversalApproximator
+    orbitals:
+      1: 13
+      2: 13
+      3: 13
+      4: 13
+      5: 13
+      6: 13
+      7: 13
+      8: 13
+    hidden_dim_message_passing: 900
+    hidden_dim_matrix_extraction: 900
+    mp_layers: 2
+    share_parameters: true
+
+optimizer:
+  lr: 1e-3
+  weight_decay: 1e-4
+
+scheduler:
+  T_0: 20
+  T_mult: 2
+  eta_min: 1e-15
+
+trainer:
+  use_comet: false
+  live_plot: true
+  plot_update_freq: 1
+  plot_matrices_freq: 200
+  grad_clip_value: 0.1
+  num_epochs: 12000
+  filename: "best_model.pt"
+
+cost_function:
+  function: mse_mean_cost_function
