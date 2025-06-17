@@ -1,13 +1,13 @@
 device: "cpu"
-results_dir: "example_results/test"
+results_dir: "./results"
 dataset:
-  path: "./Data/aBN_HSX"
-  training_split_ratio: 0.80
-  test_split_ratio: 0.50
-  batch_size: 30
-  cutoff: 3.0
-  max_samples: null
-  seed: 42
+  path: "./dataset"
+  # training_split_ratio: 0.80
+  # test_split_ratio: 0.50
+  # batch_size: 30
+  # cutoff: 3.0
+  # max_samples: null
+  # seed: 42
 
 orbitals:
   1: 13
@@ -20,40 +20,50 @@ orbitals:
   8: 13
 
 model:
-  path_trained_model: null
-  avg_num_neighbors: 8
+  # path_trained_model: null
+  num_interactions: 2 # Nº layers
+  correlation: 3 # Correlation order of the messages
+  max_ell: 3 # Expansion order
+
+  num_channels: 128 # default. Determines the size of the model
+  max_L: 1 # default. Symmetries of the message. According to hidden_irreps.
+  r_max: 5.0 # Cutoff radius
+  num_elements: 3 # Nº of chemical elements
+  atomic_energies: [0, 0, 0] # For normalization(?). torhc.tensor()
+  avg_num_neighbors: 8 # For norm.(?)
+  atomic_numbers: [5,6,7] # (?)
+
+  num_bessel: 8 # Nº radial feats
+  num_polynomial_cutoff: 6 # Smothness of the radial cutoff
+  hidden_irreps: "8x0e + 8x1o"
+  # interaction_cls_first: RealAgnosticResidualInteractionBlock
+  # interaction_cls: RealAgnosticResidualInteractionBlock
+  MLP_irreps: 2x0e # Nº hidden dim. of last layer readout MLP
+  gate: silu # non-linearity of the last layer readout
+
   nr_bits: 10
 
   embedding:
-    hidden_irreps: "1x0e+1x1o"
-    r_max: 3
+    hidden_irreps: 8x0e + 8x1o
+    r_max: 10.0
     num_bessel: 8
     num_polynomial_cutoff: 6
     radial_type: "bessel"
     distance_transform: null
     max_ell: 3
-    num_elements: 10
+    num_elements: 3
     nr_bits: 10
 
   atomic_descriptors:
-    hidden_irreps: "1x0e+1x1o"
+    hidden_irreps: 8x0e + 8x1o
     interaction_cls_first: RealAgnosticResidualInteractionBlock
     interaction_cls: RealAgnosticResidualInteractionBlock
     avg_num_neighbors: 8
     radial_mlp: [64, 64, 64]
     num_interactions: 1
     correlation: 3
-    num_elements: 10
+    num_elements: 3
     max_ell: 3
-    orbitals:
-      1: 13
-      2: 13
-      3: 13
-      4: 13
-      5: 13
-      6: 13
-      7: 13
-      8: 13
     nr_bits: 10
 
   edge_extraction:
