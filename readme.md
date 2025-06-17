@@ -1,0 +1,1 @@
+De momento tienes que instalar graph2mat desde github y despues instalar todas las otras dependencias manualmente

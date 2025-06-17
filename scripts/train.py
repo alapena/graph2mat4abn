@@ -58,7 +58,7 @@ def main():
 
 
     # == Basis creation === 
-    basis = get_basis_from_structures_paths(paths, verbose=False, num_unique_z=3)
+    basis = get_basis_from_structures_paths(paths, verbose=True, num_unique_z=3)
     table = BasisTableWithEdges(basis)
 
 
@@ -93,7 +93,7 @@ def main():
     dataset = TorchBasisMatrixDataset(embeddings_configs, data_processor=processor)
 
     # Split dataset (also stratify)
-    n_atoms_list = [dataset[i].num_nodes for i in range(len(dataset))]
+    n_atoms_list = [dataset[i].num_nodes for i in range(len(dataset))] if config["dataset"]["stratify"] == True else None
     train_dataset, val_dataset = train_test_split(
         dataset, 
         train_size=config["dataset"]["train_split_ratio"],
@@ -166,10 +166,11 @@ def main():
 
     # Loss function
     trainer_config = config["trainer"]
-    loss_fn = get_object_from_module(trainer_config["loss_function"], "graph2mat.metrics")
+    loss_fn = get_object_from_module(trainer_config["loss_function"], "graph2mat.core.data.metrics")
     
     # Trainer
     trainer = Trainer(
+        environment_descriptor = mace_descriptor,
         model = model,
         config = config,
         train_dataset = train_dataset,
@@ -183,7 +184,7 @@ def main():
         live_plot_matrix = trainer_config["live_plot_matrix"],
         live_plot_matrix_freq = trainer_config["live_plot_matrix_freq"],
         history = None,
-        results_dir = trainer_config["results_dir"],
+        results_dir = config["results_dir"],
         checkpoint_freq = trainer_config["checkpoint_freq"],
         batch_size = trainer_config["batch_size"]
     )
@@ -191,7 +192,8 @@ def main():
 
 
     # === Start training ===
-    print("\nTRAINING STARTS:")
+    print(f"\nTRAINING STARTS with {len(train_dataset)} train samples and {len(val_dataset)} validation samples.")
+    print(f"Using device: {device}")
     trainer.train(num_epochs=trainer_config["num_epochs"])
     print("\nTraining completed successfully!")
   

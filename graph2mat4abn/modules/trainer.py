@@ -8,7 +8,7 @@ from pathlib import Path
 from torch_geometric.loader import DataLoader
 
 class Trainer:
-    def __init__(self, model, config, train_dataset, val_dataset, loss_fn, optimizer, device='cpu', lr_scheduler=None, live_plot=True, live_plot_freq=1, live_plot_matrix = False, live_plot_matrix_freq = 100, history=None, results_dir=None, checkpoint_freq=30, batch_size=1):
+    def __init__(self, environment_descriptor, model, config, train_dataset, val_dataset, loss_fn, optimizer, device='cpu', lr_scheduler=None, live_plot=True, live_plot_freq=1, live_plot_matrix = False, live_plot_matrix_freq = 100, history=None, results_dir=None, checkpoint_freq=30, batch_size=1):
         """_summary_
 
         Args:
@@ -31,6 +31,7 @@ class Trainer:
         """
 
         self.device = device
+        self.environment_descriptor = environment_descriptor.to(self.device)
         self.model = model.to(self.device)
         self.config = config
         self.train_dataset = train_dataset
@@ -65,7 +66,8 @@ class Trainer:
             batch = batch.to(self.device)
 
             # Get enviroment description
-            enviroment_description = self.enviroment_descriptor(batch)
+            enviroment_description = self.environment_descriptor(batch)
+            enviroment_description["node_feats"] = enviroment_description["node_feats"].detach()
 
             # Model forward pass
             model_predictions = self.model(data=batch, node_feats=enviroment_description["node_feats"])
@@ -108,13 +110,14 @@ class Trainer:
         total_node_loss = 0.0
         num_batches = 0
 
-        with torch.no_grad():
-            for batch in dataloader:
-                batch = batch.to(self.device)
+        
+        for batch in dataloader:
+            batch = batch.to(self.device)
 
-                # Get enviroment description
-                enviroment_description = self.enviroment_descriptor(batch)
+            # Get enviroment description
+            enviroment_description = self.environment_descriptor(batch)
 
+            with torch.no_grad():
                 # Model forward pass
                 model_predictions = self.model(data=batch, node_feats=enviroment_description["node_feats"])
 
@@ -128,12 +131,6 @@ class Trainer:
                 total_loss += loss
                 total_edge_loss += stats["node_rmse"]**2
                 total_node_loss += stats["edge_rmse"]**2
-
-                # Compute gradients
-                loss.backward()
-
-                # Update weights
-                self.optimizer.step()
 
                 num_batches += 1
 
@@ -182,7 +179,7 @@ class Trainer:
 
         # Create results directory
         if self.results_dir is not None:
-            self.results_dir.mkdir(exist_ok=True)
+            self.results_dir.mkdir(exist_ok=True, parents=True)
 
             # Create a separate path for periodic checkpoints
             checkpoint_dir = Path(self.results_dir / "checkpoints")
@@ -238,12 +235,12 @@ class Trainer:
             self.history["elapsed_time"].append(elapsed_time)
 
             # Print progress
-            print("="*30, f"Epoch {epoch}/{num_epochs}", "="*30)
+            print("="*30, f"Epoch {epoch+1}/{num_epochs}", "="*30)
             print(f"Train stats. \t Total loss: {self.history["train_loss"][-1]:.4f} (edge loss: {self.history['train_edge_loss'][-1]:.4f}, node loss: {self.history['train_node_loss'][-1]:.4f})")
             print(f"Validation stats. \t Total loss: {self.history["val_loss"][-1]:.4f} (edge loss: {self.history['val_edge_loss'][-1]:.4f}, node loss: {self.history['val_node_loss'][-1]:.4f})")
             print(f"Learning rate: {self.history["learning_rate"][-1]:.4f}")
-            print(f"Epoch duration: {self.history['epoch_times'][-1]:.2f}")
-            print(f"Total elapsed time: {self.history['elapsed_time'][-1]:.2f}")
+            print(f"Epoch duration: {self.history['epoch_times'][-1]:.2f} s")
+            print(f"Total elapsed time: {self.history['elapsed_time'][-1]:.2f} s")
 
             # Update live plots
             if (self.live_plot and epoch % self.live_plot_freq == 0) or epoch == num_epochs - 1:
@@ -343,15 +340,37 @@ class Trainer:
             'val_loss': self.history["val_loss"][-1],
         }, path)
 
-    def update_loss_plots(self):
+    def update_loss_plots(self, verbose=False):
+        def detach_list(tensor_list):
+            return [t.detach().item() if isinstance(t, torch.Tensor) else float(t) for t in tensor_list]
         df = pd.DataFrame(
-            np.array([self.history["train_loss"], self.history['train_edge_loss'], self.history['train_node_loss'], self.history["val_loss"], self.history['val_edge_loss'], self.history['val_node_loss']]).T, 
+            np.array([
+                detach_list(self.history["train_loss"]),
+                detach_list(self.history["train_edge_loss"]),
+                detach_list(self.history["train_node_loss"]),
+                detach_list(self.history["val_loss"]),
+                detach_list(self.history["val_edge_loss"]),
+                detach_list(self.history["val_node_loss"]),
+            ]).T,
             columns=["Train loss", "Train edge", "Train node", "Val loss", "Val edge", "Val node"],
         )
 
-        df.plot(backend="plotly").update_layout(yaxis_type="log", yaxis_showgrid=True, xaxis_showgrid=True).update_layout(
-            yaxis_title = "Loss (eV²)",
-            xaxis_title = "Epoch number",
-            title="Loss evolution (eV²) vs epoch number",
+        fig = df.plot(backend="plotly")
+        fig.update_layout(
+            yaxis_type="log",
+            yaxis_showgrid=True,
+            xaxis_showgrid=True,
+            yaxis_title="Loss (eV²)",
+            xaxis_title="Epoch number",
+            title="Loss curves",
         )
+        for trace in fig.data:
+            if trace["legendgroup"] != "Train loss" and trace["legendgroup"] != "Val loss":
+                trace.line.update(dash='dash')
+        # Save to HTML
+        plot_path = self.results_dir / "plot_loss.html"
+        fig.write_html(str(plot_path))
+        fig.write_image(str(self.results_dir / "plot_loss.png"))
+        if verbose:
+            print(f"Loss plot saved to {plot_path}")
 
