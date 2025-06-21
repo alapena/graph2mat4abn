@@ -177,6 +177,10 @@ class Trainer:
         # Track the time of training.
         start_time = time.time()
 
+        # TODO: Save config.yaml
+        # TODO: Plot hamiltonians
+        # TODO: Set new arquitecture
+
         # Create results directory
         if self.results_dir is not None:
             self.results_dir.mkdir(exist_ok=True, parents=True)
@@ -330,6 +334,8 @@ class Trainer:
 
         return None
     
+
+
     def save_model(self, epoch, path):
         torch.save({
             'epoch': epoch,
@@ -339,6 +345,8 @@ class Trainer:
             'train_loss': self.history["train_loss"][-1],
             'val_loss': self.history["val_loss"][-1],
         }, path)
+
+        
 
     def update_loss_plots(self, verbose=False):
         def detach_list(tensor_list):

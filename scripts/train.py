@@ -27,7 +27,7 @@ from graph2mat import (
 )
 from graph2mat4abn.tools import load_config, flatten
 from graph2mat4abn.tools.tools import get_basis_from_structures_paths
-from graph2mat4abn.tools.import_utils import get_object_from_module
+from graph2mat4abn.tools.import_utils import get_object_from_module, save_to_yaml
 from graph2mat4abn.modules.enviroment_descriptor import EmbeddingBase, MACEDescriptor
 from graph2mat4abn.modules.trainer import Trainer
 
@@ -36,6 +36,7 @@ from graph2mat4abn.modules.trainer import Trainer
 def main():
     # === Configuration load ===
     config = load_config("./config.yaml")
+    save_to_yaml(config, config["results_dir"] / "config.yaml")
     orbitals = config['orbitals']
     
     device = torch.device(config["device"] if (torch.cuda.is_available() and config["device"]!="cpu") 
