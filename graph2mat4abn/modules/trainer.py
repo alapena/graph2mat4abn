@@ -1,5 +1,6 @@
 
 import time
+from graph2mat4abn.tools.import_utils import save_to_yaml
 import torch
 import pandas as pd
 import numpy as np
@@ -66,11 +67,15 @@ class Trainer:
             batch = batch.to(self.device)
 
             # Get enviroment description
+            print("n_batches: ", len(batch))
+            print("n_atoms: ", len(batch.point_types))
             enviroment_description = self.environment_descriptor(batch)
             enviroment_description["node_feats"] = enviroment_description["node_feats"].detach()
+            print("Enviroment description: ", enviroment_description["node_feats"].shape)
 
             # Model forward pass
             model_predictions = self.model(data=batch, node_feats=enviroment_description["node_feats"])
+            print("model_predictions: ", model_predictions[0].shape)
 
             # Compute the loss
             loss, stats = self.loss_fn(
@@ -188,6 +193,10 @@ class Trainer:
             # Create a separate path for periodic checkpoints
             checkpoint_dir = Path(self.results_dir / "checkpoints")
             checkpoint_dir.mkdir(exist_ok=True)
+
+            # Save config
+            save_to_yaml(self.config, self.config["results_dir"] +"/"+ "config.yaml")
+
 
         # Create history if the model is not pretrained
         if self.history is None:

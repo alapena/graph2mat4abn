@@ -27,7 +27,7 @@ from graph2mat import (
 )
 from graph2mat4abn.tools import load_config, flatten
 from graph2mat4abn.tools.tools import get_basis_from_structures_paths
-from graph2mat4abn.tools.import_utils import get_object_from_module, save_to_yaml
+from graph2mat4abn.tools.import_utils import get_object_from_module
 from graph2mat4abn.modules.enviroment_descriptor import EmbeddingBase, MACEDescriptor
 from graph2mat4abn.modules.trainer import Trainer
 
@@ -36,7 +36,6 @@ from graph2mat4abn.modules.trainer import Trainer
 def main():
     # === Configuration load ===
     config = load_config("./config.yaml")
-    save_to_yaml(config, config["results_dir"] / "config.yaml")
     orbitals = config['orbitals']
     
     device = torch.device(config["device"] if (torch.cuda.is_available() and config["device"]!="cpu") 
@@ -92,15 +91,23 @@ def main():
         embeddings_configs.append(embeddings_config)
 
     dataset = TorchBasisMatrixDataset(embeddings_configs, data_processor=processor)
+    # print(dataset[0])
+    # a
 
     # Split dataset (also stratify)
-    n_atoms_list = [dataset[i].num_nodes for i in range(len(dataset))] if config["dataset"]["stratify"] == True else None
-    train_dataset, val_dataset = train_test_split(
-        dataset, 
-        train_size=config["dataset"]["train_split_ratio"],
-        stratify=n_atoms_list,
-        random_state=None # Dataset already shuffled (paths)
-        )
+    split = True if config["dataset"]["max_samples"] > 1 else False
+    if split:
+        n_atoms_list = [dataset[i].num_nodes for i in range(len(dataset))] if config["dataset"]["stratify"] == True else None
+        train_dataset, val_dataset = train_test_split(
+            dataset, 
+            train_size=config["dataset"]["train_split_ratio"],
+            stratify=n_atoms_list,
+            random_state=None # Dataset already shuffled (paths)
+            )
+    else:
+        train_dataset = dataset
+        val_dataset = dataset
+        print("There is just 1 sample in the dataset. Using it for both train and validation. Use this only for debugging.")
     
     # Keep all the dataset in memory
     train_dataset = InMemoryData(train_dataset)
@@ -137,11 +144,51 @@ def main():
     # === Model initialization ===
     # Shape of inputs
     mace_out_irreps = hidden_irreps * (num_interactions - 1) + str(hidden_irreps[0])
+    model_config = config["model"]
 
+    # kwargs for each supported preprocessing/processing operation
+    def get_preprocessing_nodes_kwargs(module: str) -> dict:
+        if module == 'E3nnInteraction':
+            kwargs = {
+                'irreps': {
+                    'node_feats_irreps': mace_out_irreps,
+                    'edge_attrs_irreps': o3.Irreps.spherical_harmonics(1),
+                    'edge_feats_irreps': o3.Irreps("8x0e"), 
+                    # 'target_irreps ': mace_out_irreps,
+                },
+                'avg_num_neighbors': env_config["avg_num_neighbors"] # ? In principle it can be different from the enviroment decriptor, I think(?)
+            }
+        elif module == 'E3nnEdgeMessageBlock':
+            kwargs = {
+                'irreps': {
+                    'node_feats_irreps': mace_out_irreps,
+                    'edge_attrs_irreps': o3.Irreps.spherical_harmonics(1),
+                    'edge_feats_irreps': o3.Irreps("8x0e"), 
+                    'edge_hidden_irreps': mace_out_irreps,
+                },
+            }
+        else:
+            raise ValueError(f"Module {module} not supported yet. Write the kwargs in this function.")
+        return kwargs
+
+    # node_operation = get_object_from_module(model_config["node_operation"], "graph2mat4abn.modules.node_operations") if model_config["node_operation"] is not None else get_object_from_module('E3nnSimpleNodeBlock', "graph2mat.bindings.e3nn.modules.node_operations")
     model = E3nnGraph2Mat(
-        unique_basis=table,
-        irreps=dict(node_feats_irreps=mace_out_irreps),
-        symmetric=True,
+        unique_basis = table,
+        irreps = dict(node_feats_irreps=mace_out_irreps),
+        symmetric = True,
+        # preprocessing_nodes = get_object_from_module(model_config["preprocessing_nodes"], 'graph2mat.bindings.e3nn.modules'),
+        # preprocessing_nodes_kwargs = get_preprocessing_nodes_kwargs(model_config["preprocessing_nodes"]),
+        preprocessing_edges = get_object_from_module(model_config["preprocessing_edges"], 'graph2mat.bindings.e3nn.modules'),
+        preprocessing_edges_kwargs = get_preprocessing_nodes_kwargs(model_config["preprocessing_edges"])
+        # node_operation=node_operation,
+        # node_operation_kwargs={
+        #     "irreps_in": mace_out_irreps,
+        #     "config": model_config
+        # }
+        # node_operation_kwargs={
+        #     "irreps": {"node_feats_irreps": o3.Irreps("0e")},
+        #     # "config": model_config,
+        # },
     )
 
 
