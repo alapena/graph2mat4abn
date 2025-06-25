@@ -4,9 +4,11 @@ from graph2mat4abn.tools.import_utils import save_to_yaml
 import torch
 import pandas as pd
 import numpy as np
+import plotly.graph_objects as go
 
 from pathlib import Path
 from torch_geometric.loader import DataLoader
+from plotly.subplots import make_subplots
 
 class Trainer:
     def __init__(self, environment_descriptor, model, config, train_dataset, val_dataset, loss_fn, optimizer, device='cpu', lr_scheduler=None, live_plot=True, live_plot_freq=1, live_plot_matrix = False, live_plot_matrix_freq = 100, history=None, results_dir=None, checkpoint_freq=30, batch_size=1):
@@ -66,22 +68,23 @@ class Trainer:
             self.optimizer.zero_grad()
             batch = batch.to(self.device)
 
-            # Get enviroment description
-            print("n_batches: ", len(batch))
-            print("n_atoms: ", len(batch.point_types))
-            enviroment_description = self.environment_descriptor(batch)
-            enviroment_description["node_feats"] = enviroment_description["node_feats"].detach()
-            print("Enviroment description: ", enviroment_description["node_feats"].shape)
+            # # Get enviroment description
+            # print("n_batches: ", len(batch))
+            # print("n_atoms: ", len(batch.point_types))
+            # enviroment_description = self.environment_descriptor(batch)
+            # enviroment_description["node_feats"] = enviroment_description["node_feats"].detach()
+            # print("Enviroment description: ", enviroment_description["node_feats"].shape)
 
             # Model forward pass
-            model_predictions = self.model(data=batch, node_feats=enviroment_description["node_feats"])
-            print("model_predictions: ", model_predictions[0].shape)
+            # model_predictions = self.model(data=batch, node_feats=enviroment_description["node_feats"])
+            model_predictions = self.model(data=batch)
+            # print(model_predictions.keys())
 
             # Compute the loss
             loss, stats = self.loss_fn(
-                nodes_pred=model_predictions[0],
+                nodes_pred=model_predictions["node_labels"],
                 nodes_ref=batch.point_labels,
-                edges_pred=model_predictions[1],
+                edges_pred=model_predictions["edge_labels"],
                 edges_ref=batch.edge_labels,
             )
             total_loss += loss
@@ -124,13 +127,13 @@ class Trainer:
 
             with torch.no_grad():
                 # Model forward pass
-                model_predictions = self.model(data=batch, node_feats=enviroment_description["node_feats"])
+                model_predictions = self.model(data=batch)
 
                 # Compute the loss
                 loss, stats = self.loss_fn(
-                    nodes_pred=model_predictions[0],
+                    nodes_pred=model_predictions["node_labels"],
                     nodes_ref=batch.point_labels,
-                    edges_pred=model_predictions[1],
+                    edges_pred=model_predictions["edge_labels"],
                     edges_ref=batch.edge_labels,
                 )
                 total_loss += loss
@@ -360,34 +363,98 @@ class Trainer:
     def update_loss_plots(self, verbose=False):
         def detach_list(tensor_list):
             return [t.detach().item() if isinstance(t, torch.Tensor) else float(t) for t in tensor_list]
+        
+        # Prepare data
         df = pd.DataFrame(
             np.array([
                 detach_list(self.history["train_loss"]),
-                detach_list(self.history["train_edge_loss"]),
-                detach_list(self.history["train_node_loss"]),
                 detach_list(self.history["val_loss"]),
+                detach_list(self.history["train_edge_loss"]),
                 detach_list(self.history["val_edge_loss"]),
+                detach_list(self.history["train_node_loss"]),
                 detach_list(self.history["val_node_loss"]),
+                detach_list(self.history["learning_rate"]),
             ]).T,
-            columns=["Train loss", "Train edge", "Train node", "Val loss", "Val edge", "Val node"],
+            columns=["Train total", "Val total", "Train edge", "Val edge", "Train node", "Val node", "Learning rate"],
         )
 
-        fig = df.plot(backend="plotly")
-        fig.update_layout(
-            yaxis_type="log",
-            yaxis_showgrid=True,
-            xaxis_showgrid=True,
-            yaxis_title="Loss (eV²)",
-            xaxis_title="Epoch number",
-            title="Loss curves",
+        # Create figure with secondary y-axis
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+        
+        # Add loss traces (primary y-axis)
+        loss_colors = {
+            "Train total": "blue",
+            "Val total": "red",
+            "Train edge": "blue",
+            "Val edge": "red",
+            "Train node": "blue",
+            "Val node": "red"
+        }
+        loss_dashes = {
+            "Train total": "solid",
+            "Val total": "solid",
+            "Train edge": "dash",
+            "Val edge": "dash",
+            "Train node": "dot",
+            "Val node": "dot"
+        }
+        
+        for col in df.columns[:-1]:  # All columns except Learning rate
+            fig.add_trace(
+                go.Scatter(
+                    x=df.index,
+                    y=df[col],
+                    name=col,
+                    line=dict(color=loss_colors[col], dash=loss_dashes[col]),
+                    legendgroup=col.split()[1] if col.split()[0] in ["Train", "Val"] else col
+                ),
+                secondary_y=False
+            )
+        
+        # Add learning rate trace (secondary y-axis)
+        fig.add_trace(
+            go.Scatter(
+                x=df.index,
+                y=df["Learning rate"],
+                name="Learning rate",
+                line=dict(color="lightgreen", dash="solid"),
+                legendgroup="Learning rate"
+            ),
+            secondary_y=True
         )
-        for trace in fig.data:
-            if trace["legendgroup"] != "Train loss" and trace["legendgroup"] != "Val loss":
-                trace.line.update(dash='dash')
-        # Save to HTML
+        
+        # Set axis titles and layout
+        fig.update_layout(
+            title="Loss curves",
+            xaxis_title="Epoch number",
+            yaxis=dict(
+                title="Loss (eV²)",
+                showgrid=True,
+                # type="log"  
+            ),
+            yaxis2=dict(
+                title="Learning rate",
+                showgrid=False,
+                type="log",
+                side="right",
+                tickformat=".0e", 
+                dtick=1,
+            ),
+            grid=dict(xside="bottom", yside="left"),
+            legend=dict(
+                x=1.1,  
+                xanchor="left",  
+                y=1.0,  
+                yanchor="top"  
+            ),
+            margin=dict(r=150)
+        )
+        
+        # Save outputs
         plot_path = self.results_dir / "plot_loss.html"
         fig.write_html(str(plot_path))
         fig.write_image(str(self.results_dir / "plot_loss.png"))
+        
         if verbose:
             print(f"Loss plot saved to {plot_path}")
 

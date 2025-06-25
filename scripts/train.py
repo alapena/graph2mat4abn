@@ -1,6 +1,7 @@
 # === Simulate a proper Python package (temporal, I did not want to waste time on installing things) ===
 import sys
 from pathlib import Path
+
 # Add the root directory to Python path
 root_dir = Path(__file__).parent.parent  # Assuming train.py is in scripts/
 sys.path.append(str(root_dir))
@@ -13,12 +14,12 @@ import torch.optim as optim
 from e3nn import o3
 
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
-from torch_geometric.loader import DataLoader
 from sklearn.model_selection import train_test_split
 from mace.modules import MACE, RealAgnosticResidualInteractionBlock
 from graph2mat.bindings.torch.data.dataset import InMemoryData
 from graph2mat.bindings.torch import TorchBasisMatrixDataset
 from graph2mat.bindings.e3nn import E3nnGraph2Mat
+from graph2mat.models import MatrixMACE
 from graph2mat import (
     # PointBasis,
     BasisTableWithEdges,
@@ -28,8 +29,8 @@ from graph2mat import (
 from graph2mat4abn.tools import load_config, flatten
 from graph2mat4abn.tools.tools import get_basis_from_structures_paths
 from graph2mat4abn.tools.import_utils import get_object_from_module
-from graph2mat4abn.modules.enviroment_descriptor import EmbeddingBase, MACEDescriptor
 from graph2mat4abn.modules.trainer import Trainer
+# from graph2mat4abn.modules.models import MatrixMACE
 
 
 
@@ -144,6 +145,7 @@ def main():
     # === Model initialization ===
     # Shape of inputs
     mace_out_irreps = hidden_irreps * (num_interactions - 1) + str(hidden_irreps[0])
+    print("\nmace_out_irreps= ", mace_out_irreps)
     model_config = config["model"]
 
     # kwargs for each supported preprocessing/processing operation
@@ -152,43 +154,67 @@ def main():
             kwargs = {
                 'irreps': {
                     'node_feats_irreps': mace_out_irreps,
-                    'edge_attrs_irreps': o3.Irreps.spherical_harmonics(1),
-                    'edge_feats_irreps': o3.Irreps("8x0e"), 
+                    'edge_attrs_irreps': o3.Irreps.spherical_harmonics(env_config.get("max_ell")),
+                    'edge_feats_irreps': o3.Irreps(f"{env_config.get("num_bessel")}x0e"), 
                     # 'target_irreps ': mace_out_irreps,
                 },
-                'avg_num_neighbors': env_config["avg_num_neighbors"] # ? In principle it can be different from the enviroment decriptor, I think(?)
             }
+
         elif module == 'E3nnEdgeMessageBlock':
             kwargs = {
                 'irreps': {
                     'node_feats_irreps': mace_out_irreps,
-                    'edge_attrs_irreps': o3.Irreps.spherical_harmonics(1),
-                    'edge_feats_irreps': o3.Irreps("8x0e"), 
+                    'edge_attrs_irreps': o3.Irreps.spherical_harmonics(env_config.get("max_ell")),
+                    'edge_feats_irreps': o3.Irreps(f"{env_config.get("num_bessel")}x0e"), 
                     'edge_hidden_irreps': mace_out_irreps,
                 },
             }
+
         else:
             raise ValueError(f"Module {module} not supported yet. Write the kwargs in this function.")
+        
         return kwargs
 
     # node_operation = get_object_from_module(model_config["node_operation"], "graph2mat4abn.modules.node_operations") if model_config["node_operation"] is not None else get_object_from_module('E3nnSimpleNodeBlock', "graph2mat.bindings.e3nn.modules.node_operations")
-    model = E3nnGraph2Mat(
+    # model = E3nnGraph2Mat(
+    #     unique_basis = table,
+    #     irreps = dict(node_feats_irreps=mace_out_irreps),
+    #     symmetric = True,
+    #     # preprocessing_nodes = get_object_from_module(model_config["preprocessing_nodes"], 'graph2mat.bindings.e3nn.modules'),
+    #     # preprocessing_nodes_kwargs = get_preprocessing_nodes_kwargs(model_config["preprocessing_nodes"]),
+    #     preprocessing_edges = get_object_from_module(model_config["preprocessing_edges"], 'graph2mat.bindings.e3nn.modules'),
+    #     preprocessing_edges_kwargs = get_preprocessing_nodes_kwargs(model_config["preprocessing_edges"])
+    #     # node_operation=node_operation,
+    #     # node_operation_kwargs={
+    #     #     "irreps_in": mace_out_irreps,
+    #     #     "config": model_config
+    #     # }
+    #     # node_operation_kwargs={
+    #     #     "irreps": {"node_feats_irreps": o3.Irreps("0e")},
+    #     #     # "config": model_config,
+    #     # },
+    # )
+
+    # === Glue between MACE and E3nnGraph2Mat init ===
+    model = MatrixMACE(
+        mace = mace_descriptor,
+        readout_per_interaction=model_config.get("readout_per_interaction", False),
+        graph2mat_cls = E3nnGraph2Mat,
+        # Readout-specific arguments
         unique_basis = table,
-        irreps = dict(node_feats_irreps=mace_out_irreps),
         symmetric = True,
-        # preprocessing_nodes = get_object_from_module(model_config["preprocessing_nodes"], 'graph2mat.bindings.e3nn.modules'),
-        # preprocessing_nodes_kwargs = get_preprocessing_nodes_kwargs(model_config["preprocessing_nodes"]),
-        preprocessing_edges = get_object_from_module(model_config["preprocessing_edges"], 'graph2mat.bindings.e3nn.modules'),
-        preprocessing_edges_kwargs = get_preprocessing_nodes_kwargs(model_config["preprocessing_edges"])
-        # node_operation=node_operation,
-        # node_operation_kwargs={
-        #     "irreps_in": mace_out_irreps,
-        #     "config": model_config
-        # }
-        # node_operation_kwargs={
-        #     "irreps": {"node_feats_irreps": o3.Irreps("0e")},
-        #     # "config": model_config,
-        # },
+
+        preprocessing_edges = get_object_from_module(
+            model_config["preprocessing_edges"], 
+            'graph2mat.bindings.e3nn.modules'
+        ),
+        preprocessing_edges_kwargs = get_preprocessing_nodes_kwargs(model_config["preprocessing_edges"]),
+
+        preprocessing_nodes = get_object_from_module(
+            model_config["preprocessing_nodes"], 
+            'graph2mat.bindings.e3nn.modules'
+        ),
+        preprocessing_nodes_kwargs = get_preprocessing_nodes_kwargs(model_config["preprocessing_nodes"]),
     )
 
 
@@ -242,7 +268,9 @@ def main():
     # === Start training ===
     print(f"\nTRAINING STARTS with {len(train_dataset)} train samples and {len(val_dataset)} validation samples.")
     print(f"Using device: {device}")
+
     trainer.train(num_epochs=trainer_config["num_epochs"])
+    
     print("\nTraining completed successfully!")
   
 

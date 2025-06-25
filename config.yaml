@@ -41,6 +41,7 @@ environment_representation:
   gate: silu # non-linearity of the last layer readout
 
 model:
+  readout_per_interaction: false
   preprocessing_nodes: E3nnInteraction
   preprocessing_edges: E3nnEdgeMessageBlock
   # node_operation: null
