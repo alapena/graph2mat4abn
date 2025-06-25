@@ -11,7 +11,7 @@ from torch_geometric.loader import DataLoader
 from plotly.subplots import make_subplots
 
 class Trainer:
-    def __init__(self, environment_descriptor, model, config, train_dataset, val_dataset, loss_fn, optimizer, device='cpu', lr_scheduler=None, live_plot=True, live_plot_freq=1, live_plot_matrix = False, live_plot_matrix_freq = 100, history=None, results_dir=None, checkpoint_freq=30, batch_size=1):
+    def __init__(self, model, config, train_dataset, val_dataset, loss_fn, optimizer, device='cpu', lr_scheduler=None, live_plot=True, live_plot_freq=1, live_plot_matrix = False, live_plot_matrix_freq = 100, history=None, results_dir=None, checkpoint_freq=30, batch_size=1):
         """_summary_
 
         Args:
@@ -34,7 +34,7 @@ class Trainer:
         """
 
         self.device = device
-        self.environment_descriptor = environment_descriptor.to(self.device)
+        # self.environment_descriptor = environment_descriptor.to(self.device)
         self.model = model.to(self.device)
         self.config = config
         self.train_dataset = train_dataset
@@ -123,7 +123,7 @@ class Trainer:
             batch = batch.to(self.device)
 
             # Get enviroment description
-            enviroment_description = self.environment_descriptor(batch)
+            # enviroment_description = self.environment_descriptor(batch)
 
             with torch.no_grad():
                 # Model forward pass

@@ -8,12 +8,9 @@ checkpoints
 psych
 # Ignore all .pyc files
 *.pyc
+.cpython*
 # Ignore __pycache__ directories (where .pyc files are stored)
-__pycache__/
-# Ignore all .pt files (PyTorch model files)
-*.pt
-# Ignore .pyc files (Python bytecode files)
-*.pyc
+__pycache__
 #Ignore .idea folder (PyCharm project files)
 .idea
 *.sh

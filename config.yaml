@@ -44,7 +44,8 @@ model:
   readout_per_interaction: false
   preprocessing_nodes: E3nnInteraction
   preprocessing_edges: E3nnEdgeMessageBlock
-  # node_operation: null
+  node_operation: E3nnSimpleNodeBlock
+  edge_operation: E3nnSimpleEdgeBlock
   hidden_neurons: [64, 64]
   # activation: relu
 

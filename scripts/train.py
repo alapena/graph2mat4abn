@@ -149,14 +149,13 @@ def main():
     model_config = config["model"]
 
     # kwargs for each supported preprocessing/processing operation
-    def get_preprocessing_nodes_kwargs(module: str) -> dict:
+    def get_kwargs(module: str) -> dict:
         if module == 'E3nnInteraction':
             kwargs = {
                 'irreps': {
                     'node_feats_irreps': mace_out_irreps,
                     'edge_attrs_irreps': o3.Irreps.spherical_harmonics(env_config.get("max_ell")),
                     'edge_feats_irreps': o3.Irreps(f"{env_config.get("num_bessel")}x0e"), 
-                    # 'target_irreps ': mace_out_irreps,
                 },
             }
 
@@ -170,51 +169,53 @@ def main():
                 },
             }
 
+        elif module == 'E3nnSimpleNodeBlock':
+            kwargs = {}
+
+        elif module == 'E3nnSimpleEdgeBlock':
+            kwargs = {}
+
         else:
             raise ValueError(f"Module {module} not supported yet. Write the kwargs in this function.")
         
         return kwargs
 
-    # node_operation = get_object_from_module(model_config["node_operation"], "graph2mat4abn.modules.node_operations") if model_config["node_operation"] is not None else get_object_from_module('E3nnSimpleNodeBlock', "graph2mat.bindings.e3nn.modules.node_operations")
-    # model = E3nnGraph2Mat(
-    #     unique_basis = table,
-    #     irreps = dict(node_feats_irreps=mace_out_irreps),
-    #     symmetric = True,
-    #     # preprocessing_nodes = get_object_from_module(model_config["preprocessing_nodes"], 'graph2mat.bindings.e3nn.modules'),
-    #     # preprocessing_nodes_kwargs = get_preprocessing_nodes_kwargs(model_config["preprocessing_nodes"]),
-    #     preprocessing_edges = get_object_from_module(model_config["preprocessing_edges"], 'graph2mat.bindings.e3nn.modules'),
-    #     preprocessing_edges_kwargs = get_preprocessing_nodes_kwargs(model_config["preprocessing_edges"])
-    #     # node_operation=node_operation,
-    #     # node_operation_kwargs={
-    #     #     "irreps_in": mace_out_irreps,
-    #     #     "config": model_config
-    #     # }
-    #     # node_operation_kwargs={
-    #     #     "irreps": {"node_feats_irreps": o3.Irreps("0e")},
-    #     #     # "config": model_config,
-    #     # },
-    # )
 
     # === Glue between MACE and E3nnGraph2Mat init ===
     model = MatrixMACE(
         mace = mace_descriptor,
         readout_per_interaction=model_config.get("readout_per_interaction", False),
         graph2mat_cls = E3nnGraph2Mat,
+        
         # Readout-specific arguments
         unique_basis = table,
         symmetric = True,
 
+        # Preprocessing
         preprocessing_edges = get_object_from_module(
             model_config["preprocessing_edges"], 
             'graph2mat.bindings.e3nn.modules'
         ),
-        preprocessing_edges_kwargs = get_preprocessing_nodes_kwargs(model_config["preprocessing_edges"]),
+        preprocessing_edges_kwargs = get_kwargs(model_config["preprocessing_edges"]),
 
         preprocessing_nodes = get_object_from_module(
             model_config["preprocessing_nodes"], 
             'graph2mat.bindings.e3nn.modules'
         ),
-        preprocessing_nodes_kwargs = get_preprocessing_nodes_kwargs(model_config["preprocessing_nodes"]),
+        preprocessing_nodes_kwargs = get_kwargs(model_config["preprocessing_nodes"]),
+
+        # Operations
+        node_operation = get_object_from_module(
+            model_config["node_operation"], 
+            'graph2mat.bindings.e3nn.modules'
+        ),
+        node_operation_kwargs = get_kwargs(model_config["node_operation"]),
+
+        edge_operation = get_object_from_module(
+            model_config["edge_operation"], 
+            'graph2mat.bindings.e3nn.modules'
+        ),
+        edge_operation_kwargs = get_kwargs(model_config["edge_operation"]),
     )
 
 
@@ -244,7 +245,7 @@ def main():
     
     # Trainer
     trainer = Trainer(
-        environment_descriptor = mace_descriptor,
+        # environment_descriptor = mace_descriptor,
         model = model,
         config = config,
         train_dataset = train_dataset,
