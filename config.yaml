@@ -119,12 +119,10 @@ scheduler:
 trainer:
   batch_size: 30
   checkpoint_freq: 30
-  # use_comet: false
   live_plot: true
   live_plot_freq: 1
   live_plot_matrix: true
   live_plot_matrix_freq: 200
-  # grad_clip_value: 0.1
+  live_plot_matrices_num: 1
   num_epochs: 20000
-  # filename: "best_model.pt"
   loss_function: elementwise_mse

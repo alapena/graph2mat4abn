@@ -1,6 +1,7 @@
 
 import time
 from graph2mat4abn.tools.import_utils import save_to_yaml
+from graph2mat4abn.tools.plot import plot_error_matrices
 import torch
 import pandas as pd
 import numpy as np
@@ -11,7 +12,7 @@ from torch_geometric.loader import DataLoader
 from plotly.subplots import make_subplots
 
 class Trainer:
-    def __init__(self, model, config, train_dataset, val_dataset, loss_fn, optimizer, device='cpu', lr_scheduler=None, live_plot=True, live_plot_freq=1, live_plot_matrix = False, live_plot_matrix_freq = 100, history=None, results_dir=None, checkpoint_freq=30, batch_size=1):
+    def __init__(self, model, config, train_dataset, val_dataset, loss_fn, optimizer, device='cpu', lr_scheduler=None, live_plot=True, live_plot_freq=1, live_plot_matrix = False, live_plot_matrix_freq = 100, history=None, results_dir=None, checkpoint_freq=30, batch_size=1, processor=None):
         """_summary_
 
         Args:
@@ -54,6 +55,7 @@ class Trainer:
         self.live_plot_freq = live_plot_freq
         self.live_plot_matrix = live_plot_matrix
         self.live_plot_matrix_freq = live_plot_matrix_freq
+        self.processor = processor
 
     def train_epoch(self, dataloader):
         """Run one epoch of training"""
@@ -264,54 +266,9 @@ class Trainer:
 
 
             # === Plot hamiltonians while training ===
-            # TODO: Implement the matrix plots
-            # if (self.live_plot_matrix and epoch % self.live_plot_matrix_freq == 0) or epoch == num_epochs - 1:
+            if (self.live_plot_matrix and epoch % self.live_plot_matrix_freq == 0) or epoch == num_epochs - 1:
+                self.plot_hamiltonians(epoch)
 
-            #     dataset_subsets = [train_dataset_subset, validation_dataset_subset]
-
-            #     # Create results directory
-            #     results_directory = self.training_info_path + "/" + "hamiltonian_plots_during_training"
-            #     create_directory(results_directory)
-
-            #     # === Plot all hamiltonians in the subset ===
-            #     for j, dataset in enumerate(dataset_subsets):
-            #         dataset_type = ["training", "validation"]
-            #         for i, sample in enumerate(dataset):
-            #             sample = sample.clone()
-            #             sample = sample.to(self.device)
-            #             loss, predicted_h, original_h = generate_hamiltonian_prediction(self.model, sample, self.loss_fn)
-
-            #             # === Plot ===
-            #             if dataset_type[j] == "training":
-            #                 idx_sample = train_subset_indices[i]
-            #             elif dataset_type[j] == "validation":
-            #                 idx_sample = validation_subset_indices[i]
-            #             else:
-            #                 raise ValueError("Unknown dataset type")
-
-            #             n_atoms = len(sample["x"])
-            #             filepath = f"{results_directory}/{dataset_type[j]}_atoms_{n_atoms}_sample_{idx_sample}_epoch_{epoch}.png"
-            #             title = f"Results of sample {idx_sample} from {dataset_type[j]} dataset (seed 4). There are {n_atoms} in the unit cell."
-            #             predicted_matrix_text = f"Saved training loss at epoch {epoch}:     {self.history["train_loss"][-1]:.2f} eV²·100\nMSE evaluation:     {loss.item():.2f} eV²·100"
-            #             plot_error_matrices(original_h.cpu().numpy(),
-            #                                 predicted_h.cpu().numpy() / 100,
-            #                                 filepath=filepath,
-            #                                 matrix_label="Hamiltonian",
-            #                                 figure_title=title,
-            #                                 n_atoms=n_atoms,
-            #                                 predicted_matrix_text=predicted_matrix_text
-            #                                 )
-            #             filepath = f"{results_directory}/{dataset_type[j]}_atoms_{n_atoms}_sample_{idx_sample}_epoch_{epoch}.html"
-            #             predicted_matrix_text = f"Saved training loss at epoch {epoch}:     {self.history["train_loss"][-1]:.2f} eV²·100<br>MSE evaluation:     {loss.item():.2f} eV²·100"
-            #             plot_error_matrices_interactive(original_h.cpu().numpy(),
-            #                                 predicted_h.cpu().numpy() / 100,
-            #                                 filepath=filepath,
-            #                                 matrix_label="Hamiltonian",
-            #                                 figure_title=title,
-            #                                 n_atoms=n_atoms,
-            #                                 predicted_matrix_text=predicted_matrix_text
-            #                                 )
-            #     print("Hamiltonian plots generated!")
 
             # Save best model based on training loss
             if self.results_dir is not None and self.history["train_loss"][-1] < self.best_train_loss:
@@ -458,3 +415,78 @@ class Trainer:
         if verbose:
             print(f"Loss plot saved to {plot_path}")
 
+    def plot_hamiltonians(self, epoch):
+        results_directory = self.results_dir / "plots_during_training"
+        results_directory.mkdir(exist_ok=True)
+
+        # Set the (max) number of each structure type that you want to plot
+        n = self.config["trainer"].get("live_plot_matrices_num", 1)
+        n_plots_each = {
+            2: n,
+            3: n,
+            8: n,
+            32: n,
+            64: n,
+        }
+        n_atoms_list = list(n_plots_each.keys())
+
+        dataloaders = [self.train_dataloader, self.val_dataloader]
+        for dataloader_id, dataloader in enumerate(dataloaders):
+            dataloader_type = "training" if dataloader_id == 0 else "validation"
+            print(f"Plotting {dataloader_type} dataset...")
+
+            n_plotted = np.zeros([2, len(n_atoms_list)], dtype=np.int16)
+            n_plotted[0] += n_atoms_list
+            for j, data in enumerate(dataloader):
+                n_atoms = data.num_nodes
+                col_idx = np.where(n_plotted[0] == n_atoms)[0][0]
+
+                # Continue or break if already plotted the required number of plots
+                if all(n_plotted[1][i] == n_plots_each[n_plotted[0][i]] for i in range(n_plotted.shape[1])):
+                    break
+                if n_plotted[1][col_idx] == n_plots_each[n_atoms]:
+                    continue 
+                
+                # Generate prediction
+                model_predictions = self.model(data=data)
+                loss, _ = self.loss_fn(
+                    nodes_pred=model_predictions["node_labels"],
+                    nodes_ref=data.point_labels,
+                    edges_pred=model_predictions["edge_labels"],
+                    edges_ref=data.edge_labels,
+                )
+
+                pred_matrix = self.processor.matrix_from_data(
+                    data,
+                    predictions={"node_labels": model_predictions["node_labels"], "edge_labels": model_predictions["edge_labels"]},
+                )[0].todense()
+
+                # Save true matrix
+                true_matrix = self.processor.matrix_from_data(
+                    data,
+                )[0].todense()
+
+                # Plot
+                title = f"Results of sample {j} of {dataloader_type} dataset (seed {self.config["dataset"]["seed"]}). There are {n_atoms} in the unit cell."
+                predicted_matrix_text = f"Saved training loss at epoch {epoch}:     {self.history["train_loss"]:.2f} eV²·100\nMSE evaluation:     {loss.item():.2f} eV²·100"
+                plot_error_matrices(
+                    true_matrix, pred_matrix,
+                    matrix_label="Hamiltonian",
+                    figure_title=title,
+                    predicted_matrix_text=predicted_matrix_text,
+                    filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{epoch}.html")
+                )
+                plot_error_matrices(
+                    true_matrix, pred_matrix,
+                    matrix_label="Hamiltonian",
+                    figure_title=title,
+                    predicted_matrix_text=predicted_matrix_text,
+                    filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{epoch}.png")
+                )
+
+                print(f"Plotted {j} matrix")
+
+                
+                n_plotted[1][col_idx] += 1
+
+        print("Hamiltonian plots generated!")

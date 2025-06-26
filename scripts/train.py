@@ -225,7 +225,8 @@ def main():
         history = None,
         results_dir = config["results_dir"],
         checkpoint_freq = trainer_config["checkpoint_freq"],
-        batch_size = trainer_config["batch_size"]
+        batch_size = trainer_config["batch_size"],
+        processor=processor
     )
 
 
