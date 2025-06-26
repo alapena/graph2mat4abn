@@ -81,7 +81,7 @@ def plot_error_matrices(true_matrix, predicted_matrix, matrix_label=None, figure
     min_absolute_error = np.min(absolute_error_matrix)
     max_abs = np.max(np.absolute([max_absolute_error, min_absolute_error]))
     fig.add_annotation(
-        text=f"max = {max_absolute_error:.2f} eV,  min = {min_absolute_error:.2f} eV,  |max| = {max_abs:.2f}",
+        text=f"max = {max_absolute_error:.2f} eV,  min = {min_absolute_error:.2f} eV,  |max| = {max_abs:.2f} eV",
         xref='x3 domain', yref='y3 domain',
         x=0.5, y=-0.12,
         showarrow=False,
