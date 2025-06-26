@@ -173,17 +173,7 @@ class Trainer:
         return False
 
     def train(self, num_epochs):
-        """
-        Train the model for specified number of epochs with learning rate scheduling
 
-        Args:
-            num_epochs: Number of training epochs
-            filename: Path to save the best model (optional)
-
-        Returns:
-            model: Trained model
-            history (Dict): History of training/validation losses
-        """
         # Track the time of training.
         start_time = time.time()
 
@@ -228,6 +218,7 @@ class Trainer:
 
         for epoch in range(num_epochs):
             epoch_t0 = time.time()
+            print("="*30, f"Epoch {epoch+1}/{num_epochs}", "="*30)
 
             # Training phase
             self.train_epoch(train_dataloader)
@@ -285,7 +276,6 @@ class Trainer:
             self.history["elapsed_time"].append(elapsed_time)
 
             # Print progress
-            print("="*30, f"Epoch {epoch+1}/{num_epochs}", "="*30)
             print(f"Train stats. \t Total loss: {self.history["train_loss"][-1]:.4f} (edge loss: {self.history['train_edge_loss'][-1]:.4f}, node loss: {self.history['train_node_loss'][-1]:.4f})")
             print(f"Validation stats. \t Total loss: {self.history["val_loss"][-1]:.4f} (edge loss: {self.history['val_edge_loss'][-1]:.4f}, node loss: {self.history['val_node_loss'][-1]:.4f})")
             print(f"Learning rate: {self.history["learning_rate"][-1]:.4f}")
@@ -315,6 +305,7 @@ class Trainer:
             'scheduler_state_dict': self.lr_scheduler.state_dict() if self.lr_scheduler else None,
             'train_loss': self.history["train_loss"][-1],
             'val_loss': self.history["val_loss"][-1],
+            'history': self.history,
         }, path)
 
         
@@ -485,13 +476,13 @@ class Trainer:
                     predicted_matrix_text=predicted_matrix_text,
                     filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{epoch}.html")
                 )
-                plot_error_matrices(
-                    true_matrix, pred_matrix,
-                    matrix_label="Hamiltonian",
-                    figure_title=title,
-                    predicted_matrix_text=predicted_matrix_text,
-                    filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{epoch}.png")
-                )
+                # plot_error_matrices(
+                #     true_matrix, pred_matrix,
+                #     matrix_label="Hamiltonian",
+                #     figure_title=title,
+                #     predicted_matrix_text=predicted_matrix_text,
+                #     filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{epoch}.png")
+                # )
 
                 print(f"Plotted sample {j}")
 

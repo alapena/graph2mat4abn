@@ -1,5 +1,6 @@
 device: "cuda:0"
 results_dir: "./results/simple_blocks_mse"
+trained_model_path: null
 dataset:
   # path: "./dataset"
   train_split_ratio: 0.80
@@ -59,7 +60,7 @@ scheduler:
   eta_min: 1e-25
 
 trainer:
-  batch_size: 100
+  batch_size: 300
   checkpoint_freq: 50
   live_plot: true
   live_plot_freq: 1

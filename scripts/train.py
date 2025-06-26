@@ -1,7 +1,6 @@
 # === Simulate a proper Python package (temporal, I did not want to waste time on installing things) ===
 import sys
 from pathlib import Path
-
 # Add the root directory to Python path
 root_dir = Path(__file__).parent.parent  # Assuming train.py is in scripts/
 sys.path.append(str(root_dir))
@@ -27,7 +26,7 @@ from graph2mat import (
     MatrixDataProcessor,
 )
 from graph2mat4abn.tools import load_config, flatten
-from graph2mat4abn.tools.tools import get_basis_from_structures_paths, get_kwargs
+from graph2mat4abn.tools.tools import get_basis_from_structures_paths, get_kwargs, load_model
 from graph2mat4abn.tools.import_utils import get_object_from_module
 from graph2mat4abn.modules.trainer import Trainer
 # from graph2mat4abn.modules.models import MatrixMACE
@@ -214,6 +213,11 @@ def main():
     # Loss function
     trainer_config = config["trainer"]
     loss_fn = get_object_from_module(trainer_config["loss_function"], "graph2mat.core.data.metrics")
+
+    # Load saved model if required
+    trained_model_path = config.get("trained_model_path", None)
+    if trained_model_path is not None:
+        model, checkpoint, optimizer, scheduler = load_model(model, optimizer, trained_model_path, lr_scheduler=scheduler)
     
     # Trainer
     trainer = Trainer(
@@ -230,7 +234,7 @@ def main():
         live_plot_freq = trainer_config["live_plot_freq"],
         live_plot_matrix = trainer_config["live_plot_matrix"],
         live_plot_matrix_freq = trainer_config["live_plot_matrix_freq"],
-        history = None,
+        history = checkpoint["history"] if trained_model_path is not None else None,
         results_dir = config["results_dir"],
         checkpoint_freq = trainer_config["checkpoint_freq"],
         batch_size = trainer_config["batch_size"],
