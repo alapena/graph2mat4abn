@@ -1,8 +1,9 @@
+from pathlib import Path
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
 
-def plot_error_matrices_interactive(true_matrix, predicted_matrix, matrix_label=None, figure_title=None, predicted_matrix_text=None, filepath=None, force_max_colorbar_abs_error=None):
+def plot_error_matrices(true_matrix, predicted_matrix, matrix_label=None, figure_title=None, predicted_matrix_text=None, filepath=None, force_max_colorbar_abs_error=None):
     """Interactive Plotly visualization of error matrices."""
 
     # === Error matrices computation ===
@@ -119,6 +120,12 @@ def plot_error_matrices_interactive(true_matrix, predicted_matrix, matrix_label=
 
     # === Output ===
     if filepath:
-        fig.write_html(filepath)
+        filepath = Path(filepath)
+        if filepath.suffix.lower() == ".html":
+            fig.write_html(str(filepath))
+        elif filepath.suffix.lower() == ".png":
+            fig.write_image(str(filepath))
+        else:
+            raise ValueError(f"Unsupported file extension: {filepath.suffix}")
     else:
         fig.show()

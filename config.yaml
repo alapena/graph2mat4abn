@@ -5,8 +5,9 @@ dataset:
   train_split_ratio: 0.80
   # test_split_ratio: 0.50
   stratify: false # set to false if max_samples < 200
-  max_samples: 1
+  max_samples: 10
   seed: 3
+  num_unique_z: 3
 
 orbitals:
   1: 13

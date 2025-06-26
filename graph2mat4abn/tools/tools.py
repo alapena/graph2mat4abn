@@ -3,6 +3,8 @@ import torch
 
 from graph2mat import PointBasis
 from tqdm import tqdm
+from e3nn import o3
+from pathlib import Path
 
 
 def z_one_hot(z, orbitals, nr_bits):
@@ -97,3 +99,54 @@ def get_basis_from_structures_paths(paths, verbose=False, num_unique_z=None):
         [print(f"\nBasis for atom {i}.\n\tAtom type: {basis[i].type}\n\tBasis: {basis[i].basis}\n\tBasis convention: {basis[i].basis_convention}\n\tR: {basis[i].R}") for i in range(len(basis))]
 
     return basis
+
+
+def get_kwargs(module: str, config: dict) -> dict:
+    env_config = config["environment_representation"]
+
+    num_interactions = env_config["num_interactions"]
+    hidden_irreps = o3.Irreps(env_config["hidden_irreps"])
+    in_out_irreps = hidden_irreps * (num_interactions - 1) + str(hidden_irreps[0])
+
+    if module == 'E3nnInteraction':
+        kwargs = {
+            'irreps': {
+                'node_feats_irreps': in_out_irreps,
+                'edge_attrs_irreps': o3.Irreps.spherical_harmonics(env_config.get("max_ell")),
+                'edge_feats_irreps': o3.Irreps(f"{env_config.get("num_bessel")}x0e"), 
+            },
+        }
+
+    elif module == 'E3nnEdgeMessageBlock':
+        kwargs = {
+            'irreps': {
+                'node_feats_irreps': in_out_irreps,
+                'edge_attrs_irreps': o3.Irreps.spherical_harmonics(env_config.get("max_ell")),
+                'edge_feats_irreps': o3.Irreps(f"{env_config.get("num_bessel")}x0e"), 
+                'edge_hidden_irreps': in_out_irreps,
+            },
+        }
+
+    elif module == 'E3nnSimpleNodeBlock':
+        kwargs = {}
+
+    elif module == 'E3nnSimpleEdgeBlock':
+        kwargs = {}
+
+    else:
+        raise ValueError(f"Module {module} not supported yet. Write the kwargs in this function.")
+    
+    return kwargs
+
+
+def load_model(model, optimizer, path, lr_scheduler=None):
+    path = Path(path)
+
+    checkpoint = torch.load(path, weights_only=True)
+
+    model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    if lr_scheduler is not None:
+        lr_scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+
+    return model, checkpoint, optimizer, lr_scheduler

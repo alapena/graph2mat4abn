@@ -27,7 +27,7 @@ from graph2mat import (
     MatrixDataProcessor,
 )
 from graph2mat4abn.tools import load_config, flatten
-from graph2mat4abn.tools.tools import get_basis_from_structures_paths
+from graph2mat4abn.tools.tools import get_basis_from_structures_paths, get_kwargs
 from graph2mat4abn.tools.import_utils import get_object_from_module
 from graph2mat4abn.modules.trainer import Trainer
 # from graph2mat4abn.modules.models import MatrixMACE
@@ -59,12 +59,12 @@ def main():
 
 
     # == Basis creation === 
-    basis = get_basis_from_structures_paths(paths, verbose=True, num_unique_z=3)
+    basis = get_basis_from_structures_paths(paths, verbose=True, num_unique_z=config["dataset"].get("num_unique_z", None))
     table = BasisTableWithEdges(basis)
 
 
 
-    # === Dataset and dataloaders creation ===
+    # === Dataset creation ===
     processor = MatrixDataProcessor(basis_table=table, symmetric_matrix=True, sub_point_matrix=False)
     embeddings_configs = []
     for i, path in enumerate(paths):
@@ -143,43 +143,7 @@ def main():
 
 
     # === Model initialization ===
-    # Shape of inputs
-    mace_out_irreps = hidden_irreps * (num_interactions - 1) + str(hidden_irreps[0])
-    print("\nmace_out_irreps= ", mace_out_irreps)
     model_config = config["model"]
-
-    # kwargs for each supported preprocessing/processing operation
-    def get_kwargs(module: str) -> dict:
-        if module == 'E3nnInteraction':
-            kwargs = {
-                'irreps': {
-                    'node_feats_irreps': mace_out_irreps,
-                    'edge_attrs_irreps': o3.Irreps.spherical_harmonics(env_config.get("max_ell")),
-                    'edge_feats_irreps': o3.Irreps(f"{env_config.get("num_bessel")}x0e"), 
-                },
-            }
-
-        elif module == 'E3nnEdgeMessageBlock':
-            kwargs = {
-                'irreps': {
-                    'node_feats_irreps': mace_out_irreps,
-                    'edge_attrs_irreps': o3.Irreps.spherical_harmonics(env_config.get("max_ell")),
-                    'edge_feats_irreps': o3.Irreps(f"{env_config.get("num_bessel")}x0e"), 
-                    'edge_hidden_irreps': mace_out_irreps,
-                },
-            }
-
-        elif module == 'E3nnSimpleNodeBlock':
-            kwargs = {}
-
-        elif module == 'E3nnSimpleEdgeBlock':
-            kwargs = {}
-
-        else:
-            raise ValueError(f"Module {module} not supported yet. Write the kwargs in this function.")
-        
-        return kwargs
-
 
     # === Glue between MACE and E3nnGraph2Mat init ===
     model = MatrixMACE(
@@ -196,26 +160,26 @@ def main():
             model_config["preprocessing_edges"], 
             'graph2mat.bindings.e3nn.modules'
         ),
-        preprocessing_edges_kwargs = get_kwargs(model_config["preprocessing_edges"]),
+        preprocessing_edges_kwargs = get_kwargs(model_config["preprocessing_edges"], config),
 
         preprocessing_nodes = get_object_from_module(
             model_config["preprocessing_nodes"], 
             'graph2mat.bindings.e3nn.modules'
         ),
-        preprocessing_nodes_kwargs = get_kwargs(model_config["preprocessing_nodes"]),
+        preprocessing_nodes_kwargs = get_kwargs(model_config["preprocessing_nodes"], config),
 
         # Operations
         node_operation = get_object_from_module(
             model_config["node_operation"], 
             'graph2mat.bindings.e3nn.modules'
         ),
-        node_operation_kwargs = get_kwargs(model_config["node_operation"]),
+        node_operation_kwargs = get_kwargs(model_config["node_operation"], config),
 
         edge_operation = get_object_from_module(
             model_config["edge_operation"], 
             'graph2mat.bindings.e3nn.modules'
         ),
-        edge_operation_kwargs = get_kwargs(model_config["edge_operation"]),
+        edge_operation_kwargs = get_kwargs(model_config["edge_operation"], config),
     )
 
 
