@@ -187,9 +187,7 @@ class Trainer:
         # Track the time of training.
         start_time = time.time()
 
-        # TODO: Save config.yaml
-        # TODO: Plot hamiltonians
-        # TODO: Set new arquitecture
+        # TODO: Load trained model
 
         # Create results directory
         if self.results_dir is not None:
