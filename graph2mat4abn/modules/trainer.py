@@ -261,7 +261,7 @@ class Trainer:
 
             # Save periodic checkpoint (every 50 epochs)
             if self.results_dir is not None and epoch % self.checkpoint_freq == 0:
-                checkpoint_path = Path(checkpoint_dir / f"model_epoch_{epoch}.pt")
+                checkpoint_path = Path(checkpoint_dir / f"model_epoch_{epoch}.tar")
                 self.save_model(epoch, checkpoint_path)
                 print(f"Checkpoint saved at epoch {epoch} to {checkpoint_path}")
 
