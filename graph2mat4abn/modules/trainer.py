@@ -36,7 +36,7 @@ class Trainer:
 
         self.device = device
         # self.environment_descriptor = environment_descriptor.to(self.device)
-        self.model = model.to(self.device)
+        self.model = model
         self.config = config
         self.train_dataset = train_dataset
         self.val_dataset = val_dataset
@@ -69,6 +69,7 @@ class Trainer:
         for batch in dataloader:
             self.optimizer.zero_grad()
             batch = batch.to(self.device)
+            self.model = self.model.to(self.device)
 
             # # Get enviroment description
             # print("n_batches: ", len(batch))
@@ -223,17 +224,17 @@ class Trainer:
 
         # === Training loop ===
         # Create dataloaders
-        train_dataloader = DataLoader(self.train_dataset, self.batch_size)
-        val_dataloader = DataLoader(self.val_dataset, self.batch_size)
+        self.train_dataloader = DataLoader(self.train_dataset, self.batch_size)
+        self.val_dataloader = DataLoader(self.val_dataset, self.batch_size)
 
         for epoch in range(num_epochs):
             epoch_t0 = time.time()
 
             # Training phase
-            self.train_epoch(train_dataloader)
+            self.train_epoch(self.train_dataloader)
 
             # Validation phase
-            self.validate(val_dataloader)
+            self.validate(self.val_dataloader)
 
             # Store current learning rate
             lr = self.optimizer.param_groups[0]['lr']
@@ -437,7 +438,7 @@ class Trainer:
             n_plotted[0] += n_atoms_list
             for j, data in enumerate(dataloader):
                 n_atoms = data.num_nodes
-                col_idx = np.where(n_plotted[0] == n_atoms)[0][0]
+                col_idx = np.where(n_plotted[0] == n_atoms)[0]
 
                 # Continue or break if already plotted the required number of plots
                 if all(n_plotted[1][i] == n_plots_each[n_plotted[0][i]] for i in range(n_plotted.shape[1])):
@@ -446,27 +447,30 @@ class Trainer:
                     continue 
                 
                 # Generate prediction
-                model_predictions = self.model(data=data)
-                loss, _ = self.loss_fn(
-                    nodes_pred=model_predictions["node_labels"],
-                    nodes_ref=data.point_labels,
-                    edges_pred=model_predictions["edge_labels"],
-                    edges_ref=data.edge_labels,
-                )
+                with torch.no_grad():
+                    self.model.eval()
+                    self.model.to(torch.device("cpu"))
+                    model_predictions = self.model(data=data)
+                    loss, _ = self.loss_fn(
+                        nodes_pred=model_predictions["node_labels"],
+                        nodes_ref=data.point_labels,
+                        edges_pred=model_predictions["edge_labels"],
+                        edges_ref=data.edge_labels,
+                    )
 
-                pred_matrix = self.processor.matrix_from_data(
-                    data,
-                    predictions={"node_labels": model_predictions["node_labels"], "edge_labels": model_predictions["edge_labels"]},
-                )[0].todense()
+                    pred_matrix = self.processor.matrix_from_data(
+                        data,
+                        predictions={"node_labels": model_predictions["node_labels"], "edge_labels": model_predictions["edge_labels"]},
+                    )[0].todense()
 
-                # Save true matrix
-                true_matrix = self.processor.matrix_from_data(
-                    data,
-                )[0].todense()
+                    # Save true matrix
+                    true_matrix = self.processor.matrix_from_data(
+                        data,
+                    )[0].todense()
 
                 # Plot
                 title = f"Results of sample {j} of {dataloader_type} dataset (seed {self.config["dataset"]["seed"]}). There are {n_atoms} in the unit cell."
-                predicted_matrix_text = f"Saved training loss at epoch {epoch}:     {self.history["train_loss"]:.2f} eV²·100\nMSE evaluation:     {loss.item():.2f} eV²·100"
+                predicted_matrix_text = f"Saved training loss at epoch {epoch}:     {self.history["train_loss"][-1]:.2f} eV²·100\nMSE evaluation:     {loss.item():.2f} eV²·100" if dataloader_type == "training" else f"Saved training loss at epoch {epoch}:     {self.history["val_loss"][-1]:.2f} eV²·100\nMSE evaluation:     {loss.item():.2f} eV²·100"
                 plot_error_matrices(
                     true_matrix, pred_matrix,
                     matrix_label="Hamiltonian",

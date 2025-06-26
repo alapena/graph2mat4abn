@@ -1,5 +1,5 @@
 device: "cuda:0"
-results_dir: "./results/test2"
+results_dir: "./results/simple_blocks_mse"
 dataset:
   # path: "./dataset"
   train_split_ratio: 0.80

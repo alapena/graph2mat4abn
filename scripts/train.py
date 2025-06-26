@@ -65,6 +65,7 @@ def main():
 
 
     # === Dataset creation ===
+    print("Creating dataset...")
     processor = MatrixDataProcessor(basis_table=table, symmetric_matrix=True, sub_point_matrix=False)
     embeddings_configs = []
     for i, path in enumerate(paths):
@@ -92,11 +93,16 @@ def main():
         embeddings_configs.append(embeddings_config)
 
     dataset = TorchBasisMatrixDataset(embeddings_configs, data_processor=processor)
-    # print(dataset[0])
-    # a
 
     # Split dataset (also stratify)
-    split = True if config["dataset"]["max_samples"] > 1 else False
+    if config["dataset"]["max_samples"] == None:
+        split = True
+    elif config["dataset"]["max_samples"] > 1:
+        split = True
+    else:
+        split = False
+
+
     if split:
         n_atoms_list = [dataset[i].num_nodes for i in range(len(dataset))] if config["dataset"]["stratify"] == True else None
         train_dataset, val_dataset = train_test_split(
@@ -105,12 +111,14 @@ def main():
             stratify=n_atoms_list,
             random_state=None # Dataset already shuffled (paths)
             )
+        print(f"Dataset splitted in {len(train_dataset)} training samples and {len(val_dataset)} validation samples.")
     else:
         train_dataset = dataset
         val_dataset = dataset
         print("There is just 1 sample in the dataset. Using it for both train and validation. Use this only for debugging.")
     
     # Keep all the dataset in memory
+    print("Keeping all the dataset in memory.")
     train_dataset = InMemoryData(train_dataset)
     val_dataset = InMemoryData(val_dataset)
 

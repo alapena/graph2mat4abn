@@ -75,6 +75,7 @@ def get_basis_from_structures_paths(paths, verbose=False, num_unique_z=None):
                 unique_atom_types.append(z)
                 unique_atom_types_path_idx.append(i)
         if num_unique_z is not None and len(unique_atom_types) == num_unique_z:
+            print("Found enough basis points. Breaking the search...")
             break
 
     if verbose:
