@@ -217,7 +217,8 @@ def main():
     # Load saved model if required
     trained_model_path = config.get("trained_model_path", None)
     if trained_model_path is not None:
-        model, checkpoint, optimizer, scheduler = load_model(model, optimizer, trained_model_path, lr_scheduler=scheduler)
+        model, checkpoint, optimizer, scheduler = load_model(model, optimizer, trained_model_path, lr_scheduler=scheduler, device=device)
+        print(f"Loaded model in epoch {checkpoint["epoch"]} with training loss {checkpoint["train_loss"]} and validation loss {checkpoint["val_loss"]}.")
     
     # Trainer
     trainer = Trainer(

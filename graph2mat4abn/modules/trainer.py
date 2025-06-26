@@ -11,6 +11,8 @@ from pathlib import Path
 from torch_geometric.loader import DataLoader
 from plotly.subplots import make_subplots
 
+from graph2mat4abn.tools.tools import optimizer_to
+
 class Trainer:
     def __init__(self, model, config, train_dataset, val_dataset, loss_fn, optimizer, device='cpu', lr_scheduler=None, live_plot=True, live_plot_freq=1, live_plot_matrix = False, live_plot_matrix_freq = 100, history=None, results_dir=None, checkpoint_freq=30, batch_size=1, processor=None):
         """_summary_
@@ -97,6 +99,7 @@ class Trainer:
             loss.backward()
 
             # Update weights
+            optimizer_to(self.optimizer, self.device)
             self.optimizer.step()
 
             num_batches += 1
