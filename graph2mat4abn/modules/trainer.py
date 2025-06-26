@@ -35,7 +35,6 @@ class Trainer:
         """
 
         self.device = device
-        # self.environment_descriptor = environment_descriptor.to(self.device)
         self.model = model
         self.config = config
         self.train_dataset = train_dataset
@@ -224,17 +223,17 @@ class Trainer:
 
         # === Training loop ===
         # Create dataloaders
-        self.train_dataloader = DataLoader(self.train_dataset, self.batch_size)
-        self.val_dataloader = DataLoader(self.val_dataset, self.batch_size)
+        train_dataloader = DataLoader(self.train_dataset, self.batch_size)
+        val_dataloader = DataLoader(self.val_dataset, self.batch_size)
 
         for epoch in range(num_epochs):
             epoch_t0 = time.time()
 
             # Training phase
-            self.train_epoch(self.train_dataloader)
+            self.train_epoch(train_dataloader)
 
             # Validation phase
-            self.validate(self.val_dataloader)
+            self.validate(val_dataloader)
 
             # Store current learning rate
             lr = self.optimizer.param_groups[0]['lr']
@@ -244,29 +243,6 @@ class Trainer:
             if self.lr_scheduler is not None:
                 self.lr_scheduler.step()
 
-            # Compute time
-            epoch_time = time.time() - epoch_t0
-            elapsed_time = time.time() - start_time
-            
-            self.history["epoch_times"].append(epoch_time)
-            self.history["elapsed_time"].append(elapsed_time)
-
-            # Print progress
-            print("="*30, f"Epoch {epoch+1}/{num_epochs}", "="*30)
-            print(f"Train stats. \t Total loss: {self.history["train_loss"][-1]:.4f} (edge loss: {self.history['train_edge_loss'][-1]:.4f}, node loss: {self.history['train_node_loss'][-1]:.4f})")
-            print(f"Validation stats. \t Total loss: {self.history["val_loss"][-1]:.4f} (edge loss: {self.history['val_edge_loss'][-1]:.4f}, node loss: {self.history['val_node_loss'][-1]:.4f})")
-            print(f"Learning rate: {self.history["learning_rate"][-1]:.4f}")
-            print(f"Epoch duration: {self.history['epoch_times'][-1]:.2f} s")
-            print(f"Total elapsed time: {self.history['elapsed_time'][-1]:.2f} s")
-
-            # Update live plots
-            if (self.live_plot and epoch % self.live_plot_freq == 0) or epoch == num_epochs - 1:
-                self.update_loss_plots()
-
-
-            # === Plot hamiltonians while training ===
-            if (self.live_plot_matrix and epoch % self.live_plot_matrix_freq == 0) or epoch == num_epochs - 1:
-                self.plot_hamiltonians(epoch)
 
 
             # Save best model based on training loss
@@ -288,6 +264,33 @@ class Trainer:
                 checkpoint_path = Path(checkpoint_dir / f"model_epoch_{epoch}.pt")
                 self.save_model(epoch, checkpoint_path)
                 print(f"Checkpoint saved at epoch {epoch} to {checkpoint_path}")
+
+
+
+            # Update live plots
+            if (self.live_plot and epoch % self.live_plot_freq == 0) or epoch == num_epochs - 1:
+                self.update_loss_plots()
+
+
+            # === Plot hamiltonians while training ===
+            if (self.live_plot_matrix and epoch % self.live_plot_matrix_freq == 0) or epoch == num_epochs - 1:
+                self.plot_hamiltonians(epoch)
+
+
+            # Compute time
+            epoch_time = time.time() - epoch_t0
+            elapsed_time = time.time() - start_time
+            
+            self.history["epoch_times"].append(epoch_time)
+            self.history["elapsed_time"].append(elapsed_time)
+
+            # Print progress
+            print("="*30, f"Epoch {epoch+1}/{num_epochs}", "="*30)
+            print(f"Train stats. \t Total loss: {self.history["train_loss"][-1]:.4f} (edge loss: {self.history['train_edge_loss'][-1]:.4f}, node loss: {self.history['train_node_loss'][-1]:.4f})")
+            print(f"Validation stats. \t Total loss: {self.history["val_loss"][-1]:.4f} (edge loss: {self.history['val_edge_loss'][-1]:.4f}, node loss: {self.history['val_node_loss'][-1]:.4f})")
+            print(f"Learning rate: {self.history["learning_rate"][-1]:.4f}")
+            print(f"Epoch duration: {self.history['epoch_times'][-1]:.2f} s")
+            print(f"Total elapsed time: {self.history['elapsed_time'][-1]:.2f} s")
 
         # ====== TRAINING LOOP FINISHED ======
 
@@ -429,7 +432,11 @@ class Trainer:
         }
         n_atoms_list = list(n_plots_each.keys())
 
-        dataloaders = [self.train_dataloader, self.val_dataloader]
+        # Dataloaders are needed for some reason; kword "batch" is needed at some point
+        train_dataloader = DataLoader(self.train_dataset, 1)
+        val_dataloader = DataLoader(self.val_dataset, 1)
+
+        dataloaders = [train_dataloader, val_dataloader]
         for dataloader_id, dataloader in enumerate(dataloaders):
             dataloader_type = "training" if dataloader_id == 0 else "validation"
             print(f"Plotting {dataloader_type} dataset...")
@@ -486,7 +493,7 @@ class Trainer:
                     filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{epoch}.png")
                 )
 
-                print(f"Plotted {j} matrix")
+                print(f"Plotted sample {j}")
 
                 
                 n_plotted[1][col_idx] += 1
