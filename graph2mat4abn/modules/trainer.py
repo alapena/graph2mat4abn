@@ -266,8 +266,8 @@ class Trainer:
                 self.update_loss_plots()
 
 
-            # === Plot hamiltonians while training ===
-            if (self.live_plot_matrix and epoch % self.live_plot_matrix_freq == 0) or epoch == num_epochs - 1:
+            # Plot hamiltonians while training
+            if (self.live_plot_matrix and epoch % self.live_plot_matrix_freq == 0 and epoch != 0) or epoch == num_epochs - 1:
                 self.plot_hamiltonians(epoch)
 
 
