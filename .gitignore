@@ -1,3 +1,21 @@
+.venv
 .venv_wsl
 dataset
 dataset.pkl
+# Ignore checkpoints
+checkpoints
+# Ignore psych folder or file
+psych
+# Ignore all .pyc files
+*.pyc
+.cpython*
+# Ignore __pycache__ directories (where .pyc files are stored)
+__pycache__
+#Ignore .idea folder (PyCharm project files)
+.idea
+*.sh
+1*
+output_HD*
+results
+key
+*.pub

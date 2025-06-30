@@ -1,13 +1,14 @@
-device: "cpu"
-results_dir: "example_results/test"
+device: "cuda:0"
+results_dir: "./results/simple_blocks_blockmse_5"
+trained_model_path: './results/simple_blocks_blockmse_4/train_best_model.tar'
 dataset:
-  path: "./Data/aBN_HSX"
-  training_split_ratio: 0.80
-  test_split_ratio: 0.50
-  batch_size: 30
-  cutoff: 3.0
+  # path: "./dataset"
+  train_split_ratio: 0.80
+  # test_split_ratio: 0.50
+  stratify: true # set to false if max_samples < 200
   max_samples: null
   seed: 42
+  num_unique_z: 3
 
 orbitals:
   1: 13
@@ -19,92 +20,52 @@ orbitals:
   7: 13
   8: 13
 
+environment_representation:
+  # path_trained_model: null
+  num_interactions: 2 # Nº layers
+  correlation: 3 # Correlation order of the messages
+  max_ell: 3 # Expansion order
+
+  num_channels: 128 # default. Determines the size of the model
+  max_L: 1 # default. Symmetries of the message. According to hidden_irreps.
+  r_max: 5.0 # Cutoff radius
+  num_elements: 3 # Nº of chemical elements
+  atomic_energies: [0, 0, 0] # For normalization(?). torhc.tensor()
+  avg_num_neighbors: 8 # For norm.(?)
+  atomic_numbers: [5,6,7] # (?)
+
+  num_bessel: 8 # Nº radial feats
+  num_polynomial_cutoff: 6 # Smothness of the radial cutoff
+  hidden_irreps: "8x0e + 8x1o"
+  # interaction_cls_first: RealAgnosticResidualInteractionBlock
+  # interaction_cls: RealAgnosticResidualInteractionBlock
+  MLP_irreps: 2x0e # Nº hidden dim. of last layer readout MLP
+  gate: silu # non-linearity of the last layer readout
+
 model:
-  path_trained_model: null
-  avg_num_neighbors: 8
-  nr_bits: 10
-
-  embedding:
-    hidden_irreps: "1x0e+1x1o"
-    r_max: 3
-    num_bessel: 8
-    num_polynomial_cutoff: 6
-    radial_type: "bessel"
-    distance_transform: null
-    max_ell: 3
-    num_elements: 10
-    nr_bits: 10
-
-  atomic_descriptors:
-    hidden_irreps: "1x0e+1x1o"
-    interaction_cls_first: RealAgnosticResidualInteractionBlock
-    interaction_cls: RealAgnosticResidualInteractionBlock
-    avg_num_neighbors: 8
-    radial_mlp: [64, 64, 64]
-    num_interactions: 1
-    correlation: 3
-    num_elements: 10
-    max_ell: 3
-    orbitals:
-      1: 13
-      2: 13
-      3: 13
-      4: 13
-      5: 13
-      6: 13
-      7: 13
-      8: 13
-    nr_bits: 10
-
-  edge_extraction:
-    edge_extraction_class: EdgeExtractionUniversalApproximator
-    orbitals:
-      1: 13
-      2: 13
-      3: 13
-      4: 13
-      5: 13
-      6: 13
-      7: 13
-      8: 13
-    hidden_dim_message_passing: 900
-    hidden_dim_matrix_extraction: 900
-    mp_layers: 2
-    share_parameters: true
-
-  node_extraction:
-    node_extraction_class: NodeExtractionUniversalApproximator
-    orbitals:
-      1: 13
-      2: 13
-      3: 13
-      4: 13
-      5: 13
-      6: 13
-      7: 13
-      8: 13
-    hidden_dim_message_passing: 900
-    hidden_dim_matrix_extraction: 900
-    mp_layers: 2
-    share_parameters: true
+  readout_per_interaction: false
+  preprocessing_nodes: E3nnInteraction
+  preprocessing_edges: E3nnEdgeMessageBlock
+  node_operation: E3nnSimpleNodeBlock
+  edge_operation: E3nnSimpleEdgeBlock
+  hidden_neurons: [64, 64]
 
 optimizer:
-  lr: 1e-3
+  lr: 1e-1
   weight_decay: 1e-4
 
 scheduler:
-  T_0: 20
-  T_mult: 2
-  eta_min: 1e-15
+  t_0: 20
+  t_multiplication: 2
+  eta_min: 1e-25
 
 trainer:
-  use_comet: false
+  batch_size: 100
+  checkpoint_freq: 500
   live_plot: true
-  plot_update_freq: 1
-  plot_matrices_freq: 5
-  grad_clip_value: 0.1
-  num_epochs: 12000
-  filename: "best_model.pt"
-
-cost_function:
-  function: mse_mean_cost_function
+  live_plot_freq: 1
+  live_plot_matrix: true
+  live_plot_matrix_freq: 1000
+  live_plot_matrices_num: 1
+  num_epochs: 20000
+  loss_function: block_type_mse
