@@ -1,6 +1,6 @@
 device: "cuda:0"
-results_dir: "./results/simple_blocks_mse"
-trained_model_path: null
+results_dir: "./results/simple_blocks_blockmse_5"
+trained_model_path: './results/simple_blocks_blockmse_4/train_best_model.tar'
 dataset:
   # path: "./dataset"
   train_split_ratio: 0.80
@@ -51,7 +51,7 @@ model:
   hidden_neurons: [64, 64]
 
 optimizer:
-  lr: 1e-3
+  lr: 1e-1
   weight_decay: 1e-4
 
 scheduler:
@@ -60,12 +60,12 @@ scheduler:
   eta_min: 1e-25
 
 trainer:
-  batch_size: 300
-  checkpoint_freq: 50
+  batch_size: 100
+  checkpoint_freq: 500
   live_plot: true
   live_plot_freq: 1
   live_plot_matrix: true
-  live_plot_matrix_freq: 200
+  live_plot_matrix_freq: 1000
   live_plot_matrices_num: 1
   num_epochs: 20000
-  loss_function: elementwise_mse
+  loss_function: block_type_mse

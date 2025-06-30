@@ -1,0 +1,13 @@
+graph2mat
+sisl
+torch
+torch_geometric
+e3nn
+mace
+numpy
+scipy
+scikit-learn
+matplotlib
+pandas
+tqdm
+pyyaml
