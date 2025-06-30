@@ -1,9 +1,11 @@
-graph2mat
+# graph2mat
+torch==2.5.0
+torchvision
+torchaudio
 sisl
-torch
 torch_geometric
 e3nn
-mace
+mace-torch
 numpy
 scipy
 scikit-learn
@@ -11,3 +13,4 @@ matplotlib
 pandas
 tqdm
 pyyaml
+kaleido
