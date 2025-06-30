@@ -1,12 +1,12 @@
 device: "cuda:0"
-results_dir: "./results/simple_blocks_blockmse_5"
-trained_model_path: './results/simple_blocks_blockmse_4/train_best_model.tar'
+results_dir: "./results/test"
+trained_model_path: null
 dataset:
   # path: "./dataset"
   train_split_ratio: 0.80
   # test_split_ratio: 0.50
-  stratify: true # set to false if max_samples < 200
-  max_samples: null
+  stratify: false # set to false if max_samples < 200
+  max_samples: 1
   seed: 42
   num_unique_z: 3
 
@@ -64,7 +64,7 @@ trainer:
   checkpoint_freq: 500
   live_plot: true
   live_plot_freq: 1
-  live_plot_matrix: true
+  live_plot_matrix: false
   live_plot_matrix_freq: 1000
   live_plot_matrices_num: 1
   num_epochs: 20000
