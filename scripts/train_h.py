@@ -28,7 +28,7 @@ from graph2mat import (
 from graph2mat4abn.tools import load_config, flatten
 from graph2mat4abn.tools.tools import get_basis_from_structures_paths, get_kwargs, load_model
 from graph2mat4abn.tools.import_utils import get_object_from_module
-from graph2mat4abn.modules.trainer import Trainer
+from graph2mat4abn.modules.trainer_h import Trainer
 # from graph2mat4abn.modules.models import MatrixMACE
 
 

@@ -15,7 +15,6 @@ from e3nn import o3
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from sklearn.model_selection import train_test_split
 from mace.modules import MACE, RealAgnosticResidualInteractionBlock
-from torch_geometric.loader import DataLoader
 from graph2mat.bindings.torch.data.dataset import InMemoryData
 from graph2mat.bindings.torch import TorchBasisMatrixDataset
 from graph2mat.bindings.e3nn import E3nnGraph2Mat
@@ -29,20 +28,19 @@ from graph2mat import (
 from graph2mat4abn.tools import load_config, flatten
 from graph2mat4abn.tools.tools import get_basis_from_structures_paths, get_kwargs, load_model
 from graph2mat4abn.tools.import_utils import get_object_from_module
-from graph2mat4abn.modules.trainer_h import Trainer
-from graph2mat4abn.tools.plot import plot_error_matrices_big
+from graph2mat4abn.modules.trainer_tim import Trainer
 # from graph2mat4abn.modules.models import MatrixMACE
 
 
 
 def main():
     # === Configuration load ===
-    model_dir = Path('results/simple_blocks_blockmse_4') # * Set the directory where your model is saved
-    model_filename = 'train_best_model.tar' # * Set the filename of your model
+    config = load_config("./config.yaml")
+    
+    device = torch.device(config["device"] if (torch.cuda.is_available() and config["device"]!="cpu") 
+    else 'cpu')
 
 
-    config = load_config(model_dir / "config.yaml")
-    device = torch.device("cpu") # torch.device(config["device"] if (torch.cuda.is_available() and config["device"]!="cpu") else 'cpu')
 
     # === List of paths to all structures ===
     parent_path = Path('./dataset')
@@ -63,29 +61,97 @@ def main():
     table = BasisTableWithEdges(basis)
 
 
-    # === Data (graph) object creation ===
-    i=0
-    path = paths[i] # * Select the path to the structure you want to infere
-    # Load the structure config
-    file = sisl.get_sile(path / "aiida.fdf")
-    file_h = sisl.get_sile(path / "aiida.HSX")
-    geometry = file.read_geometry()
 
-    # Load the true hamiltonian
-    true_h = file_h.read_hamiltonian()
-    embeddings_config = BasisConfiguration.from_matrix(
-        matrix = true_h,
-        geometry = geometry,
-        labels = True,
-        metadata={
-            "device": device,
-            "atom_types": torch.from_numpy(geometry.atoms.Z), # Unlike point_types, this is not rescaled.
-        },
-    )
-    embeddings_config = [embeddings_config]
-
+    # === Dataset creation ===
+    print("Creating dataset...")
     processor = MatrixDataProcessor(basis_table=table, symmetric_matrix=True, sub_point_matrix=False)
-    dataset = TorchBasisMatrixDataset(embeddings_config, data_processor=processor)
+    embeddings_configs = []
+    for i, path in enumerate(paths):
+        if i==config["dataset"]["max_samples"]:
+            break
+
+        # Load the structure config
+        file = sisl.get_sile(path / "aiida.fdf")
+        file_h = sisl.get_sile(path / "aiida.HSX")
+        geometry = file.read_geometry()
+        lattice_vectors = geometry.lattice
+
+        # Load the true hamiltonian
+        h_uc = file_h.read_hamiltonian()
+        true_h = h_uc.Hk([0, 0, 0]).todense()
+
+        # # Get atom symbols
+        # atomic_symbols = []
+        # for atom in geometry.atoms:
+        #     atomic_symbols.append(atom.symbol)
+
+        # TODO: GO On
+        embeddings_config = BasisConfiguration(
+            point_types=geometry.atoms.Z,
+            positions=geometry.xyz,
+            basis=basis,
+            cell=lattice_vectors.cell,
+            # pbc=(True, True, True),
+            pbc=(False,False,False)
+            # matrix = true_h
+        )
+        print("point_types:", embeddings_config.point_types)
+        print("positions:", embeddings_config.positions)
+        print("basis:", embeddings_config.basis)
+        print("cell:", embeddings_config.cell)
+        print("pbc:", embeddings_config.pbc)
+        print("matrix:", embeddings_config.matrix)  # Uncomment if 'matrix' is used
+        a
+
+        # embeddings_config = BasisConfiguration.from_matrix(
+        #     matrix = true_h,
+        #     geometry = geometry,
+        #     labels = True,
+        #     metadata={
+        #         "device": device,
+        #         "atom_types": torch.from_numpy(geometry.atoms.Z), # Unlike point_types, this is not rescaled.
+        #     },
+        # )
+
+        embeddings_configs.append(embeddings_config)
+
+    dataset = TorchBasisMatrixDataset(embeddings_configs, data_processor=processor)
+    print(basis[0])
+    print(basis[1])
+    print(basis[2])
+    print(true_h.shape)
+    print(h_uc.shape)
+    print(dataset[0].num_nodes)
+    a
+
+    # Split dataset (also stratify)
+    if config["dataset"]["max_samples"] == None:
+        split = True
+    elif config["dataset"]["max_samples"] > 1:
+        split = True
+    else:
+        split = False
+
+
+    if split:
+        n_atoms_list = [dataset[i].num_nodes for i in range(len(dataset))] if config["dataset"]["stratify"] == True else None
+        train_dataset, val_dataset = train_test_split(
+            dataset, 
+            train_size=config["dataset"]["train_split_ratio"],
+            stratify=n_atoms_list,
+            random_state=None # Dataset already shuffled (paths)
+            )
+        print(f"Dataset splitted in {len(train_dataset)} training samples and {len(val_dataset)} validation samples.")
+    else:
+        train_dataset = dataset
+        val_dataset = dataset
+        print("There is just 1 sample in the dataset. Using it for both train and validation. Use this only for debugging.")
+    
+    # Keep all the dataset in memory
+    print("Keeping all the dataset in memory.")
+    train_dataset = InMemoryData(train_dataset)
+    val_dataset = InMemoryData(val_dataset)
+
 
 
     # === Enviroment descriptor initialization ===
@@ -114,8 +180,10 @@ def main():
 
 
 
-    # === Glue between MACE and E3nnGraph2Mat init (Model init) ===
+    # === Model initialization ===
     model_config = config["model"]
+
+    # === Glue between MACE and E3nnGraph2Mat init ===
     model = MatrixMACE(
         mace = mace_descriptor,
         readout_per_interaction=model_config.get("readout_per_interaction", False),
@@ -178,57 +246,42 @@ def main():
     loss_fn = get_object_from_module(trainer_config["loss_function"], "graph2mat.core.data.metrics")
 
     # Load saved model if required
-    trained_model_path = config.get("results_dir", None)
+    trained_model_path = config.get("trained_model_path", None)
     if trained_model_path is not None:
-        trained_model_path = Path(trained_model_path) / model_filename
         model, checkpoint, optimizer, scheduler = load_model(model, optimizer, trained_model_path, lr_scheduler=scheduler, device=device)
-        history = checkpoint["history"]
         print(f"Loaded model in epoch {checkpoint["epoch"]} with training loss {checkpoint["train_loss"]} and validation loss {checkpoint["val_loss"]}.")
-    else:
-        raise ValueError("Something went wrong, the trained_model_path is None. Please check your config.yaml file.")
     
-
-    # === Inference ===
-    dataloader = DataLoader(dataset, 1)
-    model.eval()
-
-    data = next(iter(dataloader))
-    with torch.no_grad():
-        # Model forward pass
-        model_predictions = model(data=data)
-
-        # Compute the loss
-        loss, stats = loss_fn(
-            nodes_pred=model_predictions["node_labels"],
-            nodes_ref=data.point_labels,
-            edges_pred=model_predictions["edge_labels"],
-            edges_ref=data.edge_labels,
-        )
-
-        pred_matrix = processor.matrix_from_data(
-            data,
-            predictions={"node_labels": model_predictions["node_labels"], "edge_labels": model_predictions["edge_labels"]},
-        )[0].todense()
-
-        # Save true matrix
-        true_matrix = processor.matrix_from_data(
-            data,
-        )[0].todense()
-
-    # Plot
-    results_directory = model_dir / "plots_inference"
-    results_directory.mkdir(exist_ok=True)
-    
-    n_atoms = data.num_nodes
-    title = f"Results of sample {i} (seed {config["dataset"]["seed"]}). There are {n_atoms} in the unit cell."
-    predicted_matrix_text = f"Saved training loss at epoch {len(history["train_loss"])}:     {history["train_loss"][-1]:.2f} eV²·100<br>Saved validation loss at epoch {len(history["train_loss"])}:     {history["val_loss"][-1]:.2f} eV²·100<br>MSE evaluation:     {loss.item():.2f} eV²·100"
-    plot_error_matrices_big(
-        true_matrix, pred_matrix,
-        matrix_label="Hamiltonian",
-        figure_title=title,
-        predicted_matrix_text=predicted_matrix_text,
-        filepath = Path(results_directory / f"inference_{n_atoms}atoms_sample{i}_epoch{len(history["train_loss"])}.html")
+    # Trainer
+    trainer = Trainer(
+        # environment_descriptor = mace_descriptor,
+        model = model,
+        config = config,
+        train_dataset = train_dataset,
+        val_dataset = val_dataset,
+        loss_fn = loss_fn,
+        optimizer = optimizer,
+        device = device,
+        lr_scheduler = scheduler,
+        live_plot = trainer_config["live_plot"],
+        live_plot_freq = trainer_config["live_plot_freq"],
+        live_plot_matrix = trainer_config["live_plot_matrix"],
+        live_plot_matrix_freq = trainer_config["live_plot_matrix_freq"],
+        history = checkpoint["history"] if trained_model_path is not None else None,
+        results_dir = config["results_dir"],
+        checkpoint_freq = trainer_config["checkpoint_freq"],
+        batch_size = trainer_config["batch_size"],
+        processor=processor
     )
+
+
+
+    # === Start training ===
+    print(f"\nTRAINING STARTS with {len(train_dataset)} train samples and {len(val_dataset)} validation samples.")
+    print(f"Using device: {device}")
+
+    trainer.train(num_epochs=trainer_config["num_epochs"])
+    
+    print("\nTraining completed successfully!")
   
 
 if __name__ == "__main__":

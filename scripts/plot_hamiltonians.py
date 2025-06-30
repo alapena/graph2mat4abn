@@ -26,7 +26,7 @@ from graph2mat import (
     MatrixDataProcessor,
 )
 
-from graph2mat4abn.tools.plot import plot_error_matrices
+from graph2mat4abn.tools.plot import plot_error_matrices_big
 from graph2mat4abn.tools import load_config, flatten
 from graph2mat4abn.tools.tools import get_basis_from_structures_paths, get_kwargs, load_model
 from graph2mat4abn.tools.import_utils import get_object_from_module
@@ -234,14 +234,14 @@ def main():
             # Plot
             title = f"Results of sample {j} of {dataloader_type} dataset (seed {config["dataset"]["seed"]}). There are {n_atoms} in the unit cell."
             predicted_matrix_text = f"Saved training loss at epoch {checkpoint["epoch"]}:     {checkpoint["train_loss"]:.2f} eV²·100\nMSE evaluation:     {loss.item():.2f} eV²·100"
-            plot_error_matrices(
+            plot_error_matrices_big(
                 true_matrix, pred_matrix,
                 matrix_label="Hamiltonian",
                 figure_title=title,
                 predicted_matrix_text=predicted_matrix_text,
                 filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{checkpoint["epoch"]}.html")
             )
-            plot_error_matrices(
+            plot_error_matrices_big(
                 true_matrix, pred_matrix,
                 matrix_label="Hamiltonian",
                 figure_title=title,
