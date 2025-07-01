@@ -33,7 +33,8 @@ from graph2mat4abn.tools.import_utils import get_object_from_module
 
 def main():
     # === Configuration load ===
-    directory = Path("results/test2") # * Write here the directory where the model is stored
+    directory = Path("results/finetuned_block_type_mse_0") # * Write here the directory where the model is stored
+    # device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
     filename = "val_best_model.tar"
     print(f"Loading model {directory / filename}...")
 
@@ -137,8 +138,10 @@ def main():
     processor = MatrixDataProcessor(basis_table=table, symmetric_matrix=True, sub_point_matrix=False)
     embeddings_configs = []
     for i, path in enumerate(paths):
-        if i==config["dataset"]["max_samples"]:
+        # if i==config["dataset"]["max_samples"]:
+        if i==200:
             break
+        print(f"Processing structure {i+1} of {len(paths)}...")
 
         # Load the structure config
         file = sisl.get_sile(path / "aiida.fdf")
@@ -159,19 +162,20 @@ def main():
 
         embeddings_configs.append(embeddings_config)
 
-    dataloader = TorchBasisMatrixDataset(embeddings_configs, data_processor=processor)
+    dataset = TorchBasisMatrixDataset(embeddings_configs, data_processor=processor)
 
-    n_atoms_list = [dataloader[i].num_nodes for i in range(len(dataloader))] if config["dataset"]["stratify"] == True else None
+    n_atoms_list = [dataset[i].num_nodes for i in range(len(dataset))] if config["dataset"]["stratify"] == True else None
     train_dataset, val_dataset = train_test_split(
-        dataloader, 
+        dataset, 
         train_size=config["dataset"]["train_split_ratio"],
         stratify=n_atoms_list,
         random_state=None # Dataset already shuffled (paths)
-        )
+    )
+    
 
 
     # === Model load ===
-    model, checkpoint, optimizer, lr_scheduler = load_model(model, optimizer, directory / filename, lr_scheduler=lr_scheduler)
+    model, checkpoint, optimizer, lr_scheduler = load_model(model, optimizer, directory / filename, lr_scheduler=lr_scheduler, device=device)
     loss_fn = get_object_from_module(config["trainer"]["loss_function"], "graph2mat.core.data.metrics")
 
 
@@ -180,7 +184,7 @@ def main():
     results_directory = directory / "results"
     results_directory.mkdir(exist_ok=True)
 
-    # Set the (max) number of each structure type that you want to plot
+    # * Set the (max) number of each structure type that you want to plot
     n = 1
     n_plots_each = {
         2: n,
@@ -196,13 +200,13 @@ def main():
     val_dataloader = DataLoader(val_dataset, 1)
 
     dataloaders = [train_dataloader, val_dataloader]
-    for dataloader_id, dataloader in enumerate(dataloaders):
+    for dataloader_id, dataset in enumerate(dataloaders):
         dataloader_type = "training" if dataloader_id == 0 else "validation"
         print(f"Plotting {dataloader_type} dataset...")
 
         n_plotted = np.zeros([2, len(n_atoms_list)], dtype=np.int16)
         n_plotted[0] += n_atoms_list
-        for j, data in enumerate(dataloader):
+        for j, data in enumerate(dataset):
             n_atoms = data.num_nodes
             col_idx = np.where(n_plotted[0] == n_atoms)[0][0]
 

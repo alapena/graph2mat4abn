@@ -471,7 +471,7 @@ class Trainer:
 
                 # Plot
                 title = f"Results of sample {j} of {dataloader_type} dataset (seed {self.config["dataset"]["seed"]}). There are {n_atoms} in the unit cell."
-                predicted_matrix_text = f"Saved training loss at epoch {epoch}:     {self.history["train_loss"][-1]:.2f} eV²·100\nMSE evaluation:     {loss.item():.2f} eV²·100" if dataloader_type == "training" else f"Saved training loss at epoch {epoch}:     {self.history["val_loss"][-1]:.2f} eV²·100\nMSE evaluation:     {loss.item():.2f} eV²·100"
+                predicted_matrix_text = f"Saved training loss at epoch {epoch}:     {self.history["train_loss"][-1]:.2f} eV²\nMSE evaluation:     {loss.item():.2f} eV²" if dataloader_type == "training" else f"Saved training loss at epoch {epoch}:     {self.history["val_loss"][-1]:.2f} eV²\nMSE evaluation:     {loss.item():.2f} eV²"
                 plot_error_matrices_big(
                     true_matrix, pred_matrix,
                     matrix_label="Hamiltonian",
