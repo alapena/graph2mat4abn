@@ -62,102 +62,6 @@ def main():
 
 
 
-    # === Dataset creation ===
-    print("Creating dataset...")
-    processor = MatrixDataProcessor(basis_table=table, symmetric_matrix=True, sub_point_matrix=False)
-    embeddings_configs = []
-    for i, path in enumerate(paths):
-        if i==config["dataset"]["max_samples"]:
-            break
-
-        # Load the structure config
-        file = sisl.get_sile(path / "aiida.fdf")
-        file_h = sisl.get_sile(path / "aiida.HSX")
-        geometry = file.read_geometry()
-        lattice_vectors = geometry.lattice
-
-        matrix = trainer_config.get("matrix", "hamiltonian")
-
-        if matrix == "hamiltonian":
-            true_h = file_h.read_hamiltonian()
-
-            embeddings_config = BasisConfiguration.from_matrix(
-                matrix = true_h,
-                geometry = geometry,
-                labels = True,
-                metadata={
-                    "device": device,
-                    "atom_types": torch.from_numpy(geometry.atoms.Z), # Unlike point_types, this is not rescaled.
-                },
-            )
-        elif matrix == "tim":
-            h_uc = file_h.read_hamiltonian()
-            true_h = h_uc.Hk([0, 0, 0]).todense()
-
-            embeddings_config = BasisConfiguration(
-                point_types=geometry.atoms.Z,
-                positions=geometry.xyz,
-                basis=basis,
-                cell=lattice_vectors.cell,
-                pbc=(True, True, True),
-                # pbc=(False, False, False),
-                matrix = true_h
-            )
-        elif matrix == "overlap":
-            true_h = file_h.read_overlap()
-
-            embeddings_config = BasisConfiguration.from_matrix(
-                matrix = true_h,
-                geometry = geometry,
-                labels = True,
-                metadata={
-                    "device": device,
-                    "atom_types": torch.from_numpy(geometry.atoms.Z), # Unlike point_types, this is not rescaled.
-                },
-            )
-
-        embeddings_configs.append(embeddings_config)
-
-    dataset = TorchBasisMatrixDataset(embeddings_configs, data_processor=processor)
-
-    # Split dataset (also stratify)
-    if config["dataset"]["max_samples"] == None:
-        split = True
-    elif config["dataset"]["max_samples"] > 1:
-        split = True
-    else:
-        split = False
-
-
-    if split:
-        n_atoms_list = [dataset[i].num_nodes for i in range(len(dataset))] if config["dataset"]["stratify"] == True else None
-        train_dataset, val_dataset = train_test_split(
-            dataset, 
-            train_size=config["dataset"]["train_split_ratio"],
-            stratify=n_atoms_list,
-            random_state=None # Dataset already shuffled (paths)
-            )
-        print(f"Dataset splitted in {len(train_dataset)} training samples and {len(val_dataset)} validation samples.")
-    else:
-        train_dataset = dataset
-        val_dataset = dataset
-        print("There is just 1 sample in the dataset. Using it for both train and validation. Use this only for debugging.")
-    
-    # Keep all the dataset in memory
-    keep_in_memory = trainer_config.get("keep_in_memory", False)
-    rotating_pool = trainer_config.get("rotating_pool", False)
-    rotating_pool_size = trainer_config.get("rotating_pool_size", 50)
-    if keep_in_memory:
-        print("Keeping all the dataset in memory.")
-        train_dataset = InMemoryData(train_dataset)
-        val_dataset = InMemoryData(val_dataset)
-    elif rotating_pool:
-        print("Using rotating pool for the dataset.")
-        train_dataset = RotatingPoolData(train_dataset, pool_size=rotating_pool_size)
-        val_dataset = RotatingPoolData(val_dataset, pool_size=rotating_pool_size)
-
-
-
     # === Enviroment descriptor initialization ===
     env_config = config["environment_representation"]
 
@@ -255,6 +159,102 @@ def main():
         model, checkpoint, optimizer, scheduler = load_model(model, optimizer, trained_model_path, lr_scheduler=scheduler, device=device)
         print(f"Loaded model in epoch {checkpoint["epoch"]} with training loss {checkpoint["train_loss"]} and validation loss {checkpoint["val_loss"]}.")
     
+
+    # === Dataset creation ===
+    print("Creating dataset...")
+    processor = MatrixDataProcessor(basis_table=table, symmetric_matrix=True, sub_point_matrix=False)
+    embeddings_configs = []
+    for i, path in enumerate(paths):
+        if i==config["dataset"]["max_samples"]:
+            break
+
+        # Load the structure config
+        file = sisl.get_sile(path / "aiida.fdf")
+        file_h = sisl.get_sile(path / "aiida.HSX")
+        geometry = file.read_geometry()
+        lattice_vectors = geometry.lattice
+
+        matrix = trainer_config.get("matrix", "hamiltonian")
+
+        if matrix == "hamiltonian":
+            true_h = file_h.read_hamiltonian()
+
+            embeddings_config = BasisConfiguration.from_matrix(
+                matrix = true_h,
+                geometry = geometry,
+                labels = True,
+                metadata={
+                    "device": device,
+                    "atom_types": torch.from_numpy(geometry.atoms.Z), # Unlike point_types, this is not rescaled.
+                },
+            )
+        elif matrix == "tim":
+            h_uc = file_h.read_hamiltonian()
+            true_h = h_uc.Hk([0, 0, 0]).todense()
+
+            embeddings_config = BasisConfiguration(
+                point_types=geometry.atoms.Z,
+                positions=geometry.xyz,
+                basis=basis,
+                cell=lattice_vectors.cell,
+                pbc=(True, True, True),
+                # pbc=(False, False, False),
+                matrix = true_h
+            )
+        elif matrix == "overlap":
+            true_h = file_h.read_overlap()
+
+            embeddings_config = BasisConfiguration.from_matrix(
+                matrix = true_h,
+                geometry = geometry,
+                labels = True,
+                metadata={
+                    "device": device,
+                    "atom_types": torch.from_numpy(geometry.atoms.Z), # Unlike point_types, this is not rescaled.
+                },
+            )
+
+        embeddings_configs.append(embeddings_config)
+
+    dataset = TorchBasisMatrixDataset(embeddings_configs, data_processor=processor)
+
+    # Split dataset (also stratify)
+    if config["dataset"]["max_samples"] == None:
+        split = True
+    elif config["dataset"]["max_samples"] > 1:
+        split = True
+    else:
+        split = False
+
+
+    if split:
+        n_atoms_list = [dataset[i].num_nodes for i in range(len(dataset))] if config["dataset"]["stratify"] == True else None
+        train_dataset, val_dataset = train_test_split(
+            dataset, 
+            train_size=config["dataset"]["train_split_ratio"],
+            stratify=n_atoms_list,
+            random_state=None # Dataset already shuffled (paths)
+            )
+        print(f"Dataset splitted in {len(train_dataset)} training samples and {len(val_dataset)} validation samples.")
+    else:
+        train_dataset = dataset
+        val_dataset = dataset
+        print("There is just 1 sample in the dataset. Using it for both train and validation. Use this only for debugging.")
+    
+    # Keep all the dataset in memory
+    keep_in_memory = trainer_config.get("keep_in_memory", False)
+    rotating_pool = trainer_config.get("rotating_pool", False)
+    rotating_pool_size = trainer_config.get("rotating_pool_size", 50)
+    if keep_in_memory:
+        print("Keeping all the dataset in memory.")
+        train_dataset = InMemoryData(train_dataset)
+        val_dataset = InMemoryData(val_dataset)
+    elif rotating_pool:
+        print("Using rotating pool for the dataset.")
+        train_dataset = RotatingPoolData(train_dataset, pool_size=rotating_pool_size)
+        val_dataset = RotatingPoolData(val_dataset, pool_size=rotating_pool_size)
+
+        
     # Trainer
     if matrix == "hamiltonian" or matrix == "overlap":
         from graph2mat4abn.modules.trainer_h import Trainer

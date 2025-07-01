@@ -1,6 +1,6 @@
-device: "cuda:1"
-results_dir: "./results/overlap_1"
-trained_model_path: "./results/overlap_0/var_best_model.tar"
+device: "cuda:0"
+results_dir: "./results/finetuned_block_type_mse_3"
+trained_model_path: "./results/finetuned_block_type_mse_2/val_best_model.tar"
 dataset:
   # path: "./dataset"
   train_split_ratio: 0.80
