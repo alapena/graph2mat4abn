@@ -180,8 +180,6 @@ class Trainer:
         # Track the time of training.
         start_time = time.time()
 
-        # TODO: Load trained model
-
         # Create results directory
         if self.results_dir is not None:
             self.results_dir.mkdir(exist_ok=True, parents=True)
