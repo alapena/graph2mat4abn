@@ -67,7 +67,8 @@ def main():
 
     num_interactions = env_config["num_interactions"]
     hidden_irreps = o3.Irreps(env_config["hidden_irreps"])
-
+    
+    # ! This operation is somehow time-consuming:
     mace_descriptor = MACE(
         r_max=env_config["r_max"],
         num_bessel=env_config["num_bessel"],

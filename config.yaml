@@ -1,6 +1,6 @@
-device: "cuda:0"
-results_dir: "./results/finetuned_block_type_mse_3"
-trained_model_path: "./results/finetuned_block_type_mse_2/val_best_model.tar"
+device: "cuda:1"
+results_dir: "./results/overlap_2"
+trained_model_path: "./results/overlap_1/val_best_model.tar"
 dataset:
   # path: "./dataset"
   train_split_ratio: 0.80
@@ -27,7 +27,7 @@ environment_representation:
   max_ell: 3 # Expansion order
 
   num_channels: 128 # default. Determines the size of the model
-  max_L: 2 # default. Symmetries of the message. According to hidden_irreps.
+  max_L: 3 # default. Symmetries of the message. According to hidden_irreps.
   r_max: 10.0 # Cutoff radius
   num_elements: 3 # Nº of chemical elements
   atomic_energies: [0, 0, 0] # For normalization(?). torhc.tensor()
@@ -58,7 +58,7 @@ scheduler:
   eta_min: 1e-25
 
 trainer:
-  batch_size: 1
+  batch_size: 100
   checkpoint_freq: 500
   live_plot: true
   live_plot_freq: 1
@@ -70,7 +70,7 @@ trainer:
 
   keep_in_memory: false
   rotating_pool: true
-  rotating_pool_size: 15
+  rotating_pool_size: 400
 
-  matrix: hamiltonian # "hamiltonian", "tim", "overlap"
+  matrix: overlap # "hamiltonian", "tim", "overlap"
   
