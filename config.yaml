@@ -1,12 +1,12 @@
 device: "cuda:0"
-results_dir: "./results/test"
-trained_model_path: null
+results_dir: "./results/finetuned_block_type_mse_3"
+trained_model_path: "./results/finetuned_block_type_mse_2/val_best_model.tar"
 dataset:
   # path: "./dataset"
   train_split_ratio: 0.80
   # test_split_ratio: 0.50
-  stratify: false # set to false if max_samples < 200
-  max_samples: 1
+  stratify: true # set to false if max_samples < 200
+  max_samples: null
   seed: 42
   num_unique_z: 3
 
@@ -27,19 +27,17 @@ environment_representation:
   max_ell: 3 # Expansion order
 
   num_channels: 128 # default. Determines the size of the model
-  max_L: 1 # default. Symmetries of the message. According to hidden_irreps.
-  r_max: 5.0 # Cutoff radius
+  max_L: 2 # default. Symmetries of the message. According to hidden_irreps.
+  r_max: 10.0 # Cutoff radius
   num_elements: 3 # Nº of chemical elements
   atomic_energies: [0, 0, 0] # For normalization(?). torhc.tensor()
   avg_num_neighbors: 8 # For norm.(?)
   atomic_numbers: [5,6,7] # (?)
 
-  num_bessel: 8 # Nº radial feats
+  num_bessel: 10 # Nº radial feats
   num_polynomial_cutoff: 6 # Smothness of the radial cutoff
-  hidden_irreps: "8x0e + 8x1o"
-  # interaction_cls_first: RealAgnosticResidualInteractionBlock
-  # interaction_cls: RealAgnosticResidualInteractionBlock
-  MLP_irreps: 2x0e # Nº hidden dim. of last layer readout MLP
+  hidden_irreps: "10x0e + 10x1o + 10x2e"
+  MLP_irreps: 10x0e # Nº hidden dim. of last layer readout MLP
   gate: silu # non-linearity of the last layer readout
 
 model:
@@ -48,10 +46,10 @@ model:
   preprocessing_edges: E3nnEdgeMessageBlock
   node_operation: E3nnSimpleNodeBlock
   edge_operation: E3nnSimpleEdgeBlock
-  hidden_neurons: [64, 64]
+  hidden_neurons: [64, 64, 64]
 
 optimizer:
-  lr: 1e-1
+  lr: 1e-2
   weight_decay: 1e-4
 
 scheduler:
@@ -60,12 +58,19 @@ scheduler:
   eta_min: 1e-25
 
 trainer:
-  batch_size: 100
+  batch_size: 1
   checkpoint_freq: 500
   live_plot: true
   live_plot_freq: 1
-  live_plot_matrix: false
+  live_plot_matrix: true
   live_plot_matrix_freq: 1000
   live_plot_matrices_num: 1
   num_epochs: 20000
-  loss_function: block_type_mse
+  loss_function: block_type_mse_threshold # elementwise_mse, block_type_mse, block_type_mse_threshold
+
+  keep_in_memory: false
+  rotating_pool: true
+  rotating_pool_size: 15
+
+  matrix: hamiltonian # "hamiltonian", "tim", "overlap"
+  

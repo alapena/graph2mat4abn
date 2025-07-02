@@ -29,8 +29,8 @@ from graph2mat import (
 from graph2mat4abn.tools import load_config, flatten
 from graph2mat4abn.tools.tools import get_basis_from_structures_paths, get_kwargs, load_model
 from graph2mat4abn.tools.import_utils import get_object_from_module
-from graph2mat4abn.modules.trainer import Trainer
-from graph2mat4abn.tools.plot import plot_error_matrices
+from graph2mat4abn.modules.trainer_h import Trainer
+from graph2mat4abn.tools.plot import plot_error_matrices_big
 # from graph2mat4abn.modules.models import MatrixMACE
 
 
@@ -222,7 +222,7 @@ def main():
     n_atoms = data.num_nodes
     title = f"Results of sample {i} (seed {config["dataset"]["seed"]}). There are {n_atoms} in the unit cell."
     predicted_matrix_text = f"Saved training loss at epoch {len(history["train_loss"])}:     {history["train_loss"][-1]:.2f} eV²·100<br>Saved validation loss at epoch {len(history["train_loss"])}:     {history["val_loss"][-1]:.2f} eV²·100<br>MSE evaluation:     {loss.item():.2f} eV²·100"
-    plot_error_matrices(
+    plot_error_matrices_big(
         true_matrix, pred_matrix,
         matrix_label="Hamiltonian",
         figure_title=title,

@@ -15,7 +15,7 @@ from e3nn import o3
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from sklearn.model_selection import train_test_split
 from mace.modules import MACE, RealAgnosticResidualInteractionBlock
-from graph2mat.bindings.torch.data.dataset import InMemoryData
+from graph2mat.bindings.torch.data.dataset import InMemoryData, RotatingPoolData
 from graph2mat.bindings.torch import TorchBasisMatrixDataset
 from graph2mat.bindings.e3nn import E3nnGraph2Mat
 from graph2mat.models import MatrixMACE
@@ -28,7 +28,6 @@ from graph2mat import (
 from graph2mat4abn.tools import load_config, flatten
 from graph2mat4abn.tools.tools import get_basis_from_structures_paths, get_kwargs, load_model
 from graph2mat4abn.tools.import_utils import get_object_from_module
-from graph2mat4abn.modules.trainer import Trainer
 # from graph2mat4abn.modules.models import MatrixMACE
 
 
@@ -36,6 +35,7 @@ from graph2mat4abn.modules.trainer import Trainer
 def main():
     # === Configuration load ===
     config = load_config("./config.yaml")
+    trainer_config = config["trainer"]
     
     device = torch.device(config["device"] if (torch.cuda.is_available() and config["device"]!="cpu") 
     else 'cpu')
@@ -59,66 +59,6 @@ def main():
     # == Basis creation === 
     basis = get_basis_from_structures_paths(paths, verbose=True, num_unique_z=config["dataset"].get("num_unique_z", None))
     table = BasisTableWithEdges(basis)
-
-
-
-    # === Dataset creation ===
-    print("Creating dataset...")
-    processor = MatrixDataProcessor(basis_table=table, symmetric_matrix=True, sub_point_matrix=False)
-    embeddings_configs = []
-    for i, path in enumerate(paths):
-        if i==config["dataset"]["max_samples"]:
-            break
-
-        # Load the structure config
-        file = sisl.get_sile(path / "aiida.fdf")
-        file_h = sisl.get_sile(path / "aiida.HSX")
-        geometry = file.read_geometry()
-
-        # Load the true hamiltonian
-        true_h = file_h.read_hamiltonian()
-
-        embeddings_config = BasisConfiguration.from_matrix(
-            matrix = true_h,
-            geometry = geometry,
-            labels = True,
-            metadata={
-                "device": device,
-                "atom_types": torch.from_numpy(geometry.atoms.Z), # Unlike point_types, this is not rescaled.
-            },
-        )
-
-        embeddings_configs.append(embeddings_config)
-
-    dataset = TorchBasisMatrixDataset(embeddings_configs, data_processor=processor)
-
-    # Split dataset (also stratify)
-    if config["dataset"]["max_samples"] == None:
-        split = True
-    elif config["dataset"]["max_samples"] > 1:
-        split = True
-    else:
-        split = False
-
-
-    if split:
-        n_atoms_list = [dataset[i].num_nodes for i in range(len(dataset))] if config["dataset"]["stratify"] == True else None
-        train_dataset, val_dataset = train_test_split(
-            dataset, 
-            train_size=config["dataset"]["train_split_ratio"],
-            stratify=n_atoms_list,
-            random_state=None # Dataset already shuffled (paths)
-            )
-        print(f"Dataset splitted in {len(train_dataset)} training samples and {len(val_dataset)} validation samples.")
-    else:
-        train_dataset = dataset
-        val_dataset = dataset
-        print("There is just 1 sample in the dataset. Using it for both train and validation. Use this only for debugging.")
-    
-    # Keep all the dataset in memory
-    print("Keeping all the dataset in memory.")
-    train_dataset = InMemoryData(train_dataset)
-    val_dataset = InMemoryData(val_dataset)
 
 
 
@@ -219,31 +159,154 @@ def main():
         model, checkpoint, optimizer, scheduler = load_model(model, optimizer, trained_model_path, lr_scheduler=scheduler, device=device)
         print(f"Loaded model in epoch {checkpoint["epoch"]} with training loss {checkpoint["train_loss"]} and validation loss {checkpoint["val_loss"]}.")
     
+
+    # === Dataset creation ===
+    print("Creating dataset...")
+    processor = MatrixDataProcessor(basis_table=table, symmetric_matrix=True, sub_point_matrix=False)
+    embeddings_configs = []
+    for i, path in enumerate(paths):
+        if i==config["dataset"]["max_samples"]:
+            break
+
+        # Load the structure config
+        file = sisl.get_sile(path / "aiida.fdf")
+        file_h = sisl.get_sile(path / "aiida.HSX")
+        geometry = file.read_geometry()
+        lattice_vectors = geometry.lattice
+
+        matrix = trainer_config.get("matrix", "hamiltonian")
+
+        if matrix == "hamiltonian":
+            true_h = file_h.read_hamiltonian()
+
+            embeddings_config = BasisConfiguration.from_matrix(
+                matrix = true_h,
+                geometry = geometry,
+                labels = True,
+                metadata={
+                    "device": device,
+                    "atom_types": torch.from_numpy(geometry.atoms.Z), # Unlike point_types, this is not rescaled.
+                },
+            )
+        elif matrix == "tim":
+            h_uc = file_h.read_hamiltonian()
+            true_h = h_uc.Hk([0, 0, 0]).todense()
+
+            embeddings_config = BasisConfiguration(
+                point_types=geometry.atoms.Z,
+                positions=geometry.xyz,
+                basis=basis,
+                cell=lattice_vectors.cell,
+                pbc=(True, True, True),
+                # pbc=(False, False, False),
+                matrix = true_h
+            )
+        elif matrix == "overlap":
+            true_h = file_h.read_overlap()
+
+            embeddings_config = BasisConfiguration.from_matrix(
+                matrix = true_h,
+                geometry = geometry,
+                labels = True,
+                metadata={
+                    "device": device,
+                    "atom_types": torch.from_numpy(geometry.atoms.Z), # Unlike point_types, this is not rescaled.
+                },
+            )
+
+        embeddings_configs.append(embeddings_config)
+
+    dataset = TorchBasisMatrixDataset(embeddings_configs, data_processor=processor)
+
+    # Split dataset (also stratify)
+    if config["dataset"]["max_samples"] == None:
+        split = True
+    elif config["dataset"]["max_samples"] > 1:
+        split = True
+    else:
+        split = False
+
+
+    if split:
+        n_atoms_list = [dataset[i].num_nodes for i in range(len(dataset))] if config["dataset"]["stratify"] == True else None
+        train_dataset, val_dataset = train_test_split(
+            dataset, 
+            train_size=config["dataset"]["train_split_ratio"],
+            stratify=n_atoms_list,
+            random_state=None # Dataset already shuffled (paths)
+            )
+        print(f"Dataset splitted in {len(train_dataset)} training samples and {len(val_dataset)} validation samples.")
+    else:
+        train_dataset = dataset
+        val_dataset = dataset
+        print("There is just 1 sample in the dataset. Using it for both train and validation. Use this only for debugging.")
+    
+    # Keep all the dataset in memory
+    keep_in_memory = trainer_config.get("keep_in_memory", False)
+    rotating_pool = trainer_config.get("rotating_pool", False)
+    rotating_pool_size = trainer_config.get("rotating_pool_size", 50)
+    if keep_in_memory:
+        print("Keeping all the dataset in memory.")
+        train_dataset = InMemoryData(train_dataset)
+        val_dataset = InMemoryData(val_dataset)
+    elif rotating_pool:
+        print("Using rotating pool for the dataset.")
+        train_dataset = RotatingPoolData(train_dataset, pool_size=rotating_pool_size)
+        val_dataset = RotatingPoolData(val_dataset, pool_size=rotating_pool_size)
+
+        
     # Trainer
-    trainer = Trainer(
-        # environment_descriptor = mace_descriptor,
-        model = model,
-        config = config,
-        train_dataset = train_dataset,
-        val_dataset = val_dataset,
-        loss_fn = loss_fn,
-        optimizer = optimizer,
-        device = device,
-        lr_scheduler = scheduler,
-        live_plot = trainer_config["live_plot"],
-        live_plot_freq = trainer_config["live_plot_freq"],
-        live_plot_matrix = trainer_config["live_plot_matrix"],
-        live_plot_matrix_freq = trainer_config["live_plot_matrix_freq"],
-        history = checkpoint["history"] if trained_model_path is not None else None,
-        results_dir = config["results_dir"],
-        checkpoint_freq = trainer_config["checkpoint_freq"],
-        batch_size = trainer_config["batch_size"],
-        processor=processor
-    )
+    if matrix == "hamiltonian" or matrix == "overlap":
+        from graph2mat4abn.modules.trainer_h import Trainer
+        trainer = Trainer(
+            # environment_descriptor = mace_descriptor,
+            model = model,
+            config = config,
+            train_dataset = train_dataset,
+            val_dataset = val_dataset,
+            loss_fn = loss_fn,
+            optimizer = optimizer,
+            device = device,
+            lr_scheduler = scheduler,
+            live_plot = trainer_config["live_plot"],
+            live_plot_freq = trainer_config["live_plot_freq"],
+            live_plot_matrix = trainer_config["live_plot_matrix"],
+            live_plot_matrix_freq = trainer_config["live_plot_matrix_freq"],
+            history = checkpoint["history"] if trained_model_path is not None else None,
+            results_dir = config["results_dir"],
+            checkpoint_freq = trainer_config["checkpoint_freq"],
+            batch_size = trainer_config["batch_size"],
+            processor=processor
+        )
+    elif matrix == "tim":
+        from graph2mat4abn.modules.trainer_tim import Trainer
+        trainer = Trainer(
+            # environment_descriptor = mace_descriptor,
+            model = model,
+            config = config,
+            train_dataset = train_dataset,
+            val_dataset = val_dataset,
+            loss_fn = loss_fn,
+            optimizer = optimizer,
+            device = device,
+            lr_scheduler = scheduler,
+            live_plot = trainer_config["live_plot"],
+            live_plot_freq = trainer_config["live_plot_freq"],
+            live_plot_matrix = trainer_config["live_plot_matrix"],
+            live_plot_matrix_freq = trainer_config["live_plot_matrix_freq"],
+            history = checkpoint["history"] if trained_model_path is not None else None,
+            results_dir = config["results_dir"],
+            checkpoint_freq = trainer_config["checkpoint_freq"],
+            batch_size = trainer_config["batch_size"],
+            processor=processor
+        )
+    else:
+        raise ValueError(f"Matrix type '{matrix}' not recognized.")
 
 
 
     # === Start training ===
+    # TODO: This message shows pool_size instead of dataset length. 
     print(f"\nTRAINING STARTS with {len(train_dataset)} train samples and {len(val_dataset)} validation samples.")
     print(f"Using device: {device}")
 
