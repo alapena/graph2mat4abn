@@ -10,8 +10,10 @@ import plotly.graph_objects as go
 from pathlib import Path
 from torch_geometric.loader import DataLoader
 from plotly.subplots import make_subplots
+from copy import copy
 
 from graph2mat4abn.tools.tools import optimizer_to
+from graph2mat4abn.modules.memory_monitor import MemoryMonitor
 
 class Trainer:
     def __init__(self, model, config, train_dataset, val_dataset, loss_fn, optimizer, device='cpu', lr_scheduler=None, live_plot=True, live_plot_freq=1, live_plot_matrix = False, live_plot_matrix_freq = 100, history=None, results_dir=None, checkpoint_freq=30, batch_size=1, processor=None):
@@ -37,7 +39,7 @@ class Trainer:
         """
 
         self.device = device
-        self.model = model
+        self.model = model.to(self.device)
         self.config = config
         self.train_dataset = train_dataset
         self.val_dataset = val_dataset
@@ -68,9 +70,8 @@ class Trainer:
         num_batches = 0
 
         for batch in dataloader:
-            self.optimizer.zero_grad()
             batch = batch.to(self.device)
-            self.model = self.model.to(self.device)
+            self.optimizer.zero_grad()
 
             # # Get enviroment description
             # print("n_batches: ", len(batch))
@@ -109,9 +110,9 @@ class Trainer:
         avg_edge_loss = total_edge_loss / num_batches
         avg_node_loss = total_node_loss / num_batches
 
-        self.history["train_loss"].append(avg_loss)
-        self.history['train_edge_loss'].append(avg_edge_loss)
-        self.history['train_node_loss'].append(avg_node_loss)
+        self.history["train_loss"].append(avg_loss.item())
+        self.history['train_edge_loss'].append(avg_edge_loss.item())
+        self.history['train_node_loss'].append(avg_node_loss.item())
 
 
     def validate(self, dataloader):
@@ -152,9 +153,9 @@ class Trainer:
         avg_edge_loss = total_edge_loss / num_batches
         avg_node_loss = total_node_loss / num_batches
 
-        self.history["val_loss"].append(avg_loss)
-        self.history['val_edge_loss'].append(avg_edge_loss)
-        self.history['val_node_loss'].append(avg_node_loss)
+        self.history["val_loss"].append(avg_loss.item())
+        self.history['val_edge_loss'].append(avg_edge_loss.item())
+        self.history['val_node_loss'].append(avg_node_loss.item())
 
     def check_for_plateau(self, val_loss, epoch):
         """Check if training has plateaued and adjust learning rate if needed"""
@@ -219,9 +220,14 @@ class Trainer:
         train_dataloader = DataLoader(self.train_dataset, self.batch_size)
         val_dataloader = DataLoader(self.val_dataset, self.batch_size)
 
+        # Initialize memory monitor
+        memory_monitor = MemoryMonitor()
+
         for epoch in range(num_epochs):
             epoch_t0 = time.time()
             print("="*30, f"Epoch {epoch+1}/{num_epochs}", "="*30)
+
+            memory_monitor.start_epoch()
 
             # Training phase
             self.train_epoch(train_dataloader)
@@ -284,6 +290,9 @@ class Trainer:
             print(f"Learning rate: {self.history["learning_rate"][-1]:.4f}")
             print(f"Epoch duration: {self.history['epoch_times'][-1]:.2f} s")
             print(f"Total elapsed time: {self.history['elapsed_time'][-1]:.2f} s")
+
+            memory_monitor.end_epoch()
+            memory_monitor.plot_memory_usage(Path(self.results_dir / "memory_usage.png"))
 
         # ====== TRAINING LOOP FINISHED ======
 
@@ -426,6 +435,9 @@ class Trainer:
         }
         n_atoms_list = list(n_plots_each.keys())
 
+        # Create a copy of the model to avoid device issues
+        model = copy.deepcopy(self.model).to(torch.device("cpu"))
+
         # Dataloaders are needed for some reason; kword "batch" is needed at some point
         train_dataloader = DataLoader(self.train_dataset, 1)
         val_dataloader = DataLoader(self.val_dataset, 1)
@@ -449,9 +461,8 @@ class Trainer:
                 
                 # Generate prediction
                 with torch.no_grad():
-                    self.model.eval()
-                    self.model.to(torch.device("cpu"))
-                    model_predictions = self.model(data=data)
+                    model.eval()
+                    model_predictions = model(data=data)
                     loss, _ = self.loss_fn(
                         nodes_pred=model_predictions["node_labels"],
                         nodes_ref=data.point_labels,
