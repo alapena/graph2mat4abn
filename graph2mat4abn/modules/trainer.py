@@ -1,7 +1,7 @@
 
 import time
 from graph2mat4abn.tools.import_utils import save_to_yaml
-from graph2mat4abn.tools.plot import plot_error_matrices_big
+from graph2mat4abn.tools.plot import plot_error_matrices_big, plot_error_matrices_small
 import torch
 import pandas as pd
 import numpy as np
@@ -16,7 +16,7 @@ from graph2mat4abn.tools.tools import optimizer_to
 from graph2mat4abn.modules.memory_monitor import MemoryMonitor
 
 class Trainer:
-    def __init__(self, model, config, train_dataset, val_dataset, loss_fn, optimizer, device='cpu', lr_scheduler=None, live_plot=True, live_plot_freq=1, live_plot_matrix = False, live_plot_matrix_freq = 100, history=None, results_dir=None, checkpoint_freq=30, batch_size=1, processor=None):
+    def __init__(self, model, config, train_dataset, val_dataset, loss_fn, optimizer, device='cpu', lr_scheduler=None, live_plot=True, live_plot_freq=1, live_plot_matrix = False, live_plot_matrix_freq = 100, results_dir=None, checkpoint_freq=30, batch_size=1, processor=None, model_checkpoint=None):
         """_summary_
 
         Args:
@@ -47,11 +47,10 @@ class Trainer:
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
         self.batch_size = batch_size
-        self.history = history
+        self.history = model_checkpoint["history"] if model_checkpoint is not None else None
         self.results_dir = Path(results_dir)
         self.checkpoint_freq = checkpoint_freq
-        self.best_train_loss = float('inf')
-        self.best_val_loss = float('inf')
+        self.model_checkpoint = model_checkpoint
 
         # Live plotting setup
         self.live_plot = live_plot
@@ -196,7 +195,7 @@ class Trainer:
 
 
         # Create history if the model is not pretrained
-        if self.history is None:
+        if self.model_checkpoint is None:
             self.history = {
                 # Total losses
                 'train_loss': [],
@@ -213,6 +212,14 @@ class Trainer:
                 "epoch_times": [],
                 "elapsed_time": [],
             }
+            starting_epoch = 0
+            self.best_train_loss = float('inf')
+            self.best_val_loss = float('inf')
+        else:
+            # Load from checkpoint
+            starting_epoch = self.model_checkpoint["epoch"] + 1
+            self.best_train_loss = min(self.model_checkpoint["history"]["train_loss"])
+            self.best_val_loss = min(self.model_checkpoint["history"]["val_loss"])
 
 
         # === Training loop ===
@@ -223,7 +230,7 @@ class Trainer:
         # Initialize memory monitor
         memory_monitor = MemoryMonitor()
 
-        for epoch in range(num_epochs):
+        for epoch in range(starting_epoch, num_epochs):
             epoch_t0 = time.time()
             print("="*30, f"Epoch {epoch+1}/{num_epochs}", "="*30)
 
@@ -435,9 +442,6 @@ class Trainer:
         }
         n_atoms_list = list(n_plots_each.keys())
 
-        # Create a copy of the model to avoid device issues
-        model = copy.deepcopy(self.model).to(torch.device("cpu"))
-
         # Dataloaders are needed for some reason; kword "batch" is needed at some point
         train_dataloader = DataLoader(self.train_dataset, 1)
         val_dataloader = DataLoader(self.val_dataset, 1)
@@ -450,6 +454,7 @@ class Trainer:
             n_plotted = np.zeros([2, len(n_atoms_list)], dtype=np.int16)
             n_plotted[0] += n_atoms_list
             for j, data in enumerate(dataloader):
+                data = data.to(self.device)
                 n_atoms = data.num_nodes
                 col_idx = np.where(n_plotted[0] == n_atoms)[0]
 
@@ -461,8 +466,8 @@ class Trainer:
                 
                 # Generate prediction
                 with torch.no_grad():
-                    model.eval()
-                    model_predictions = model(data=data)
+                    self.model.eval()
+                    model_predictions = self.model(data=data)
                     loss, _ = self.loss_fn(
                         nodes_pred=model_predictions["node_labels"],
                         nodes_ref=data.point_labels,
@@ -483,20 +488,24 @@ class Trainer:
                 # Plot
                 title = f"Results of sample {j} of {dataloader_type} dataset (seed {self.config["dataset"]["seed"]}). There are {n_atoms} in the unit cell."
                 predicted_matrix_text = f"Saved training loss at epoch {epoch}:     {self.history["train_loss"][-1]:.2f} eV²\nMSE evaluation:     {loss.item():.2f} eV²" if dataloader_type == "training" else f"Saved training loss at epoch {epoch}:     {self.history["val_loss"][-1]:.2f} eV²\nMSE evaluation:     {loss.item():.2f} eV²"
-                plot_error_matrices_big(
-                    true_matrix, pred_matrix,
-                    matrix_label="Hamiltonian",
-                    figure_title=title,
-                    predicted_matrix_text=predicted_matrix_text,
-                    filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{epoch}.html")
-                )
-                # plot_error_matrices(
-                #     true_matrix, pred_matrix,
-                #     matrix_label="Hamiltonian",
-                #     figure_title=title,
-                #     predicted_matrix_text=predicted_matrix_text,
-                #     filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{epoch}.png")
-                # )
+                if self.config["trainer"]["matrix"] == "hamiltonian" or self.config["trainer"]["matrix"] == "overlap":
+                    plot_error_matrices_big(
+                        true_matrix, pred_matrix,
+                        matrix_label="Hamiltonian",
+                        figure_title=title,
+                        predicted_matrix_text=predicted_matrix_text,
+                        filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{epoch}.html")
+                    )
+                elif self.config["trainer"]["matrix"] == "overlap":
+                    plot_error_matrices_small(
+                        true_matrix, pred_matrix,
+                        matrix_label="Hamiltonian",
+                        figure_title=title,
+                        predicted_matrix_text=predicted_matrix_text,
+                        filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{epoch}.html")
+                    )
+                else:
+                    raise ValueError(f"Matrix type {self.config['trainer']['matrix']} is not supported for plotting.")
 
                 print(f"Plotted sample {j}")
 

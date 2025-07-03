@@ -28,7 +28,7 @@ from graph2mat import (
 from graph2mat4abn.tools import load_config, flatten
 from graph2mat4abn.tools.tools import get_basis_from_structures_paths, get_kwargs, load_model
 from graph2mat4abn.tools.import_utils import get_object_from_module
-# from graph2mat4abn.modules.models import MatrixMACE
+from graph2mat4abn.modules.trainer import Trainer
 
 
 
@@ -159,6 +159,8 @@ def main():
     if trained_model_path is not None:
         model, checkpoint, optimizer, scheduler = load_model(model, optimizer, trained_model_path, lr_scheduler=scheduler, device=device)
         print(f"Loaded model in epoch {checkpoint["epoch"]} with training loss {checkpoint["train_loss"]} and validation loss {checkpoint["val_loss"]}.")
+    else:
+        checkpoint = None
     
 
     # === Dataset creation ===
@@ -257,52 +259,25 @@ def main():
 
         
     # Trainer
-    if matrix == "hamiltonian" or matrix == "overlap":
-        from graph2mat4abn.modules.trainer_h import Trainer
-        trainer = Trainer(
-            # environment_descriptor = mace_descriptor,
-            model = model,
-            config = config,
-            train_dataset = train_dataset,
-            val_dataset = val_dataset,
-            loss_fn = loss_fn,
-            optimizer = optimizer,
-            device = device,
-            lr_scheduler = scheduler,
-            live_plot = trainer_config["live_plot"],
-            live_plot_freq = trainer_config["live_plot_freq"],
-            live_plot_matrix = trainer_config["live_plot_matrix"],
-            live_plot_matrix_freq = trainer_config["live_plot_matrix_freq"],
-            history = checkpoint["history"] if trained_model_path is not None else None,
-            results_dir = config["results_dir"],
-            checkpoint_freq = trainer_config["checkpoint_freq"],
-            batch_size = trainer_config["batch_size"],
-            processor=processor
-        )
-    elif matrix == "tim":
-        from graph2mat4abn.modules.trainer_tim import Trainer
-        trainer = Trainer(
-            # environment_descriptor = mace_descriptor,
-            model = model,
-            config = config,
-            train_dataset = train_dataset,
-            val_dataset = val_dataset,
-            loss_fn = loss_fn,
-            optimizer = optimizer,
-            device = device,
-            lr_scheduler = scheduler,
-            live_plot = trainer_config["live_plot"],
-            live_plot_freq = trainer_config["live_plot_freq"],
-            live_plot_matrix = trainer_config["live_plot_matrix"],
-            live_plot_matrix_freq = trainer_config["live_plot_matrix_freq"],
-            history = checkpoint["history"] if trained_model_path is not None else None,
-            results_dir = config["results_dir"],
-            checkpoint_freq = trainer_config["checkpoint_freq"],
-            batch_size = trainer_config["batch_size"],
-            processor=processor
-        )
-    else:
-        raise ValueError(f"Matrix type '{matrix}' not recognized.")
+    trainer = Trainer(
+        model = model,
+        config = config,
+        train_dataset = train_dataset,
+        val_dataset = val_dataset,
+        loss_fn = loss_fn,
+        optimizer = optimizer,
+        device = device,
+        lr_scheduler = scheduler,
+        live_plot = trainer_config["live_plot"],
+        live_plot_freq = trainer_config["live_plot_freq"],
+        live_plot_matrix = trainer_config["live_plot_matrix"],
+        live_plot_matrix_freq = trainer_config["live_plot_matrix_freq"],
+        results_dir = config["results_dir"],
+        checkpoint_freq = trainer_config["checkpoint_freq"],
+        batch_size = trainer_config["batch_size"],
+        processor=processor,
+        model_checkpoint = checkpoint,
+    )
 
 
 
