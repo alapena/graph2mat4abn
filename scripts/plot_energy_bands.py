@@ -10,8 +10,10 @@ import sisl
 import torch
 import torch.optim as optim
 import numpy as np
+import scipy
 
 from e3nn import o3
+from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from torch_geometric.loader import DataLoader
@@ -26,14 +28,31 @@ from graph2mat import (
     MatrixDataProcessor,
 )
 
-from graph2mat4abn.tools.plot import plot_error_matrices_big
+from graph2mat4abn.tools.plot import plot_columns_of_2darray, plot_error_matrices_big
 from graph2mat4abn.tools import load_config, flatten
-from graph2mat4abn.tools.tools import get_basis_from_structures_paths, get_kwargs, load_model
+from graph2mat4abn.tools.tools import get_basis_from_structures_paths, get_orbital_indices_and_shifts_from_sile, get_kwargs, load_model, reconstruct_tim_from_coo, reduced_coord
 from graph2mat4abn.tools.import_utils import get_object_from_module
 
+
+
 def main():
+    # * Write here the directory where the model is stored
+    directory = Path("results/hamiltonian") 
+    # * Set the (max) number of each structure type that you want to plot
+    n = 3
+    # * Set the max number of energy bands you want in each plot
+    n_bands = 6
+
+
+    n_plots_each = {
+        2: n,
+        3: n,
+        8: n,
+        32: n,
+        64: n,
+    }
+
     # === Configuration load ===
-    directory = Path("results/hamiltonian") # * Write here the directory where the model is stored
     # device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
     device=torch.device("cpu")
     filename = "model_epoch_4500.tar"
@@ -60,6 +79,51 @@ def main():
     basis = get_basis_from_structures_paths(paths, verbose=False, num_unique_z=config["dataset"].get("num_unique_z", None))
     table = BasisTableWithEdges(basis)
 
+
+
+    # === Dataset creation ===
+    processor = MatrixDataProcessor(basis_table=table, symmetric_matrix=True, sub_point_matrix=False)
+    embeddings_configs = []
+    for i, path in enumerate(paths):
+
+        # We need to keep track of the training/val splits, so we can't plot more than used for training (at least for training dataset)
+        if i==config["dataset"]["max_samples"]:
+            break
+        
+        print(f"Processing structure {i+1} of {len(paths)}...")
+
+        # Load the structure config
+        file = sisl.get_sile(path / "aiida.fdf")
+        file_h = sisl.get_sile(path / "aiida.HSX")
+        geometry = file.read_geometry()
+
+        # Load the true hamiltonian
+        true_h = file_h.read_hamiltonian()
+
+        embeddings_config = BasisConfiguration.from_matrix(
+            matrix = true_h,
+            geometry = geometry,
+            labels = True,
+            metadata={
+                "atom_types": torch.from_numpy(geometry.atoms.Z), # Unlike point_types, this is not rescaled.
+                "path": path,
+            },
+        )
+
+        embeddings_configs.append(embeddings_config)
+
+    dataset = TorchBasisMatrixDataset(embeddings_configs, data_processor=processor)
+
+    # Split and stratify
+    n_atoms_list = [dataset[i].num_nodes for i in range(len(dataset))] if config["dataset"]["stratify"] == True else None
+    train_dataset, val_dataset = train_test_split(
+        dataset, 
+        train_size=config["dataset"]["train_split_ratio"],
+        stratify=None,#n_atoms_list,
+        random_state=None # Dataset already shuffled (paths)
+    )
+
+    print("Initializing model...")
 
     # === Model init ===
     env_config = config["environment_representation"]
@@ -135,45 +199,7 @@ def main():
         eta_min=float(scheduler_config["eta_min"])
     )
 
-    # === Dataset creation ===
-    processor = MatrixDataProcessor(basis_table=table, symmetric_matrix=True, sub_point_matrix=False)
-    embeddings_configs = []
-    for i, path in enumerate(paths):
-        # if i==config["dataset"]["max_samples"]:
-        if i==200:
-            break
-        print(f"Processing structure {i+1} of {len(paths)}...")
-
-        # Load the structure config
-        file = sisl.get_sile(path / "aiida.fdf")
-        file_h = sisl.get_sile(path / "aiida.HSX")
-        geometry = file.read_geometry()
-
-        # Load the true hamiltonian
-        true_h = file_h.read_hamiltonian()
-
-        embeddings_config = BasisConfiguration.from_matrix(
-            matrix = true_h,
-            geometry = geometry,
-            labels = True,
-            metadata={
-                "atom_types": torch.from_numpy(geometry.atoms.Z), # Unlike point_types, this is not rescaled.
-            },
-        )
-
-        embeddings_configs.append(embeddings_config)
-
-    dataset = TorchBasisMatrixDataset(embeddings_configs, data_processor=processor)
-
-    n_atoms_list = [dataset[i].num_nodes for i in range(len(dataset))] if config["dataset"]["stratify"] == True else None
-    train_dataset, val_dataset = train_test_split(
-        dataset, 
-        train_size=config["dataset"]["train_split_ratio"],
-        stratify=n_atoms_list,
-        random_state=None # Dataset already shuffled (paths)
-    )
     
-
 
     # === Model load ===
     model, checkpoint, optimizer, lr_scheduler = load_model(model, optimizer, directory / "checkpoints" / filename, lr_scheduler=lr_scheduler, device=device)
@@ -185,15 +211,6 @@ def main():
     results_directory = directory / "results"
     results_directory.mkdir(exist_ok=True)
 
-    # * Set the (max) number of each structure type that you want to plot
-    n = 2
-    n_plots_each = {
-        2: n,
-        3: n,
-        8: n,
-        32: n,
-        64: n,
-    }
     n_atoms_list = list(n_plots_each.keys())
     # Dataset plots
     # Create dataloaders
@@ -229,32 +246,87 @@ def main():
                 edges_ref=data.edge_labels,
             )
 
-            pred_matrix = processor.matrix_from_data(
+            # Predicted matrix
+            h_pred = processor.matrix_from_data(
                 data,
                 predictions={"node_labels": model_predictions["node_labels"], "edge_labels": model_predictions["edge_labels"]},
-            )[0].todense()
+            )[0]
 
-            # Save true matrix
+            # True matrix
             true_matrix = processor.matrix_from_data(
                 data,
-            )[0].todense()
+            )[0]
 
             # === Plot Hamiltonians ===
             title = f"Results of sample {j} of {dataloader_type} dataset (seed {config["dataset"]["seed"]}). There are {n_atoms} in the unit cell."
             predicted_matrix_text = f"Saved training loss at epoch {checkpoint["epoch"]}:     {checkpoint["train_loss"]:.2f} eV²·100\nMSE evaluation:     {loss.item():.2f} eV²·100"
             plot_error_matrices_big(
-                true_matrix, pred_matrix,
+                true_matrix.todense(), h_pred.todense(),
                 matrix_label="Hamiltonian",
                 figure_title=title,
                 predicted_matrix_text=predicted_matrix_text,
-                filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{checkpoint["epoch"]}.html")
+                filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{checkpoint["epoch"]}_hamiltonian.html")
             )
-            plot_error_matrices_big(
-                true_matrix, pred_matrix,
-                matrix_label="Hamiltonian",
-                figure_title=title,
-                predicted_matrix_text=predicted_matrix_text,
-                filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{checkpoint["epoch"]}.png")
+            # plot_error_matrices_big(
+            #     true_matrix.todense(), h_pred.todense(),
+            #     matrix_label="Hamiltonian",
+            #     figure_title=title,
+            #     predicted_matrix_text=predicted_matrix_text,
+            #     filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{checkpoint["epoch"]}_hamiltonian.png")
+            # )
+
+
+            # ========= Plot energy bands =========
+            file = sisl.get_sile(data.metadata["path"][0] / "aiida.fdf")
+            geometry = file.read_geometry()
+            cell = geometry.cell
+            # orb_i, orb_j, isc = get_orbital_indices_and_shifts_from_sile(file)
+
+            # Define a path in k-space
+            kzs = np.linspace(0,1, num=100) # * Change the resolution here
+            k_dir = geometry.rcell[:,2]
+            k_path=np.array([kz*k_dir for kz in kzs])
+
+            # TIM reconstruction
+            h_uc = file.read_hamiltonian()
+            s_uc = file.read_overlap()
+
+            energy_bands_pred = []
+            energy_bands_true = []
+            for k_point in tqdm(k_path):
+                # Ground truth:
+                Hk_true = h_uc.Hk(reduced_coord(k_point, cell), gauge='cell').toarray()
+                Sk_true = s_uc.Sk(reduced_coord(k_point, cell), gauge='cell').toarray()
+
+                Ek_true = scipy.linalg.eigh(Hk_true, Sk_true, eigvals_only=True)
+                energy_bands_true.append(Ek_true)
+
+                # Prediction:
+                Hk_pred = reconstruct_tim_from_coo(k_point, h_pred.tocsr().tocoo(), geometry, cell)
+                # Sk = reconstruct_tim(k_point, s_pred, orb_i, orb_j, isc, cell)
+
+                Ek = scipy.linalg.eigh(Hk_pred, Sk_true, eigvals_only=True)
+
+                energy_bands_pred.append(Ek)
+            
+            # Plot energy bands
+            energy_bands_pred_plot = np.stack(energy_bands_pred, axis=0)
+            energy_bands_true_plot = np.stack(energy_bands_true, axis=0)
+
+            title = f"Energy bands of sample {j} of {dataloader_type} dataset (seed {config["dataset"]["seed"]}). There are {n_atoms} in the unit cell. Using SIESTA overlap matrix."
+            x_axis = [k_path]*energy_bands_pred_plot.shape[0]
+            num_cols = energy_bands_pred_plot[:,0:n_bands].shape[1]
+            titles_pred = [f"Predicted band {i}" for i in range(num_cols)]
+            titles_true = [f"True band {i}" for i in range(num_cols)]
+            plot_columns_of_2darray(
+                array_pred = energy_bands_pred_plot[:,0:n_bands],
+                array_true = energy_bands_true_plot[:,0:n_bands],
+                x = x_axis,
+                xlabel = "k", 
+                ylabel = "Energy (eV)", 
+                title = title,
+                titles_pred=titles_pred,
+                filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{checkpoint["epoch"]}_energybands.html")
             )
 
             # Count the number of plots done for each structure type

@@ -273,6 +273,114 @@ def plot_error_matrices_small(true_matrix, predicted_matrix, matrix_label=None, 
 
     # === Output ===
     if filepath:
-        fig.write_html(filepath)
+        filepath = Path(filepath)
+        if filepath.suffix.lower() == ".html":
+            fig.write_html(str(filepath))
+        elif filepath.suffix.lower() == ".png":
+            fig.write_image(str(filepath))
+        else:
+            raise ValueError(f"Unsupported file extension: {filepath.suffix}")
     else:
         fig.show()
+
+
+def plot_columns_of_2darray(array_pred, array_true=None, x=None, titles_pred=None, titles_true=None, xlabel=None, ylabel=None, title=None, filepath=None):
+    """
+    Plot each column of a 2D numpy array as separate traces.
+    
+    Parameters:
+    - array_pred: 2D numpy array to plot (each column will be a separate trace)
+    - array_true: Optional true values to plot alongside predictions
+    - x: Optional x-axis values (if None, uses array indices)
+    - titles_pred: Optional list of names for each prediction column/trace
+    - titles_true: Optional list of names for each true column/trace
+    - xlabel: Label for x-axis
+    - ylabel: Label for y-axis
+    - title: Title for the overall plot
+    - filepath: Optional path to save the plot (supports .html or .png)
+    """
+    if array_pred.ndim != 2:
+        raise ValueError("Input array must be 2-dimensional")
+        
+    num_cols = array_pred.shape[1]
+    
+    # Default color sequence (you can customize this)
+    colors = [
+        '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+        '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
+    ]
+    
+    if titles_pred is None:
+        titles_pred = [f'Pred Column {i+1}' for i in range(num_cols)]
+    elif len(titles_pred) != num_cols:
+        raise ValueError("Number of titles_pred must match number of columns")
+    
+    if titles_true is None:
+        titles_true = [f'True Column {i+1}' for i in range(num_cols)]
+    elif len(titles_true) != num_cols:
+        raise ValueError("Number of titles_true must match number of columns")
+    
+    if x is None:
+        x = np.arange(array_pred.shape[0])
+    elif len(x) != array_pred.shape[0]:
+        raise ValueError("Length of x must match number of rows in array")
+    
+    fig = go.Figure()
+    
+    for col in range(num_cols):
+        # Get color for this column (repeats if more columns than colors)
+        color = colors[col % len(colors)]
+        
+        # Add predicted values as dashed line (initially hidden)
+        fig.add_trace(go.Scatter(
+            x=x,
+            y=array_pred[:, col],
+            mode='lines',
+            name=titles_pred[col],
+            line=dict(color=color, dash='dash'),
+            opacity=0.8,
+            visible='legendonly',  # This makes it hidden by default
+            legendgroup=f'group{col}',  # Group pred and true together
+            showlegend=True
+        ))
+
+        if array_true is not None:
+            # Add true values as solid line with same color (initially hidden)
+            fig.add_trace(go.Scatter(
+                x=x,
+                y=array_true[:, col],
+                mode='lines',
+                name=titles_true[col],
+                line=dict(color=color),
+                opacity=0.8,
+                visible='legendonly',  # This makes it hidden by default
+                legendgroup=f'group{col}',  # Group pred and true together
+                showlegend=True
+            ))
+    
+    fig.update_layout(
+        title=title,
+        xaxis_title=xlabel,
+        yaxis_title=ylabel,
+        hovermode='x unified',
+        height=800,
+        xaxis_title_standoff=15,
+    )
+
+    fig.update_xaxes(
+        showticklabels=False,
+    )
+
+    # === Output ===
+    if filepath:
+        filepath = Path(filepath)
+        if filepath.suffix.lower() == ".html":
+            fig.write_html(str(filepath))
+        elif filepath.suffix.lower() == ".png":
+            fig.write_image(str(filepath))
+        else:
+            raise ValueError(f"Unsupported file extension: {filepath.suffix}")
+    else:
+        fig.show()
+    
+    return fig

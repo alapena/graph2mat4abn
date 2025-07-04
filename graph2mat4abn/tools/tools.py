@@ -1,5 +1,6 @@
 import sisl
 import torch
+import numpy as np
 
 from graph2mat import PointBasis
 from tqdm import tqdm
@@ -170,3 +171,50 @@ def optimizer_to(optim, device):
                     subparam.data = subparam.data.to(device)
                     if subparam._grad is not None:
                         subparam._grad.data = subparam._grad.data.to(device)
+
+
+def get_orbital_indices_and_shifts_from_sile(sile):
+    geometry = sile.read_geometry()
+
+    h_uc = sile.read_hamiltonian()
+
+    # Convert to sparse format (coo)
+    h_coo = h_uc.tocsr().tocoo()
+
+    # Orbital indices and shifts extraction
+    orb_i=-np.ones(h_coo.nnz, dtype=int) # We fill everything with minus ones to be able to detect iif something went wrong
+    orb_j=-np.ones(h_coo.nnz, dtype=int) # Same
+    isc=-np.ones((h_coo.nnz,3), dtype=int) # Same
+
+    orb_i=h_coo.row
+    for k in range(h_coo.nnz):
+        orb_j[k]=geometry.osc2uc(h_coo.col[k])   # Unit cell orbital indices corresponding to the "supercell" indices
+        isc[k]=geometry.o2isc(h_coo.col[k])      # Which unit cell / shift that orbital belongs to wrt. the (0,0,0) unit cell
+
+    return orb_i, orb_j, isc
+
+
+def reconstruct_tim_from_coo(k_point, M_coo, geometry, cell):
+    no = M_coo.shape[0]  # Number of orbitals in the unit cell
+    H_g = np.zeros((no, no), dtype=complex)  # Output matrix
+    
+    for k in range(M_coo.nnz):
+        # Extract row index (already in unit cell basis)
+        i_uc = M_coo.row[k]
+        # Map supercell column index to unit cell orbital and shift
+        j_uc = geometry.osc2uc(M_coo.col[k])
+        isc_k = geometry.o2isc(M_coo.col[k])
+        
+        # Compute lattice vector for this shift
+        R_uc = np.sum([cell[d] * isc_k[d] for d in range(3)], axis=0)
+        Phase = np.exp(1j * k_point.dot(R_uc))
+        
+        # Accumulate value with phase
+        H_g[i_uc, j_uc] += M_coo.data[k] * Phase
+    
+    return H_g
+
+
+def reduced_coord(kpt, cell):
+    """Convert a k-point to reduced coordinates."""
+    return (cell.T)@kpt/(2*np.pi)
