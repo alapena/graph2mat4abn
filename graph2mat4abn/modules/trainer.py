@@ -227,6 +227,12 @@ class Trainer:
             self.best_train_loss = min(self.model_checkpoint["history"]["train_loss"])
             self.best_val_loss = min(self.model_checkpoint["history"]["val_loss"])
 
+            self.best_train_edge_loss = self.model_checkpoint["history"]["train_edge_loss"][-1]
+            self.best_train_node_loss = self.model_checkpoint["history"]["train_node_loss"][-1]
+
+            self.best_val_edge_loss = self.model_checkpoint["history"]["val_edge_loss"][-1]
+            self.best_val_node_loss = self.model_checkpoint["history"]["val_node_loss"][-1]
+
 
         # === Training loop ===
         # Create dataloaders
