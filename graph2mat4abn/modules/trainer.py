@@ -91,9 +91,9 @@ class Trainer:
                 edges_pred=model_predictions["edge_labels"],
                 edges_ref=batch.edge_labels,
             )
-            total_loss += loss
-            total_edge_loss += stats["node_rmse"]**2 # Squared because it returns the root.
-            total_node_loss += stats["edge_rmse"]**2
+            total_loss += loss*10**6
+            total_edge_loss += stats["node_rmse"]**2 *10**6 # Squared because it returns the root.
+            total_node_loss += stats["edge_rmse"]**2 *10**6
 
             # Compute gradients
             loss.backward()
@@ -141,9 +141,9 @@ class Trainer:
                     edges_pred=model_predictions["edge_labels"],
                     edges_ref=batch.edge_labels,
                 )
-                total_loss += loss
-                total_edge_loss += stats["node_rmse"]**2
-                total_node_loss += stats["edge_rmse"]**2
+                total_loss += loss*10**6
+                total_edge_loss += stats["node_rmse"]**2*10**6
+                total_node_loss += stats["edge_rmse"]**2*10**6
 
                 num_batches += 1
 
@@ -156,24 +156,24 @@ class Trainer:
         self.history['val_edge_loss'].append(avg_edge_loss.item())
         self.history['val_node_loss'].append(avg_node_loss.item())
 
-    def check_for_plateau(self, val_loss, epoch):
-        """Check if training has plateaued and adjust learning rate if needed"""
-        if epoch > 0 and abs(val_loss - self.val_losses[-1]) < 1e-4:
-            self.plateau_counter += 1
+    # def check_for_plateau(self, val_loss, epoch):
+    #     """Check if training has plateaued and adjust learning rate if needed"""
+    #     if epoch > 0 and abs(val_loss - self.val_losses[-1]) < 1e-4:
+    #         self.plateau_counter += 1
 
-            if self.plateau_counter >= self.plateau_patience:
-                # Reduce learning rate when plateau is detected
-                current_lr = self.optimizer.param_groups[0]['lr']
-                if current_lr > self.min_lr:
-                    new_lr = current_lr * 0.5
-                    for param_group in self.optimizer.param_groups:
-                        param_group['lr'] = new_lr
-                    print(f"Plateau detected! Reducing learning rate from {current_lr} to {new_lr}")
-                    self.plateau_counter = 0
-                    return True
-        else:
-            self.plateau_counter = 0
-        return False
+    #         if self.plateau_counter >= self.plateau_patience:
+    #             # Reduce learning rate when plateau is detected
+    #             current_lr = self.optimizer.param_groups[0]['lr']
+    #             if current_lr > self.min_lr:
+    #                 new_lr = current_lr * 0.5
+    #                 for param_group in self.optimizer.param_groups:
+    #                     param_group['lr'] = new_lr
+    #                 print(f"Plateau detected! Reducing learning rate from {current_lr} to {new_lr}")
+    #                 self.plateau_counter = 0
+    #                 return True
+    #     else:
+    #         self.plateau_counter = 0
+    #     return False
 
     def train(self, num_epochs):
 
@@ -306,7 +306,7 @@ class Trainer:
 
 
 
-            # Save periodic checkpoint (every 50 epochs)
+            # Save periodic checkpoint
             if self.results_dir is not None and epoch % self.checkpoint_freq == 0:
                 checkpoint_path = Path(checkpoint_dir / f"model_epoch_{epoch}.tar")
                 self.save_model(epoch, checkpoint_path)
@@ -339,7 +339,7 @@ class Trainer:
             print(f"Total elapsed time: {self.history['elapsed_time'][-1]:.2f} s")
 
             memory_monitor.end_epoch()
-            memory_monitor.plot_memory_usage(Path(self.results_dir / "memory_usage.png"))
+            # memory_monitor.plot_memory_usage(Path(self.results_dir / "memory_usage.png"))
 
         # ====== TRAINING LOOP FINISHED ======
 
@@ -463,6 +463,8 @@ class Trainer:
         plot_path = self.results_dir / "plot_loss.html"
         fig.write_html(str(plot_path))
         fig.write_image(str(self.results_dir / "plot_loss.png"))
+
+        del fig
         
         if verbose:
             print(f"Loss plot saved to {plot_path}")

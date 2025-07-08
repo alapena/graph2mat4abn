@@ -127,8 +127,11 @@ def plot_error_matrices_big(true_matrix, predicted_matrix, matrix_label=None, fi
             fig.write_image(str(filepath))
         else:
             raise ValueError(f"Unsupported file extension: {filepath.suffix}")
+        
     else:
         fig.show()
+
+    del fig
 
 
 def plot_error_matrices_small(true_matrix, predicted_matrix, matrix_label=None, figure_title=None, predicted_matrix_text=None, filepath=None, n_atoms=None, force_max_colorbar_abs_error=None):

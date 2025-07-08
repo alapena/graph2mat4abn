@@ -44,13 +44,22 @@ def main():
 
     # === List of paths to all structures ===
     parent_path = Path('./dataset')
-    n_atoms_paths = list(parent_path.glob('*/'))
+
+    # Define which subdatasets to use
+    use_only_n_atoms = config["dataset"].get("use_only_n_atoms", None)
+
+    # Filter the n_atoms_paths based on the use_only_n_atoms list
+    if use_only_n_atoms is not None:
+        n_atoms_paths = [parent_path / f"SHARE_OUTPUTS_{n}" for n in use_only_n_atoms]
+    else:
+        n_atoms_paths = list(parent_path.glob('*/'))
+
     paths = []
     for n_atoms_path in n_atoms_paths:
         structure_paths = list(n_atoms_path.glob('*/'))
         paths.append(structure_paths)
     paths = flatten(paths)
-    
+
     random.seed(config["dataset"]["seed"])
     random.shuffle(paths)
 
