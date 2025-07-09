@@ -271,17 +271,19 @@ class Trainer:
                 self.best_train_loss = self.history["train_loss"][-1]
                 print(f"New best model saved to {model_path}")
 
-            if self.results_dir is not None and self.history["train_edge_loss"][-1] < self.best_train_edge_loss:
-                model_path = Path(self.results_dir / "train_edge_best_model.tar")
-                self.save_model(epoch, model_path)
-                self.best_train_edge_loss = self.history["train_edge_loss"][-1]
-                print(f"New best model saved to {model_path}")
+            else:
 
-            if self.results_dir is not None and self.history["train_node_loss"][-1] < self.best_train_node_loss:
-                model_path = Path(self.results_dir / "train_node_best_model.tar")
-                self.save_model(epoch, model_path)
-                self.best_train_node_loss = self.history["train_node_loss"][-1]
-                print(f"New best model saved to {model_path}")
+                if self.results_dir is not None and self.history["train_edge_loss"][-1] < self.best_train_edge_loss:
+                    model_path = Path(self.results_dir / "train_edge_best_model.tar")
+                    self.save_model(epoch, model_path)
+                    self.best_train_edge_loss = self.history["train_edge_loss"][-1]
+                    print(f"New best model saved to {model_path}")
+
+                if self.results_dir is not None and self.history["train_node_loss"][-1] < self.best_train_node_loss:
+                    model_path = Path(self.results_dir / "train_node_best_model.tar")
+                    self.save_model(epoch, model_path)
+                    self.best_train_node_loss = self.history["train_node_loss"][-1]
+                    print(f"New best model saved to {model_path}")
 
 
 
@@ -292,17 +294,19 @@ class Trainer:
                 self.best_val_loss = self.history["val_loss"][-1]
                 print(f"New best model saved to {model_path}")
 
-            if self.results_dir is not None and self.history["val_edge_loss"][-1] < self.best_val_edge_loss:
-                model_path = Path(self.results_dir / "val_edge_best_model.tar")
-                self.save_model(epoch, model_path)
-                self.best_val_edge_loss = self.history["val_edge_loss"][-1]
-                print(f"New best model saved to {model_path}")
+            else:
 
-            if self.results_dir is not None and self.history["val_node_loss"][-1] < self.best_val_node_loss:
-                model_path = Path(self.results_dir / "val_node_best_model.tar")
-                self.save_model(epoch, model_path)
-                self.best_val_node_loss = self.history["val_node_loss"][-1]
-                print(f"New best model saved to {model_path}")
+                if self.results_dir is not None and self.history["val_edge_loss"][-1] < self.best_val_edge_loss:
+                    model_path = Path(self.results_dir / "val_edge_best_model.tar")
+                    self.save_model(epoch, model_path)
+                    self.best_val_edge_loss = self.history["val_edge_loss"][-1]
+                    print(f"New best model saved to {model_path}")
+
+                if self.results_dir is not None and self.history["val_node_loss"][-1] < self.best_val_node_loss:
+                    model_path = Path(self.results_dir / "val_node_best_model.tar")
+                    self.save_model(epoch, model_path)
+                    self.best_val_node_loss = self.history["val_node_loss"][-1]
+                    print(f"New best model saved to {model_path}")
 
 
 

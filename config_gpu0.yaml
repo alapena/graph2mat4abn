@@ -8,7 +8,7 @@ dataset:
   stratify: true # set to false if max_samples < 200
   max_samples: null
   seed: 42
-  num_unique_z: 3
+  num_unique_z: 2 # Fasten the basis calculation
 
 orbitals:
   1: 13
@@ -28,10 +28,10 @@ environment_representation:
   num_channels: 128 # default. Determines the size of the model
   max_L: 4 # default. Symmetries of the message. According to hidden_irreps.
   r_max: 10.0 # Cutoff radius
-  num_elements: 3 # Nº of chemical elements
-  atomic_energies: [0, 0, 0] # For normalization(?). torhc.tensor()
+  num_elements: 2 # Nº of chemical elements
+  atomic_energies: [0, 0] # For normalization(?). torhc.tensor() # Must match the shape of atomic_numbers
   avg_num_neighbors: 8 # For norm.(?)
-  atomic_numbers: [5,6,7] # (?)
+  atomic_numbers: [5,7] # (?)
 
   num_bessel: 15 # Nº radial feats
   num_polynomial_cutoff: 8 # Smothness of the radial cutoff
