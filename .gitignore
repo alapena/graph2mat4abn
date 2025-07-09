@@ -20,3 +20,5 @@ results
 key
 *.pub
 graph2mat4abn.egg-info
+current ids.txt
+.vscode

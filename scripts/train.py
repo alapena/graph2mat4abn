@@ -34,7 +34,7 @@ from graph2mat4abn.modules.trainer import Trainer
 
 def main():
     # === Configuration load ===
-    config = load_config("./config.yaml")
+    config = load_config("./config_gpu0.yaml")
     trainer_config = config["trainer"]
     
     device = torch.device(config["device"] if (torch.cuda.is_available() and config["device"]!="cpu") 
@@ -54,10 +54,30 @@ def main():
     else:
         n_atoms_paths = list(parent_path.glob('*/'))
 
+    exclude_carbons = config["trainer"].get("exclude_carbons", False)
+
     paths = []
     for n_atoms_path in n_atoms_paths:
         structure_paths = list(n_atoms_path.glob('*/'))
-        paths.append(structure_paths)
+
+        # In case you want to exclude carbon atoms, we need to use sisl.
+        if exclude_carbons == True:
+            structure_paths_nocarbon = structure_paths
+            for structure_path in structure_paths:
+                file = sisl.get_sile(structure_path / "aiida.fdf")
+                geometry = file.read_geometry()
+                zs = geometry.atoms.Z
+                if 6 in zs:
+                    # Exclude this structure
+                    exclude = structure_path
+                    structure_paths_nocarbon = [x for x in structure_paths_nocarbon if x != exclude]
+
+
+            paths.append(structure_paths_nocarbon)
+
+        else:
+            paths.append(structure_paths)
+
     paths = flatten(paths)
 
     random.seed(config["dataset"]["seed"])

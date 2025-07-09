@@ -266,7 +266,7 @@ class Trainer:
 
             # Save best model based on training loss
             if self.results_dir is not None and self.history["train_loss"][-1] < self.best_train_loss:
-                model_path = Path(self.results_dir / f"train_best_model_epoch.tar")
+                model_path = Path(self.results_dir / f"train_best_model.tar")
                 self.save_model(epoch, model_path)
                 self.best_train_loss = self.history["train_loss"][-1]
                 print(f"New best model saved to {model_path}")
