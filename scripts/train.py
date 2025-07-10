@@ -12,7 +12,7 @@ import torch
 import torch.optim as optim
 from e3nn import o3
 
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
+from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts, CyclicLR
 from sklearn.model_selection import train_test_split
 from mace.modules import MACE, RealAgnosticResidualInteractionBlock
 from graph2mat.bindings.torch.data.dataset import InMemoryData, RotatingPoolData
@@ -34,7 +34,7 @@ from graph2mat4abn.modules.trainer import Trainer
 
 def main():
     # === Configuration load ===
-    config = load_config("./config_gpu0.yaml")
+    config = load_config("./config_gpu1.yaml")
     trainer_config = config["trainer"]
     
     device = torch.device(config["device"] if (torch.cuda.is_available() and config["device"]!="cpu") 
@@ -88,7 +88,6 @@ def main():
     # == Basis creation === 
     basis = get_basis_from_structures_paths(paths, verbose=True, num_unique_z=config["dataset"].get("num_unique_z", None))
     table = BasisTableWithEdges(basis)
-
 
 
     # === Enviroment descriptor initialization ===
@@ -158,10 +157,7 @@ def main():
         edge_operation_kwargs = get_kwargs(model_config["edge_operation"], config),
     )
 
-
-
-    # === Trainer initialization ===
-
+    
     # Optimizer
     optimizer_config = config["optimizer"]
     optimizer = optim.AdamW(
@@ -172,21 +168,26 @@ def main():
 
     # Scheduler
     scheduler_config = config["scheduler"]
-    scheduler = CosineAnnealingWarmRestarts(
-        optimizer,
-        T_0=int(scheduler_config["t_0"]),
-        T_mult=scheduler_config["t_multiplication"],
-        eta_min=float(scheduler_config["eta_min"])
-    )
+    # scheduler = CosineAnnealingWarmRestarts(
+    #     optimizer,
+    #     T_0=int(scheduler_config["t_0"]),
+    #     T_mult=scheduler_config["t_multiplication"],
+    #     eta_min=float(scheduler_config["eta_min"])
+    # )
+    scheduler = CyclicLR(optimizer, base_lr=1e-4, max_lr=100, step_size_up=500)
 
     # Loss function
     trainer_config = config["trainer"]
     loss_fn = get_object_from_module(trainer_config["loss_function"], "graph2mat.core.data.metrics")
 
+
+
+    # === Trainer initialization ===
+
     # Load saved model if required
     trained_model_path = config.get("trained_model_path", None)
     if trained_model_path is not None:
-        model, checkpoint, optimizer, scheduler = load_model(model, optimizer, trained_model_path, lr_scheduler=scheduler, device=device)
+        model, checkpoint, optimizer, _ = load_model(model, optimizer, trained_model_path, lr_scheduler=None, device=device)
         print(f"Loaded model in epoch {checkpoint["epoch"]} with training loss {checkpoint["train_loss"]} and validation loss {checkpoint["val_loss"]}.")
     else:
         checkpoint = None

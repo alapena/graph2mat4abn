@@ -343,7 +343,7 @@ class Trainer:
             print(f"Total elapsed time: {self.history['elapsed_time'][-1]:.2f} s")
 
             memory_monitor.end_epoch()
-            # memory_monitor.plot_memory_usage(Path(self.results_dir / "memory_usage.png"))
+            memory_monitor.plot_memory_usage(Path(self.results_dir / "memory_usage.png"))
 
         # ====== TRAINING LOOP FINISHED ======
 

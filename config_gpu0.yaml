@@ -1,6 +1,6 @@
 device: "cuda:0"
 results_dir: "./results/hamiltonian_nocarbons"
-trained_model_path: null
+trained_model_path: "./results/hamiltonian_nocarbons/val_node_best_model.tar"
 dataset:
   train_split_ratio: 0.90
   # test_split_ratio: 0.50

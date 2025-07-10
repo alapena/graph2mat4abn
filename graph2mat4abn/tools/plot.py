@@ -334,7 +334,7 @@ def plot_columns_of_2darray(array_pred, array_true=None, x=None, titles_pred=Non
         # Get color for this column (repeats if more columns than colors)
         color = colors[col % len(colors)]
         
-        # Add predicted values as dashed line (initially hidden)
+        # Add predicted values as dashed line 
         fig.add_trace(go.Scatter(
             x=x,
             y=array_pred[:, col],
@@ -342,13 +342,13 @@ def plot_columns_of_2darray(array_pred, array_true=None, x=None, titles_pred=Non
             name=titles_pred[col],
             line=dict(color=color, dash='dash'),
             opacity=0.8,
-            visible='legendonly',  # This makes it hidden by default
+            # visible='legendonly',  # This makes it hidden by default
             legendgroup=f'group{col}',  # Group pred and true together
             showlegend=True
         ))
 
         if array_true is not None:
-            # Add true values as solid line with same color (initially hidden)
+            # Add true values as solid line with same color 
             fig.add_trace(go.Scatter(
                 x=x,
                 y=array_true[:, col],
@@ -356,7 +356,7 @@ def plot_columns_of_2darray(array_pred, array_true=None, x=None, titles_pred=Non
                 name=titles_true[col],
                 line=dict(color=color),
                 opacity=0.8,
-                visible='legendonly',  # This makes it hidden by default
+                # visible='legendonly',  # This makes it hidden by default
                 legendgroup=f'group{col}',  # Group pred and true together
                 showlegend=True
             ))
@@ -385,5 +385,82 @@ def plot_columns_of_2darray(array_pred, array_true=None, x=None, titles_pred=Non
             raise ValueError(f"Unsupported file extension: {filepath.suffix}")
     else:
         fig.show()
+    
+    return fig
+
+
+
+def plot_predictions_vs_truths(predictions, truths, series_names=None, 
+                               title='True vs Predicted Values', 
+                               xaxis_title='True Values', 
+                               yaxis_title='Predicted Values', 
+                               legend_title='Series',
+                               show_diagonal=True, 
+                               show_points_by_default=True,
+                               filepath=None):
+    """
+    Plots true values vs predictions for multiple series using Plotly.
+    
+    Parameters:
+    predictions (np.ndarray): 2D array of predicted values (rows: series, columns: points).
+    truths (np.ndarray): 2D array of true values (same shape as predictions).
+    series_names (list, optional): Names for each series. Defaults to generic names.
+    title (str, optional): Plot title.
+    xaxis_title (str, optional): X-axis title.
+    yaxis_title (str, optional): Y-axis title.
+    legend_title (str, optional): Legend title.
+    show_diagonal (bool, optional): Whether to show the diagonal line.
+    show_points (bool, optional): Whether points are visible by default (False sets to 'legendonly').
+    path (str, optional): Path to save the plot as HTML.
+    """
+    # Validate input shapes
+    if predictions.shape != truths.shape:
+        raise ValueError("predictions and truths must have the same shape")
+    
+    n_series = predictions.shape[0]
+    
+    # Generate default series names if not provided
+    if series_names is None:
+        series_names = [f'Series {i+1}' for i in range(n_series)]
+    elif len(series_names) != n_series:
+        raise ValueError("series_names length must match number of series")
+    
+    # Create traces for each series
+    traces = []
+    for i in range(n_series):
+        trace = go.Scatter(
+            x=truths[i],
+            y=predictions[i],
+            mode='markers',
+            name=series_names[i],
+            visible=None if show_points_by_default else 'legendonly'
+        )
+        traces.append(trace)
+    
+    # Create diagonal line trace if enabled
+    if show_diagonal:
+        all_values = np.concatenate([truths.flatten(), predictions.flatten()])
+        min_val, max_val = min(all_values), max(all_values)
+        diagonal_trace = go.Scatter(
+            x=[min_val, max_val],
+            y=[min_val, max_val],
+            mode='lines',
+            line=dict(dash='dash', color='gray'),
+            name='Perfect Prediction'
+        )
+        traces.append(diagonal_trace)
+    
+    # Create figure and update layout
+    fig = go.Figure(data=traces)
+    fig.update_layout(
+        title=title,
+        xaxis_title=xaxis_title,
+        yaxis_title=yaxis_title,
+        legend_title=legend_title
+    )
+    
+    # Save to HTML if path is provided
+    if filepath:
+        fig.write_html(filepath)
     
     return fig

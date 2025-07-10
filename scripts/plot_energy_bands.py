@@ -28,7 +28,7 @@ from graph2mat import (
     MatrixDataProcessor,
 )
 
-from graph2mat4abn.tools.plot import plot_columns_of_2darray, plot_error_matrices_big
+from graph2mat4abn.tools.plot import plot_columns_of_2darray, plot_error_matrices_big, plot_predictions_vs_truths
 from graph2mat4abn.tools import load_config, flatten
 from graph2mat4abn.tools.tools import get_basis_from_structures_paths, get_orbital_indices_and_shifts_from_sile, get_kwargs, load_model, reconstruct_tim_from_coo, reduced_coord
 from graph2mat4abn.tools.import_utils import get_object_from_module
@@ -36,12 +36,17 @@ from graph2mat4abn.tools.import_utils import get_object_from_module
 
 
 def main():
+
+    debug_mode = False # Set all values to min so that the exec time is fastest
+
     # * Write here the directory where the model is stored
-    directory = Path("results/hamiltonian") 
+    directory = Path("results/hamiltonian_2") 
+    # * And the model name
+    filename = "train_best_model.tar"
     # * Set the (max) number of each structure type that you want to plot
     n = 3
     # * Set the max number of energy bands you want in each plot
-    n_bands = 6
+    n_bands = None
 
 
     n_plots_each = {
@@ -55,7 +60,6 @@ def main():
     # === Configuration load ===
     # device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
     device=torch.device("cpu")
-    filename = "model_epoch_4500.tar"
     print(f"Loading model {directory / filename}...")
 
 
@@ -82,6 +86,7 @@ def main():
 
 
     # === Dataset creation ===
+    config["dataset"]["max_samples"] = 1 if debug_mode else config["dataset"]["max_samples"]
     processor = MatrixDataProcessor(basis_table=table, symmetric_matrix=True, sub_point_matrix=False)
     embeddings_configs = []
     for i, path in enumerate(paths):
@@ -116,12 +121,16 @@ def main():
 
     # Split and stratify
     n_atoms_list = [dataset[i].num_nodes for i in range(len(dataset))] if config["dataset"]["stratify"] == True else None
-    train_dataset, val_dataset = train_test_split(
-        dataset, 
-        train_size=config["dataset"]["train_split_ratio"],
-        stratify=None,#n_atoms_list,
-        random_state=None # Dataset already shuffled (paths)
-    )
+    if not debug_mode:
+        train_dataset, val_dataset = train_test_split(
+            dataset, 
+            train_size=config["dataset"]["train_split_ratio"],
+            stratify=n_atoms_list,
+            random_state=None # Dataset already shuffled (paths)
+        )
+    else:
+        train_dataset = dataset
+        val_dataset = dataset
 
     print("Initializing model...")
 
@@ -190,6 +199,8 @@ def main():
         lr=float(optimizer_config["lr"]),
         weight_decay=float(optimizer_config["weight_decay"])
     )
+
+    # ! Careful now that we changed the scheduler for some models
     # Scheduler
     scheduler_config = config["scheduler"]
     lr_scheduler = CosineAnnealingWarmRestarts(
@@ -202,7 +213,7 @@ def main():
     
 
     # === Model load ===
-    model, checkpoint, optimizer, lr_scheduler = load_model(model, optimizer, directory / "checkpoints" / filename, lr_scheduler=lr_scheduler, device=device)
+    model, checkpoint, optimizer, lr_scheduler = load_model(model, optimizer, directory / filename, lr_scheduler=lr_scheduler, device=device)
     loss_fn = get_object_from_module(config["trainer"]["loss_function"], "graph2mat.core.data.metrics")
 
 
@@ -228,6 +239,7 @@ def main():
 
         # For each split
         for j, data in enumerate(dataloader):
+            print(f"====== Plotting matrix {j} ======")
             n_atoms = data.num_nodes
             col_idx = np.where(n_plotted[0] == n_atoms)[0][0]
 
@@ -258,34 +270,49 @@ def main():
             )[0]
 
             # === Plot Hamiltonians ===
+            print("Plotting hamiltonian...")
             title = f"Results of sample {j} of {dataloader_type} dataset (seed {config["dataset"]["seed"]}). There are {n_atoms} in the unit cell."
             predicted_matrix_text = f"Saved training loss at epoch {checkpoint["epoch"]}:     {checkpoint["train_loss"]:.2f} eV²·100\nMSE evaluation:     {loss.item():.2f} eV²·100"
-            plot_error_matrices_big(
-                true_matrix.todense(), h_pred.todense(),
-                matrix_label="Hamiltonian",
-                figure_title=title,
-                predicted_matrix_text=predicted_matrix_text,
-                filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{checkpoint["epoch"]}_hamiltonian.html")
-            )
-            # plot_error_matrices_big(
-            #     true_matrix.todense(), h_pred.todense(),
-            #     matrix_label="Hamiltonian",
-            #     figure_title=title,
-            #     predicted_matrix_text=predicted_matrix_text,
-            #     filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{checkpoint["epoch"]}_hamiltonian.png")
-            # )
+            if n_atoms <= 32:
+                plot_error_matrices_big(
+                    true_matrix.todense(), h_pred.todense(),
+                    matrix_label="Hamiltonian",
+                    figure_title=title,
+                    predicted_matrix_text=predicted_matrix_text,
+                    filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{checkpoint["epoch"]}_hamiltonian.html")
+                )
+            else:
+                plot_error_matrices_big(
+                    true_matrix.todense(), h_pred.todense(),
+                    matrix_label="Hamiltonian",
+                    figure_title=title,
+                    predicted_matrix_text=predicted_matrix_text,
+                    filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{checkpoint["epoch"]}_hamiltonian.png")
+                )
 
 
             # ========= Plot energy bands =========
+            print("Plotting energy bands...")
             file = sisl.get_sile(data.metadata["path"][0] / "aiida.fdf")
             geometry = file.read_geometry()
             cell = geometry.cell
             # orb_i, orb_j, isc = get_orbital_indices_and_shifts_from_sile(file)
 
             # Define a path in k-space
-            kzs = np.linspace(0,1, num=100) # * Change the resolution here
-            k_dir = geometry.rcell[:,2]
-            k_path=np.array([kz*k_dir for kz in kzs])
+            kxs = np.linspace(0,1, num=40)
+            kys = np.linspace(0,1, num=40)
+            kzs = np.linspace(0,1, num=40) # * Change the resolution here
+            k_dir_x = geometry.rcell[:,0]
+            k_dir_y = geometry.rcell[:,1]
+            k_dir_z = geometry.rcell[:,2]
+            k_path_x=np.array([kx*k_dir_x for kx in kxs])
+            k_path_y=np.array([ky*k_dir_y for ky in kys])
+            k_path_z=np.array([kz*k_dir_z for kz in kzs])
+            k_path=np.concatenate([k_path_x, k_path_y, k_path_z])
+
+            k_path = np.array([[0, 0, 0], [0, 0, 1]]) if debug_mode else k_path
+
+
 
             # TIM reconstruction
             h_uc = file.read_hamiltonian()
@@ -329,9 +356,25 @@ def main():
                 filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{checkpoint["epoch"]}_energybands.html")
             )
 
+
+            # === Plot eigenvalues ===
+            titles_series = [f"{k_point:.2f}" for k_point in k_path]
+            plot_predictions_vs_truths(
+                predictions=energy_bands_pred_plot,
+                truths=energy_bands_true_plot,
+                series_names=titles_series,
+                title='Eigenvalues comparison (eV)',
+                xaxis_title='True energy',
+                yaxis_title='Predicted energy',
+                legend_title='k points',
+                show_diagonal=True,
+                show_points_by_default=True,
+                filepath=Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{checkpoint["epoch"]}eigenvalues.html")
+            )
+
             # Count the number of plots done for each structure type
             n_plotted[1][col_idx] += 1
-            print(f"Plotted {j} matrix")
+
 
 
 if __name__ == "__main__":
