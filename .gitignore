@@ -2,6 +2,7 @@
 .venv_wsl
 dataset
 dataset.pkl
+dataset_nocarbon
 # Ignore checkpoints
 checkpoints
 # Ignore psych folder or file

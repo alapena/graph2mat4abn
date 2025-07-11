@@ -12,8 +12,8 @@ import torch
 import torch.optim as optim
 from e3nn import o3
 
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts, CyclicLR
 from sklearn.model_selection import train_test_split
+from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from mace.modules import MACE, RealAgnosticResidualInteractionBlock
 from graph2mat.bindings.torch.data.dataset import InMemoryData, RotatingPoolData
 from graph2mat.bindings.torch import TorchBasisMatrixDataset
@@ -26,7 +26,7 @@ from graph2mat import (
     MatrixDataProcessor,
 )
 from graph2mat4abn.tools import load_config, flatten
-from graph2mat4abn.tools.tools import get_basis_from_structures_paths, get_kwargs, load_model
+from graph2mat4abn.tools.tools import get_basis_from_structures_paths, get_kwargs, get_scheduler_args_and_kwargs, load_model, read_structures_paths
 from graph2mat4abn.tools.import_utils import get_object_from_module
 from graph2mat4abn.modules.trainer import Trainer
 
@@ -34,8 +34,10 @@ from graph2mat4abn.modules.trainer import Trainer
 
 def main():
     # === Configuration load ===
-    config = load_config("./config_gpu1.yaml")
+    config = load_config("./config_gpu0.yaml")
+    debug_mode = config.get("debug_mode", False)
     trainer_config = config["trainer"]
+    dataset_config = config["dataset"]
     
     device = torch.device(config["device"] if (torch.cuda.is_available() and config["device"]!="cpu") 
     else 'cpu')
@@ -43,43 +45,84 @@ def main():
 
 
     # === List of paths to all structures ===
-    parent_path = Path('./dataset')
+    # parent_path = Path('./dataset')
 
-    # Define which subdatasets to use
-    use_only_n_atoms = config["dataset"].get("use_only_n_atoms", None)
+    # # Define which subdatasets to use
+    # use_only_n_atoms = config["dataset"].get("use_only_n_atoms", None)
 
-    # Filter the n_atoms_paths based on the use_only_n_atoms list
-    if use_only_n_atoms is not None:
-        n_atoms_paths = [parent_path / f"SHARE_OUTPUTS_{n}" for n in use_only_n_atoms]
-    else:
-        n_atoms_paths = list(parent_path.glob('*/'))
+    # # # Define how many of each
+    # # how_many_of_each = config["dataset"].get("how_many_of_each", None) 
 
-    exclude_carbons = config["trainer"].get("exclude_carbons", False)
+    # # Filter the n_atoms_paths based on the use_only_n_atoms list
+    # if use_only_n_atoms is not None:
+    #     n_atoms_paths = [parent_path / f"SHARE_OUTPUTS_{n}" for n in use_only_n_atoms]
+    # else:
+    #     n_atoms_paths = list(parent_path.glob('*/'))
 
+    # exclude_carbons = config["trainer"].get("exclude_carbons", False)
+
+    # paths = []
+    # for n_atoms_path in n_atoms_paths:
+    #     structure_paths = list(n_atoms_path.glob('*/'))
+
+    #     # In case you want to exclude carbon atoms, we need to use sisl.
+    #     if exclude_carbons == True:
+    #         structure_paths_nocarbon = structure_paths
+    #         for structure_path in structure_paths:
+    #             file = sisl.get_sile(structure_path / "aiida.fdf")
+    #             geometry = file.read_geometry()
+    #             zs = geometry.atoms.Z
+    #             if 6 in zs:
+    #                 # Exclude this structure
+    #                 exclude = structure_path
+    #                 structure_paths_nocarbon = [x for x in structure_paths_nocarbon if x != exclude]
+
+
+    #         paths.append(structure_paths_nocarbon)
+
+    #     else:
+    #         paths.append(structure_paths)
+
+    # paths = flatten(paths)
+
+    # === List of paths to all structures ===
+    exclude_carbons = dataset_config.get("exclude_carbons", True)
+    use_only = config["dataset"].get("use_only", None)
+
+    true_dataset_folder = Path('./dataset')
     paths = []
-    for n_atoms_path in n_atoms_paths:
-        structure_paths = list(n_atoms_path.glob('*/'))
+    if exclude_carbons:
+        pointers_folder = Path('./dataset_nocarbon')
 
-        # In case you want to exclude carbon atoms, we need to use sisl.
-        if exclude_carbons == True:
-            structure_paths_nocarbon = structure_paths
-            for structure_path in structure_paths:
-                file = sisl.get_sile(structure_path / "aiida.fdf")
-                geometry = file.read_geometry()
-                zs = geometry.atoms.Z
-                if 6 in zs:
-                    # Exclude this structure
-                    exclude = structure_path
-                    structure_paths_nocarbon = [x for x in structure_paths_nocarbon if x != exclude]
-
-
-            paths.append(structure_paths_nocarbon)
-
+        # Use only determined subset of the dataset
+        if use_only is not None:
+            x_atoms_paths = [pointers_folder / f"SHARE_OUTPUTS_{n}" for n in use_only]
         else:
-            paths.append(structure_paths)
+            x_atoms_paths = list(pointers_folder.glob('*/'))
 
-    paths = flatten(paths)
+        # Get all the structures
+        filepath = "structures.txt"
+        structures_paths = [[] for _ in x_atoms_paths]
+        for i, x_atoms_path in enumerate(x_atoms_paths):
+            structures = read_structures_paths(str(x_atoms_path / filepath))
+            for structure in structures:
+                structures_paths[i].append(x_atoms_path.parts[-1] +"/"+ structure)
 
+        # Now we join them with the true parent folder
+        for structures in structures_paths:
+            for structure in structures:
+                true_path = true_dataset_folder / structure
+                paths.append(true_path)
+            
+    else:  
+        # Join all structures in the paths variable
+        n_atoms_paths = list(true_dataset_folder.glob('*/'))
+        for n_atoms_path in n_atoms_paths:
+            structure_paths = list(n_atoms_path.glob('*/')) 
+            for structure_path in structure_paths:
+                paths.append(structure_path)
+
+    # Shuffle the dataset
     random.seed(config["dataset"]["seed"])
     random.shuffle(paths)
 
@@ -160,25 +203,35 @@ def main():
     
     # Optimizer
     optimizer_config = config["optimizer"]
-    optimizer = optim.AdamW(
+    optimizer = optim.Adam(
         model.parameters(),
         lr=float(optimizer_config["lr"]),
-        weight_decay=float(optimizer_config["weight_decay"])
+        # weight_decay=float(optimizer_config["weight_decay"])
     )
+    print(f"Using Optimizer {optimizer}")
 
     # Scheduler
     scheduler_config = config["scheduler"]
+
+    # len_train_dataloader = int(len(paths) * dataset_config.get("train_split_ratio"))
+    scheduler_args, scheduler_kwargs = get_scheduler_args_and_kwargs(config, verbose=True)#, len_train_dataloader=len_train_dataloader)
+
+    scheduler = scheduler_config.get("type", None)
+    if scheduler is not None:
+        scheduler = get_object_from_module(scheduler_config.get("type", None), "torch.optim.lr_scheduler")(optimizer, *scheduler_args, **scheduler_kwargs)
     # scheduler = CosineAnnealingWarmRestarts(
     #     optimizer,
-    #     T_0=int(scheduler_config["t_0"]),
-    #     T_mult=scheduler_config["t_multiplication"],
-    #     eta_min=float(scheduler_config["eta_min"])
+    #     T_0=20,
+    #     T_mult=2,
+    #     eta_min=1e-25
     # )
-    scheduler = CyclicLR(optimizer, base_lr=1e-4, max_lr=100, step_size_up=500)
+    # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=20, cooldown=0, min_lr=0, eps=0)
+
 
     # Loss function
     trainer_config = config["trainer"]
     loss_fn = get_object_from_module(trainer_config["loss_function"], "graph2mat.core.data.metrics")
+    print(f"Using Loss function {loss_fn}")
 
 
 
@@ -194,6 +247,9 @@ def main():
     
 
     # === Dataset creation ===
+
+    config["dataset"]["max_samples"] = 1 if debug_mode else config["dataset"]["max_samples"]
+
     print("Creating dataset...")
     processor = MatrixDataProcessor(basis_table=table, symmetric_matrix=True, sub_point_matrix=False)
     embeddings_configs = []
@@ -219,6 +275,7 @@ def main():
                 metadata={
                     "device": device,
                     "atom_types": torch.from_numpy(geometry.atoms.Z), # Unlike point_types, this is not rescaled.
+                    "path": path
                 },
             )
         elif matrix == "tim":
@@ -244,6 +301,7 @@ def main():
                 metadata={
                     "device": device,
                     "atom_types": torch.from_numpy(geometry.atoms.Z), # Unlike point_types, this is not rescaled.
+                    "path": path
                 },
             )
 

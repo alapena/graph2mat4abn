@@ -38,6 +38,7 @@ from graph2mat4abn.tools.import_utils import get_object_from_module
 def main():
 
     debug_mode = False # Set all values to min so that the exec time is fastest
+    check_existing_plots = True
 
     # * Write here the directory where the model is stored
     directory = Path("results/hamiltonian_2") 
@@ -270,107 +271,123 @@ def main():
             )[0]
 
             # === Plot Hamiltonians ===
-            print("Plotting hamiltonian...")
-            title = f"Results of sample {j} of {dataloader_type} dataset (seed {config["dataset"]["seed"]}). There are {n_atoms} in the unit cell."
-            predicted_matrix_text = f"Saved training loss at epoch {checkpoint["epoch"]}:     {checkpoint["train_loss"]:.2f} eV²·100\nMSE evaluation:     {loss.item():.2f} eV²·100"
-            if n_atoms <= 32:
-                plot_error_matrices_big(
-                    true_matrix.todense(), h_pred.todense(),
-                    matrix_label="Hamiltonian",
-                    figure_title=title,
-                    predicted_matrix_text=predicted_matrix_text,
-                    filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{checkpoint["epoch"]}_hamiltonian.html")
-                )
-            else:
-                plot_error_matrices_big(
-                    true_matrix.todense(), h_pred.todense(),
-                    matrix_label="Hamiltonian",
-                    figure_title=title,
-                    predicted_matrix_text=predicted_matrix_text,
-                    filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{checkpoint["epoch"]}_hamiltonian.png")
-                )
+            filepath_html = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{checkpoint["epoch"]}_hamiltonian.html")
+            filepath_png = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{checkpoint["epoch"]}_hamiltonian.png")
+            if check_existing_plots:
+                if filepath_html.is_file():
+                    print(f"File {filepath_html} already exists. Continueing.")
+                elif filepath_png.is_file():
+                    print(f"File {filepath_png} already exists. Continueing.")
+                else:
+                    print("Plotting hamiltonian...")
+                    title = f"Results of sample {j} of {dataloader_type} dataset (seed {config["dataset"]["seed"]}). There are {n_atoms} in the unit cell."
+                    predicted_matrix_text = f"Saved training loss at epoch {checkpoint["epoch"]}:     {checkpoint["train_loss"]:.2f} eV²·100\nMSE evaluation:     {loss.item():.2f} eV²·100"
+                    if n_atoms <= 32:
+                        plot_error_matrices_big(
+                            true_matrix.todense(), h_pred.todense(),
+                            matrix_label="Hamiltonian",
+                            figure_title=title,
+                            predicted_matrix_text=predicted_matrix_text,
+                            filepath = filepath_html
+                        )
+                    else:
+                        plot_error_matrices_big(
+                            true_matrix.todense(), h_pred.todense(),
+                            matrix_label="Hamiltonian",
+                            figure_title=title,
+                            predicted_matrix_text=predicted_matrix_text,
+                            filepath = filepath_png
+                        )
 
 
             # ========= Plot energy bands =========
             print("Plotting energy bands...")
-            file = sisl.get_sile(data.metadata["path"][0] / "aiida.fdf")
-            geometry = file.read_geometry()
-            cell = geometry.cell
-            # orb_i, orb_j, isc = get_orbital_indices_and_shifts_from_sile(file)
+            filepath_html = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{checkpoint["epoch"]}_energybands.html")
+            if filepath_html.is_file():
+                print(f"File {filepath_html} already exists. Continueing.")
+            else:
+                file = sisl.get_sile(data.metadata["path"][0] / "aiida.fdf")
+                geometry = file.read_geometry()
+                cell = geometry.cell
+                # orb_i, orb_j, isc = get_orbital_indices_and_shifts_from_sile(file)
 
-            # Define a path in k-space
-            kxs = np.linspace(0,1, num=40)
-            kys = np.linspace(0,1, num=40)
-            kzs = np.linspace(0,1, num=40) # * Change the resolution here
-            k_dir_x = geometry.rcell[:,0]
-            k_dir_y = geometry.rcell[:,1]
-            k_dir_z = geometry.rcell[:,2]
-            k_path_x=np.array([kx*k_dir_x for kx in kxs])
-            k_path_y=np.array([ky*k_dir_y for ky in kys])
-            k_path_z=np.array([kz*k_dir_z for kz in kzs])
-            k_path=np.concatenate([k_path_x, k_path_y, k_path_z])
+                # Define a path in k-space
+                kxs = np.linspace(0,1, num=40)
+                kys = np.linspace(0,1, num=40)
+                kzs = np.linspace(0,1, num=40) # * Change the resolution here
+                k_dir_x = geometry.rcell[:,0]
+                k_dir_y = geometry.rcell[:,1]
+                k_dir_z = geometry.rcell[:,2]
+                k_path_x=np.array([kx*k_dir_x for kx in kxs])
+                k_path_y=np.array([ky*k_dir_y for ky in kys])
+                k_path_z=np.array([kz*k_dir_z for kz in kzs])
+                k_path=np.concatenate([k_path_x, k_path_y, k_path_z])
 
-            k_path = np.array([[0, 0, 0], [0, 0, 1]]) if debug_mode else k_path
+                k_path = np.array([[0, 0, 0], [0, 0, 1]]) if debug_mode else k_path
 
 
 
-            # TIM reconstruction
-            h_uc = file.read_hamiltonian()
-            s_uc = file.read_overlap()
+                # TIM reconstruction
+                h_uc = file.read_hamiltonian()
+                s_uc = file.read_overlap()
 
-            energy_bands_pred = []
-            energy_bands_true = []
-            for k_point in tqdm(k_path):
-                # Ground truth:
-                Hk_true = h_uc.Hk(reduced_coord(k_point, cell), gauge='cell').toarray()
-                Sk_true = s_uc.Sk(reduced_coord(k_point, cell), gauge='cell').toarray()
+                energy_bands_pred = []
+                energy_bands_true = []
+                for k_point in tqdm(k_path):
+                    # Ground truth:
+                    Hk_true = h_uc.Hk(reduced_coord(k_point, cell), gauge='cell').toarray()
+                    Sk_true = s_uc.Sk(reduced_coord(k_point, cell), gauge='cell').toarray()
 
-                Ek_true = scipy.linalg.eigh(Hk_true, Sk_true, eigvals_only=True)
-                energy_bands_true.append(Ek_true)
+                    Ek_true = scipy.linalg.eigh(Hk_true, Sk_true, eigvals_only=True)
+                    energy_bands_true.append(Ek_true)
 
-                # Prediction:
-                Hk_pred = reconstruct_tim_from_coo(k_point, h_pred.tocsr().tocoo(), geometry, cell)
-                # Sk = reconstruct_tim(k_point, s_pred, orb_i, orb_j, isc, cell)
+                    # Prediction:
+                    Hk_pred = reconstruct_tim_from_coo(k_point, h_pred.tocsr().tocoo(), geometry, cell)
+                    # Sk = reconstruct_tim(k_point, s_pred, orb_i, orb_j, isc, cell)
 
-                Ek = scipy.linalg.eigh(Hk_pred, Sk_true, eigvals_only=True)
+                    Ek = scipy.linalg.eigh(Hk_pred, Sk_true, eigvals_only=True)
 
-                energy_bands_pred.append(Ek)
-            
-            # Plot energy bands
-            energy_bands_pred_plot = np.stack(energy_bands_pred, axis=0)
-            energy_bands_true_plot = np.stack(energy_bands_true, axis=0)
+                    energy_bands_pred.append(Ek)
+                
+                # Plot energy bands
+                energy_bands_pred_plot = np.stack(energy_bands_pred, axis=0)
+                energy_bands_true_plot = np.stack(energy_bands_true, axis=0)
 
-            title = f"Energy bands of sample {j} of {dataloader_type} dataset (seed {config["dataset"]["seed"]}). There are {n_atoms} in the unit cell. Using SIESTA overlap matrix."
-            x_axis = [k_path]*energy_bands_pred_plot.shape[0]
-            num_cols = energy_bands_pred_plot[:,0:n_bands].shape[1]
-            titles_pred = [f"Predicted band {i}" for i in range(num_cols)]
-            titles_true = [f"True band {i}" for i in range(num_cols)]
-            plot_columns_of_2darray(
-                array_pred = energy_bands_pred_plot[:,0:n_bands],
-                array_true = energy_bands_true_plot[:,0:n_bands],
-                x = x_axis,
-                xlabel = "k", 
-                ylabel = "Energy (eV)", 
-                title = title,
-                titles_pred=titles_pred,
-                filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{checkpoint["epoch"]}_energybands.html")
-            )
+                title = f"Energy bands of sample {j} of {dataloader_type} dataset (seed {config["dataset"]["seed"]}). There are {n_atoms} in the unit cell. Using SIESTA overlap matrix."
+                x_axis = [k_path]*energy_bands_pred_plot.shape[0]
+                num_cols = energy_bands_pred_plot[:,0:n_bands].shape[1]
+                titles_pred = [f"Predicted band {i}" for i in range(num_cols)]
+                titles_true = [f"True band {i}" for i in range(num_cols)]
+                plot_columns_of_2darray(
+                    array_pred = energy_bands_pred_plot[:,0:n_bands],
+                    array_true = energy_bands_true_plot[:,0:n_bands],
+                    x = x_axis,
+                    xlabel = "k", 
+                    ylabel = "Energy (eV)", 
+                    title = title,
+                    titles_pred=titles_pred,
+                    filepath = filepath_html
+                )
 
 
             # === Plot eigenvalues ===
-            titles_series = [f"{k_point:.2f}" for k_point in k_path]
-            plot_predictions_vs_truths(
-                predictions=energy_bands_pred_plot,
-                truths=energy_bands_true_plot,
-                series_names=titles_series,
-                title='Eigenvalues comparison (eV)',
-                xaxis_title='True energy',
-                yaxis_title='Predicted energy',
-                legend_title='k points',
-                show_diagonal=True,
-                show_points_by_default=True,
-                filepath=Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{checkpoint["epoch"]}eigenvalues.html")
-            )
+            filepath_html = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{checkpoint["epoch"]}eigenvalues.html")
+            if filepath_html.is_file():
+                print(f"File {filepath_html} already exists. Continueing.")
+            else:
+                titles_series = [f"[{"{:.2f}".format(k_point[0]) if k_point[0] != 0 else 0}, {"{:.2f}".format(k_point[1]) if k_point[1] != 0 else 0}, {"{:.2f}".format(k_point[2]) if k_point[2] != 0 else 0}]" for k_point in k_path]
+                plot_predictions_vs_truths(
+                    predictions=energy_bands_pred_plot,
+                    truths=energy_bands_true_plot,
+                    series_names=titles_series,
+                    title='Eigenvalues comparison (eV)',
+                    xaxis_title='True energy',
+                    yaxis_title='Predicted energy',
+                    legend_title='k points',
+                    show_diagonal=True,
+                    show_points_by_default=True,
+                    filepath=filepath_html
+                )
 
             # Count the number of plots done for each structure type
             n_plotted[1][col_idx] += 1

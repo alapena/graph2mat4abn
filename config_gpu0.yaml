@@ -1,14 +1,16 @@
+debug_mode: false
 device: "cuda:0"
-results_dir: "./results/hamiltonian_nocarbons"
-trained_model_path: "./results/hamiltonian_nocarbons/val_node_best_model.tar"
+results_dir: "./results/hamiltonian_nocarbons_3_ReduceLROnPlateau"
+trained_model_path: null
 dataset:
   train_split_ratio: 0.90
   # test_split_ratio: 0.50
-  n_atoms_paths: null # Write dataset subfolders suffix. E.g. ["64_ATOMS"]
+  use_only: null # Write dataset subfolders suffix. E.g. ["64_ATOMS"]
   stratify: true # set to false if max_samples < 200
   max_samples: null
   seed: 42
   num_unique_z: 2 # Fasten the basis calculation
+  exclude_carbons: true
 
 orbitals:
   1: 13
@@ -45,21 +47,56 @@ model:
   preprocessing_edges: E3nnEdgeMessageBlock
   node_operation: E3nnSimpleNodeBlock
   edge_operation: E3nnSimpleEdgeBlock
-  hidden_neurons: [64, 64, 64, 64]
+  # hidden_neurons: [64, 64, 64, 64]
 
 optimizer:
   lr: 1e-3
-  weight_decay: 1e-4
+  # weight_decay: 1e-4
 
 scheduler:
-  t_0: 20
-  t_multiplication: 2
-  eta_min: 1e-25
+  type: ReduceLROnPlateau
+  args:
+  kwargs:
+    mode: 'min'
+    factor: 0.1 
+    patience: 20
+    cooldown: 0
+    min_lr: 0
+    eps: 0
+
+
+  # CosineAnnealingWarmRestarts:
+  #   t_0: 20
+  #   t_multiplication: 2
+  #   eta_min: 1e-25
+
+  # CyclicLR:
+  #   base_lr: 1e-9
+  #   max_lr: 1e-3
+  #   step_size_up: 100
+  #   cycle_momentum: False
+  #   mode: triangular
+
+  # OneCycleLR:
+  #   max_lr: 1e-3                     # Upper learning rate boundary
+  #   epochs_cycle: 50
+  #   pct_start: 0.3                # Fraction of steps spent increasing LR (Default 0.3)
+  #   anneal_strategy: 'cos'      # Annealing strategy
+  #   div_factor: 1e2               # max_lr / initial_lr
+  #   final_div_factor: 1e2        # initial_lr / min_lr
+
+  # ReduceLROnPlateau:
+  #   mode: 'min'
+  #   factor: 0.1 
+  #   patience: 20
+  #   cooldown: 0
+  #   min_lr: 0
+  #   eps: 0
+  
 
 trainer:
-  batch_size: 50
-  checkpoint_freq: 500
-  exclude_carbons: true
+  batch_size: 120
+  checkpoint_freq: 200
 
   live_plot: true
   live_plot_freq: 1

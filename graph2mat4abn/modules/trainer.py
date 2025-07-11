@@ -12,7 +12,7 @@ from torch_geometric.loader import DataLoader
 from plotly.subplots import make_subplots
 from copy import copy
 
-from graph2mat4abn.tools.tools import optimizer_to
+from graph2mat4abn.tools.tools import optimizer_to, read_structures_paths, write_structures_paths
 from graph2mat4abn.modules.memory_monitor import MemoryMonitor
 
 class Trainer:
@@ -101,6 +101,11 @@ class Trainer:
             # Update weights
             optimizer_to(self.optimizer, self.device)
             self.optimizer.step()
+            
+            if self.lr_scheduler is not None and self.config["scheduler"]["type"] == "CyclicLR":
+                self.lr_scheduler.step()
+            # elif self.config["scheduler"]["type"] == "OneCycleLR" and self.epoch < self.config["scheduler"]["OneCycleLR"].get("epochs_cycle"):
+            #     self.lr_scheduler.step()
 
             num_batches += 1
 
@@ -180,20 +185,6 @@ class Trainer:
         # Track the time of training.
         start_time = time.time()
 
-        # TODO: Load trained model
-
-        # Create results directory
-        if self.results_dir is not None:
-            self.results_dir.mkdir(exist_ok=True, parents=True)
-
-            # Create a separate path for periodic checkpoints
-            checkpoint_dir = Path(self.results_dir / "checkpoints")
-            checkpoint_dir.mkdir(exist_ok=True)
-
-            # Save config
-            save_to_yaml(self.config, self.config["results_dir"] +"/"+ "config.yaml")
-
-
         # Create history if the model is not pretrained
         if self.model_checkpoint is None:
             self.history = {
@@ -221,6 +212,10 @@ class Trainer:
             self.best_val_loss = float('inf')
             self.best_val_edge_loss = float('inf')
             self.best_val_node_loss = float('inf') 
+
+            self.execution_id = 1
+
+            self.resumed_in_epochs = [-1]
         else:
             # Load from checkpoint
             starting_epoch = self.model_checkpoint["epoch"] + 1
@@ -232,6 +227,53 @@ class Trainer:
 
             self.best_val_edge_loss = self.model_checkpoint["history"]["val_edge_loss"][-1]
             self.best_val_node_loss = self.model_checkpoint["history"]["val_node_loss"][-1]
+
+            self.execution_id = self.model_checkpoint["execution_id"] + 1
+
+            self.resumed_in_epochs = self.model_checkpoint["resumed_in_epochs"].append(-1)
+
+
+        # Create results directory
+        if self.results_dir is not None:
+            self.results_dir.mkdir(exist_ok=True, parents=True)
+
+            # Create a separate path for periodic checkpoints
+            checkpoint_dir = Path(self.results_dir / "checkpoints")
+            checkpoint_dir.mkdir(exist_ok=True)
+
+            # Save config
+            save_to_yaml(self.config, self.config["results_dir"] +"/"+ "config.yaml")
+
+            # Save structures paths
+            dataset_recorded_dir = Path(self.results_dir / "dataset")
+            dataset_recorded_dir.mkdir(exist_ok=True)
+
+            structures = []
+            for data in self.train_dataset:
+                structures.append(str(data.metadata["path"]))
+
+            # Check if the training dataset is the same as in the loaded model
+            if self.execution_id == 1:
+                write_structures_paths(structures, (dataset_recorded_dir / f"train_dataset"))
+            else:
+                previous_structures = read_structures_paths(str(dataset_recorded_dir / f"train_dataset"))
+
+                if set(structures) != set(previous_structures): # We use set() to compare because order does not matter
+                    raise ValueError("The training dataset is different from the loaded one!")
+                else:
+                    print("Training dataset is the same as the loaded one :)")
+
+            # Check if the validation dataset is the same as in the loaded model
+            if self.execution_id == 1:
+                write_structures_paths(structures, str(dataset_recorded_dir / f"val_dataset"))
+            else:
+                previous_structures = read_structures_paths(str(dataset_recorded_dir / f"val_dataset"))
+
+                if set(structures) != set(previous_structures): # We use set() to compare because order does not matter
+                    raise ValueError("The validation dataset is different from the loaded one!")
+                else:
+                    print("Validation dataset is the same as the loaded one :)")
+
 
 
         # === Training loop ===
@@ -249,18 +291,25 @@ class Trainer:
             memory_monitor.start_epoch()
 
             # Training phase
+            self.epoch = epoch
             self.train_epoch(train_dataloader)
 
             # Validation phase
             self.validate(val_dataloader)
 
             # Store current learning rate
-            lr = self.optimizer.param_groups[0]['lr']
-            self.history['learning_rate'].append(lr)
+            self.lr = self.optimizer.param_groups[0]['lr']
+            self.history['learning_rate'].append(self.lr)
+            self.resumed_in_epochs[-1] = epoch
 
             # Update learning rate scheduler if provided
-            if self.lr_scheduler is not None:
+            if self.lr_scheduler is not None and self.config["scheduler"]["type"] == "CosineAnnealingWarmRestarts":
                 self.lr_scheduler.step()
+            elif self.lr_scheduler is not None and self.config["scheduler"]["type"] == "ReduceLROnPlateau":
+                self.lr_scheduler.step(self.history["val_loss"][-1])
+            elif self.lr_scheduler is None:
+                # Do sth here manually.
+                pass
 
 
 
@@ -338,7 +387,7 @@ class Trainer:
             # Print progress
             print(f"Train stats. \t Total loss: {self.history["train_loss"][-1]:.4f} (edge loss: {self.history['train_edge_loss'][-1]:.4f}, node loss: {self.history['train_node_loss'][-1]:.4f})")
             print(f"Validation stats. \t Total loss: {self.history["val_loss"][-1]:.4f} (edge loss: {self.history['val_edge_loss'][-1]:.4f}, node loss: {self.history['val_node_loss'][-1]:.4f})")
-            print(f"Learning rate: {self.history["learning_rate"][-1]:.4f}")
+            print(f"Learning rate: {self.history["learning_rate"][-1]:.1e}")
             print(f"Epoch duration: {self.history['epoch_times'][-1]:.2f} s")
             print(f"Total elapsed time: {self.history['elapsed_time'][-1]:.2f} s")
 
@@ -369,6 +418,8 @@ class Trainer:
             'train_loss': self.history["train_loss"][-1],
             'val_loss': self.history["val_loss"][-1],
             'history': self.history,
+            'execution_id': self.execution_id,
+            'resumed_in_epochs': self.resumed_in_epochs,
         }, path)
 
         
@@ -435,20 +486,33 @@ class Trainer:
             ),
             secondary_y=True
         )
+
+        # Add a flag (vertical line) in each epoch where the training was resumed.
+        # for x_value in self.resumed_in_epochs:
+        #     if x_value == -1:
+        #         continue
+
+        #     fig.add_vline(
+        #         x=x_value,
+        #         line_dash="solid",
+        #         line_color="lightgray"
+        #     )
         
         # Set axis titles and layout
+        ylim_up = int(np.percentile(df.drop(columns=["Learning rate"]).to_numpy().flatten(), 95)) + 10
         fig.update_layout(
-            title="Loss curves",
+            title=f"Loss curves. Training executed {self.execution_id} times.",
             xaxis_title="Epoch number",
             yaxis=dict(
                 title="Loss (eV²)",
                 showgrid=True,
-                # type="log"  
+                # type="log",
+                range=[-5, ylim_up]
             ),
             yaxis2=dict(
                 title="Learning rate",
                 showgrid=False,
-                type="log",
+                # type="log",
                 side="right",
                 tickformat=".0e", 
                 dtick=1,
@@ -466,7 +530,7 @@ class Trainer:
         # Save outputs
         plot_path = self.results_dir / "plot_loss.html"
         fig.write_html(str(plot_path))
-        fig.write_image(str(self.results_dir / "plot_loss.png"))
+        # fig.write_image(str(self.results_dir / "plot_loss.png"))
 
         del fig
         

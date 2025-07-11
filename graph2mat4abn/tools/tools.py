@@ -144,6 +144,66 @@ def get_kwargs(module: str, config: dict) -> dict:
     
     return kwargs
 
+def get_scheduler_args_and_kwargs(config, verbose=False):
+    scheduler_config = config["scheduler"]
+
+    type = scheduler_config.get("type", None)
+    args = scheduler_config.get("args", None)
+    kwargs = scheduler_config.get("kwargs", None)
+
+    args = list(args.values()) if args is not None else None
+
+    if verbose:
+        print("LR Scheduler: ", type)
+        print("Arguments: ", args)
+        print("Keyword arguments: ", kwargs)
+
+    return args, kwargs
+
+    # if type is None:
+    #     args = None
+    #     kwargs = None
+
+    # elif type == "CosineAnnealingWarmRestarts":
+    #     scheduler_config = scheduler_config.get("CosineAnnealingWarmRestarts")
+    #     args = None # TODO: Config this
+    #     kwargs = {
+    #         "t_0": scheduler_config.get("t_0"),
+    #         "t_multiplication": scheduler_config.get("t_multiplication"),
+    #         "eta_min": scheduler_config.get("eta_min"),
+    #     }
+    # elif type == "CyclicLR":
+    #     scheduler_config = scheduler_config.get("CyclicLR")
+    #     args = (
+    #         float(scheduler_config.get("base_lr", None)),
+    #         float(scheduler_config.get("max_lr", None)),
+    #     )
+    #     kwargs = {
+    #         "step_size_up": scheduler_config.get("step_size_up", None),
+    #         "cycle_momentum": scheduler_config.get("cycle_momentum", None),
+    #         "mode": scheduler_config.get("mode", None),
+    #     }
+    # elif type == "OneCycleLR":
+    #     scheduler_config = scheduler_config.get("OneCycleLR")
+    #     len_train_dataloader = input_kwargs["len_train_dataloader"]
+    #     epochs = config["trainer"].get("num_epochs")
+    #     args = (
+    #         float(scheduler_config.get("max_lr", None)),
+    #     )
+    #     kwargs = {
+    #         # "total_steps": scheduler_config.get("epochs_cycle", None) * len_train_dataloader, # 
+    #         # "epochs": epochs,                # Number of epochs
+            
+    #         # "pct_start": scheduler_config.get("pct_start", None),                # Fraction of steps spent increasing LR
+    #         # "anneal_strategy": scheduler_config.get("anneal_strategy", None),        # Annealing strategy
+    #         # "div_factor": float(scheduler_config.get("div_factor", None)),                # max_lr / initial_lr
+    #         # "final_div_factor": float(scheduler_config.get("final_div_factor", None)),       # initial_lr / min_lr
+    #     }
+    # else:
+    #     raise ValueError("Learning Rate scheduler not found.")
+
+    return args, kwargs
+
 
 def load_model(model, optimizer, path, lr_scheduler=None, device="cpu"):
     path = Path(path)
@@ -218,3 +278,12 @@ def reconstruct_tim_from_coo(k_point, M_coo, geometry, cell):
 def reduced_coord(kpt, cell):
     """Convert a k-point to reduced coordinates."""
     return (cell.T)@kpt/(2*np.pi)
+
+
+def write_structures_paths(structures_paths, filepath):
+    with open(filepath, "w") as f:
+        f.write("\n".join(structures_paths))
+
+def read_structures_paths(filepath):
+    with open(filepath, "r") as f:
+        return f.read().splitlines()
