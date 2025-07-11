@@ -1,16 +1,18 @@
 debug_mode: false
 device: "cuda:0"
-results_dir: "./results/hamiltonian_nocarbons_3_ReduceLROnPlateau"
-trained_model_path: null
+results_dir: "./results/hamiltonian_nocarbons_4_ReduceLROnPlateau_reset_lr"
+trained_model_path: "./results/hamiltonian_nocarbons_3_ReduceLROnPlateau/val_best_model.tar"
 dataset:
   train_split_ratio: 0.90
   # test_split_ratio: 0.50
   use_only: null # Write dataset subfolders suffix. E.g. ["64_ATOMS"]
+  custom_dataset: true
   stratify: true # set to false if max_samples < 200
-  max_samples: null
+  # max_samples: null
   seed: 42
   num_unique_z: 2 # Fasten the basis calculation
   exclude_carbons: true
+  use_previous_dataset: true
 
 orbitals:
   1: 13
@@ -50,7 +52,7 @@ model:
   # hidden_neurons: [64, 64, 64, 64]
 
 optimizer:
-  lr: 1e-3
+  lr: 1e+2
   # weight_decay: 1e-4
 
 scheduler:

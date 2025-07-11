@@ -70,6 +70,7 @@ def get_basis_from_structures_paths(paths, verbose=False, num_unique_z=None):
     # Look for all atom types in your list of structures
     iterator = tqdm(enumerate(paths)) if verbose else enumerate(paths)
     for i, path in iterator:
+        path = Path(path)
         if num_unique_z is not None and len(unique_atom_types) == num_unique_z:
             print("Found enough basis points. Breaking the search...")
             break

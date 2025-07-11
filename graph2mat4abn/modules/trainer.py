@@ -230,7 +230,10 @@ class Trainer:
 
             self.execution_id = self.model_checkpoint["execution_id"] + 1
 
-            self.resumed_in_epochs = self.model_checkpoint["resumed_in_epochs"].append(-1)
+            self.resumed_in_epochs = self.model_checkpoint["resumed_in_epochs"]
+            self.resumed_in_epochs.append(-1)
+            print(self.resumed_in_epochs)
+            
 
 
         # Create results directory
@@ -245,8 +248,9 @@ class Trainer:
             save_to_yaml(self.config, self.config["results_dir"] +"/"+ "config.yaml")
 
             # Save structures paths
-            dataset_recorded_dir = Path(self.results_dir / "dataset")
-            dataset_recorded_dir.mkdir(exist_ok=True)
+            current_dataset_dir = Path(self.config.get("results_dir"))
+            current_dataset_dir = current_dataset_dir / "dataset"
+            current_dataset_dir.mkdir(exist_ok=True)
 
             structures = []
             for data in self.train_dataset:
@@ -254,23 +258,26 @@ class Trainer:
 
             # Check if the training dataset is the same as in the loaded model
             if self.execution_id == 1:
-                write_structures_paths(structures, (dataset_recorded_dir / f"train_dataset"))
+                write_structures_paths(structures, (current_dataset_dir / f"train_dataset.txt"))
             else:
-                previous_structures = read_structures_paths(str(dataset_recorded_dir / f"train_dataset"))
+                previous_dataset_dir = Path(*Path(self.config.get("trained_model_path")).parts[:2]) / "dataset"
+                previous_structures = read_structures_paths(str(previous_dataset_dir / f"train_dataset.txt"))
 
                 if set(structures) != set(previous_structures): # We use set() to compare because order does not matter
-                    raise ValueError("The training dataset is different from the loaded one!")
+                    if not self.config["debug_mode"]:
+                        raise ValueError("The training dataset is different from the loaded one!")
                 else:
                     print("Training dataset is the same as the loaded one :)")
 
             # Check if the validation dataset is the same as in the loaded model
             if self.execution_id == 1:
-                write_structures_paths(structures, str(dataset_recorded_dir / f"val_dataset"))
+                write_structures_paths(structures, str(current_dataset_dir / f"val_dataset.txt"))
             else:
-                previous_structures = read_structures_paths(str(dataset_recorded_dir / f"val_dataset"))
+                previous_structures = read_structures_paths(str(previous_dataset_dir / f"val_dataset.txt"))
 
                 if set(structures) != set(previous_structures): # We use set() to compare because order does not matter
-                    raise ValueError("The validation dataset is different from the loaded one!")
+                    if not self.config["debug_mode"]:
+                        raise ValueError("The validation dataset is different from the loaded one!")
                 else:
                     print("Validation dataset is the same as the loaded one :)")
 
@@ -512,7 +519,7 @@ class Trainer:
             yaxis2=dict(
                 title="Learning rate",
                 showgrid=False,
-                # type="log",
+                type="log",
                 side="right",
                 tickformat=".0e", 
                 dtick=1,

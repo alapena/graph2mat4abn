@@ -85,46 +85,114 @@ def main():
 
     # paths = flatten(paths)
 
-    # === List of paths to all structures ===
+    # === List of paths to all desired structures ===
     exclude_carbons = dataset_config.get("exclude_carbons", True)
-    use_only = config["dataset"].get("use_only", None)
+    use_only = dataset_config.get("use_only", None)
+    custom_dataset = dataset_config.get("custom_dataset", False)
+    use_previous_dataset = dataset_config.get("use_previous_dataset", False)
 
     true_dataset_folder = Path('./dataset')
+    pointers_folder = Path('./dataset_nocarbon')
+
+    # Use only determined subset of the dataset
+    if use_only is not None:
+        x_atoms_paths = [pointers_folder / f"SHARE_OUTPUTS_{n}" for n in use_only]
+    else:
+        x_atoms_paths = list(pointers_folder.glob('*/'))
+
     paths = []
-    if exclude_carbons:
-        pointers_folder = Path('./dataset_nocarbon')
+    # If you want no carbons
+    if not use_previous_dataset:
+        if exclude_carbons:
+        
+            # Get all the structures
+            filepath = "structures.txt"
+            structures_paths = [[] for _ in x_atoms_paths]
+            for i, x_atoms_path in enumerate(x_atoms_paths):
+                structures = read_structures_paths(str(x_atoms_path / filepath))
+                for structure in structures:
+                    structures_paths[i].append(x_atoms_path.parts[-1] +"/"+ structure)
 
-        # Use only determined subset of the dataset
-        if use_only is not None:
-            x_atoms_paths = [pointers_folder / f"SHARE_OUTPUTS_{n}" for n in use_only]
+            # Now we join them with the true parent folder
+            for structures in structures_paths:
+                for structure in structures:
+                    true_path = true_dataset_folder / structure
+                    paths.append(true_path)
+                
+        # If you want carbons
+        else:  
+            # Join all structures in the paths variable
+            for n_atoms_path in x_atoms_paths:
+                structure_paths = list(n_atoms_path.glob('*/')) 
+                for structure_path in structure_paths:
+                    paths.append(structure_path)
+
+        # Shuffle the dataset
+        random.seed(config["dataset"]["seed"])
+        random.shuffle(paths)
+
+        # Get unique X_ATOMS
+        unique_x_atoms = []
+        for path in paths:
+            x_atoms = path.parts[-2]
+            if x_atoms not in unique_x_atoms:
+                unique_x_atoms.append(x_atoms)
+
+        # Split paths into training and validation datasets.
+        if not custom_dataset:
+            # // split = config["dataset"]["max_samples"] is None or config["dataset"]["max_samples"] > 1
+            x_atoms_list = [int(Path(p.parts[1]).stem.split('_')[2]) for p in paths] if config["dataset"]["stratify"] == True else None
+            train_paths, val_paths = train_test_split(
+                paths, 
+                train_size=config["dataset"]["train_split_ratio"],
+                stratify=x_atoms_list,
+                random_state=None # Dataset already shuffled (paths)
+                )
+            print(f"Dataset splitted in {len(train_paths)} training paths and {len(val_paths)} validation paths.")
+
+            # Test the stratification.
+            unique_x = [int(Path(p).stem.split('_')[2]) for p in unique_x_atoms]
+            x_atoms_list_train = [int(Path(p.parts[1]).stem.split('_')[2]) for p in train_paths]
+            x_atoms_list_val = [int(Path(p.parts[1]).stem.split('_')[2]) for p in val_paths]
+            print(f"They are stratified: {[x_atoms_list_train.count(x) for x in unique_x]} versus {[x_atoms_list_val.count(x) for x in unique_x]}.")
+            print(f"The proportions are \n{[x_atoms_list_train.count(x)/len(train_paths) for x in unique_x]} versus \n{[x_atoms_list_val.count(x)/len(val_paths) for x in unique_x]}.")
+
+        # Custom training dataset
         else:
-            x_atoms_paths = list(pointers_folder.glob('*/'))
+            # In this case, we want to train with only crystals, including also some amorphous. Thus, we need to 1. exclude B-B and N-N bonds and 2. exclude 64 atms.
+            # First one is difficult. Second is easy.
 
-        # Get all the structures
-        filepath = "structures.txt"
-        structures_paths = [[] for _ in x_atoms_paths]
-        for i, x_atoms_path in enumerate(x_atoms_paths):
-            structures = read_structures_paths(str(x_atoms_path / filepath))
-            for structure in structures:
-                structures_paths[i].append(x_atoms_path.parts[-1] +"/"+ structure)
+            # Exclude 64 atm:
+            # // x_atoms_paths = [Path('/'.join(path.parts[:-1])) for path in paths]
+            train_paths = [path for path in paths if int(Path(path.parts[1]).stem.split('_')[2]) != 64] # Define here the amorphous structures
+            val_paths = [path for path in paths if path not in train_paths]
 
-        # Now we join them with the true parent folder
-        for structures in structures_paths:
-            for structure in structures:
-                true_path = true_dataset_folder / structure
-                paths.append(true_path)
             
-    else:  
-        # Join all structures in the paths variable
-        n_atoms_paths = list(true_dataset_folder.glob('*/'))
-        for n_atoms_path in n_atoms_paths:
-            structure_paths = list(n_atoms_path.glob('*/')) 
-            for structure_path in structure_paths:
-                paths.append(structure_path)
+            # Now include some of them
+            count = 0
+            for path in paths:
+                if int(Path(path.parts[1]).stem.split('_')[2]) == 64:
+                    train_paths.append(path)
+                    val_paths.remove(path)
+                    count += 1
+                if count == 3:
+                    break
 
-    # Shuffle the dataset
-    random.seed(config["dataset"]["seed"])
-    random.shuffle(paths)
+    # Use previous dataset
+    else:
+        if config.get("trained_model_path") is None:
+            raise ValueError("There is no pretrained model.")
+        
+        previous_dataset_dir = Path(*Path(config.get("trained_model_path")).parts[:2]) / "dataset"
+        train_paths = read_structures_paths(str(previous_dataset_dir / f"train_dataset.txt"))
+        train_paths = [Path(path) for path in train_paths]
+        val_paths = read_structures_paths(str(previous_dataset_dir / f"val_dataset.txt"))
+        val_paths = [Path(path) for path in val_paths]
+        paths = train_paths # To build the base (hotfix)
+
+        if debug_mode:
+            train_paths=[train_paths[0]]
+            val_paths=[val_paths[0]]
 
 
 
@@ -218,7 +286,7 @@ def main():
 
     scheduler = scheduler_config.get("type", None)
     if scheduler is not None:
-        scheduler = get_object_from_module(scheduler_config.get("type", None), "torch.optim.lr_scheduler")(optimizer, *scheduler_args, **scheduler_kwargs)
+        scheduler = get_object_from_module(scheduler_config.get("type", None), "torch.optim.lr_scheduler")(optimizer, *(scheduler_args or ()), **scheduler_kwargs)
     # scheduler = CosineAnnealingWarmRestarts(
     #     optimizer,
     #     T_0=20,
@@ -248,89 +316,85 @@ def main():
 
     # === Dataset creation ===
 
-    config["dataset"]["max_samples"] = 1 if debug_mode else config["dataset"]["max_samples"]
+    config["dataset"]["max_samples"] = 1 if debug_mode else None#config["dataset"]["max_samples"]
 
     print("Creating dataset...")
     processor = MatrixDataProcessor(basis_table=table, symmetric_matrix=True, sub_point_matrix=False)
     embeddings_configs = []
-    for i, path in enumerate(paths):
-        if i==config["dataset"]["max_samples"]:
-            break
+    splits = [train_paths, val_paths]
+    datasets = []
+    for split in splits:
+        for i, path in enumerate(split):
+            # Load the structure config
+            file = sisl.get_sile(path / "aiida.fdf")
+            file_h = sisl.get_sile(path / "aiida.HSX")
+            geometry = file.read_geometry()
+            lattice_vectors = geometry.lattice
 
-        # Load the structure config
-        file = sisl.get_sile(path / "aiida.fdf")
-        file_h = sisl.get_sile(path / "aiida.HSX")
-        geometry = file.read_geometry()
-        lattice_vectors = geometry.lattice
+            matrix = trainer_config.get("matrix", "hamiltonian")
 
-        matrix = trainer_config.get("matrix", "hamiltonian")
+            if matrix == "hamiltonian":
+                true_h = file_h.read_hamiltonian()
 
-        if matrix == "hamiltonian":
-            true_h = file_h.read_hamiltonian()
+                embeddings_config = BasisConfiguration.from_matrix(
+                    matrix = true_h,
+                    geometry = geometry,
+                    labels = True,
+                    metadata={
+                        "device": device,
+                        "atom_types": torch.from_numpy(geometry.atoms.Z), # Unlike point_types, this is not rescaled.
+                        "path": path
+                    },
+                )
+            elif matrix == "tim":
+                h_uc = file_h.read_hamiltonian()
+                true_h = h_uc.Hk([0, 0, 0]).todense()
 
-            embeddings_config = BasisConfiguration.from_matrix(
-                matrix = true_h,
-                geometry = geometry,
-                labels = True,
-                metadata={
-                    "device": device,
-                    "atom_types": torch.from_numpy(geometry.atoms.Z), # Unlike point_types, this is not rescaled.
-                    "path": path
-                },
-            )
-        elif matrix == "tim":
-            h_uc = file_h.read_hamiltonian()
-            true_h = h_uc.Hk([0, 0, 0]).todense()
+                embeddings_config = BasisConfiguration(
+                    point_types=geometry.atoms.Z,
+                    positions=geometry.xyz,
+                    basis=basis,
+                    cell=lattice_vectors.cell,
+                    pbc=(True, True, True),
+                    # pbc=(False, False, False),
+                    matrix = true_h
+                )
+            elif matrix == "overlap":
+                true_h = file_h.read_overlap()
 
-            embeddings_config = BasisConfiguration(
-                point_types=geometry.atoms.Z,
-                positions=geometry.xyz,
-                basis=basis,
-                cell=lattice_vectors.cell,
-                pbc=(True, True, True),
-                # pbc=(False, False, False),
-                matrix = true_h
-            )
-        elif matrix == "overlap":
-            true_h = file_h.read_overlap()
+                embeddings_config = BasisConfiguration.from_matrix(
+                    matrix = true_h,
+                    geometry = geometry,
+                    labels = True,
+                    metadata={
+                        "device": device,
+                        "atom_types": torch.from_numpy(geometry.atoms.Z), # Unlike point_types, this is not rescaled.
+                        "path": path
+                    },
+                )
 
-            embeddings_config = BasisConfiguration.from_matrix(
-                matrix = true_h,
-                geometry = geometry,
-                labels = True,
-                metadata={
-                    "device": device,
-                    "atom_types": torch.from_numpy(geometry.atoms.Z), # Unlike point_types, this is not rescaled.
-                    "path": path
-                },
-            )
+            embeddings_configs.append(embeddings_config)
 
-        embeddings_configs.append(embeddings_config)
+        datasets.append(TorchBasisMatrixDataset(embeddings_configs, data_processor=processor))
 
-    dataset = TorchBasisMatrixDataset(embeddings_configs, data_processor=processor)
+    train_dataset = datasets[0]
+    val_dataset = datasets[1]
 
-    # Split dataset (also stratify)
-    if config["dataset"]["max_samples"] == None:
-        split = True
-    elif config["dataset"]["max_samples"] > 1:
-        split = True
-    else:
-        split = False
-
-
-    if split:
-        n_atoms_list = [dataset[i].num_nodes for i in range(len(dataset))] if config["dataset"]["stratify"] == True else None
-        train_dataset, val_dataset = train_test_split(
-            dataset, 
-            train_size=config["dataset"]["train_split_ratio"],
-            stratify=n_atoms_list,
-            random_state=None # Dataset already shuffled (paths)
-            )
-        print(f"Dataset splitted in {len(train_dataset)} training samples and {len(val_dataset)} validation samples.")
-    else:
-        train_dataset = dataset
-        val_dataset = dataset
-        print("There is just 1 sample in the dataset. Using it for both train and validation. Use this only for debugging.")
+    # # Split dataset (also stratify)
+    # split = config["dataset"]["max_samples"] is None or config["dataset"]["max_samples"] > 1
+    # if split:
+    #     n_atoms_list = [dataset[i].num_nodes for i in range(len(dataset))] if config["dataset"]["stratify"] == True else None
+    #     train_dataset, val_dataset = train_test_split(
+    #         dataset, 
+    #         train_size=config["dataset"]["train_split_ratio"],
+    #         stratify=n_atoms_list,
+    #         random_state=None # Dataset already shuffled (paths)
+    #         )
+    #     print(f"Dataset splitted in {len(train_dataset)} training samples and {len(val_dataset)} validation samples.")
+    # else:
+    #     train_dataset = dataset
+    #     val_dataset = dataset
+    #     print("There is just 1 sample in the dataset. Using it for both train and validation. Use this only for debugging.")
     
     # Keep all the dataset in memory
     keep_in_memory = trainer_config.get("keep_in_memory", False)
