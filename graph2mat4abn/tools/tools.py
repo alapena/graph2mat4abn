@@ -206,7 +206,7 @@ def get_scheduler_args_and_kwargs(config, verbose=False):
     return args, kwargs
 
 
-def load_model(model, optimizer, path, lr_scheduler=None, device="cpu"):
+def load_model(model, optimizer, path, lr_scheduler=None, initial_lr=None, device="cpu"):
     path = Path(path)
 
     checkpoint = torch.load(path, weights_only=True, map_location=device)
@@ -215,6 +215,11 @@ def load_model(model, optimizer, path, lr_scheduler=None, device="cpu"):
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     if lr_scheduler is not None:
         lr_scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+
+    # Set the initial lr of the optimizer if specified
+    if initial_lr is not None:
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = initial_lr
 
     return model, checkpoint, optimizer, lr_scheduler
 

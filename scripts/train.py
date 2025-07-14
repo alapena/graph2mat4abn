@@ -34,7 +34,7 @@ from graph2mat4abn.modules.trainer import Trainer
 
 def main():
     # === Configuration load ===
-    config = load_config("./config_gpu0.yaml")
+    config = load_config("./config_gpu1.yaml")
     debug_mode = config.get("debug_mode", False)
     trainer_config = config["trainer"]
     dataset_config = config["dataset"]
@@ -89,7 +89,8 @@ def main():
     exclude_carbons = dataset_config.get("exclude_carbons", True)
     use_only = dataset_config.get("use_only", None)
     custom_dataset = dataset_config.get("custom_dataset", False)
-    use_previous_dataset = dataset_config.get("use_previous_dataset", False)
+    # use_previous_dataset = dataset_config.get("use_previous_dataset", False)
+    use_previous_dataset = True if config.get("trained_model_path", None) is not None else False
 
     true_dataset_folder = Path('./dataset')
     pointers_folder = Path('./dataset_nocarbon')
@@ -101,8 +102,8 @@ def main():
         x_atoms_paths = list(pointers_folder.glob('*/'))
 
     paths = []
-    # If you want no carbons
     if not use_previous_dataset:
+        # If you want no carbons
         if exclude_carbons:
         
             # Get all the structures
@@ -169,14 +170,23 @@ def main():
 
             
             # Now include some of them
-            count = 0
+            count_64 = 0
+            count_8 = 0
             for path in paths:
-                if int(Path(path.parts[1]).stem.split('_')[2]) == 64:
+                if int(Path(path.parts[1]).stem.split('_')[2]) == 64 and count_64 < 3:
                     train_paths.append(path)
                     val_paths.remove(path)
-                    count += 1
-                if count == 3:
+                    count_64 += 1
+
+                # Also move some crystalls to validation:
+                elif int(Path(path.parts[1]).stem.split('_')[2]) == 8 and count_8 < 3:
+                    train_paths.remove(path)
+                    val_paths.append(path)
+                    count_8 += 1
+
+                if count_64 >= 3 and count_8 >= 3:
                     break
+
 
     # Use previous dataset
     else:
@@ -188,7 +198,7 @@ def main():
         train_paths = [Path(path) for path in train_paths]
         val_paths = read_structures_paths(str(previous_dataset_dir / f"val_dataset.txt"))
         val_paths = [Path(path) for path in val_paths]
-        paths = train_paths # To build the base (hotfix)
+        paths = train_paths + val_paths
 
         if debug_mode:
             train_paths=[train_paths[0]]
@@ -308,7 +318,8 @@ def main():
     # Load saved model if required
     trained_model_path = config.get("trained_model_path", None)
     if trained_model_path is not None:
-        model, checkpoint, optimizer, _ = load_model(model, optimizer, trained_model_path, lr_scheduler=None, device=device)
+        initial_lr = float(optimizer_config.get("initial_lr", None))
+        model, checkpoint, optimizer, scheduler = load_model(model, optimizer, trained_model_path, lr_scheduler=scheduler, initial_lr=initial_lr, device=device)
         print(f"Loaded model in epoch {checkpoint["epoch"]} with training loss {checkpoint["train_loss"]} and validation loss {checkpoint["val_loss"]}.")
     else:
         checkpoint = None
@@ -320,10 +331,10 @@ def main():
 
     print("Creating dataset...")
     processor = MatrixDataProcessor(basis_table=table, symmetric_matrix=True, sub_point_matrix=False)
-    embeddings_configs = []
     splits = [train_paths, val_paths]
     datasets = []
     for split in splits:
+        embeddings_configs = []
         for i, path in enumerate(split):
             # Load the structure config
             file = sisl.get_sile(path / "aiida.fdf")

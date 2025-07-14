@@ -232,7 +232,6 @@ class Trainer:
 
             self.resumed_in_epochs = self.model_checkpoint["resumed_in_epochs"]
             self.resumed_in_epochs.append(-1)
-            print(self.resumed_in_epochs)
             
 
 
@@ -252,35 +251,42 @@ class Trainer:
             current_dataset_dir = current_dataset_dir / "dataset"
             current_dataset_dir.mkdir(exist_ok=True)
 
-            structures = []
+            train_structures = []
+            val_structures = []
             for data in self.train_dataset:
-                structures.append(str(data.metadata["path"]))
+                train_structures.append(str(data.metadata["path"]))
+            for data in self.val_dataset:
+                val_structures.append(str(data.metadata["path"]))
 
             # Check if the training dataset is the same as in the loaded model
+            # If first training
             if self.execution_id == 1:
-                write_structures_paths(structures, (current_dataset_dir / f"train_dataset.txt"))
+                write_structures_paths(train_structures, (current_dataset_dir / f"train_dataset.txt"))
+                write_structures_paths(val_structures, (current_dataset_dir / f"val_dataset.txt"))
+
+            # If we are loading a model
             else:
                 previous_dataset_dir = Path(*Path(self.config.get("trained_model_path")).parts[:2]) / "dataset"
-                previous_structures = read_structures_paths(str(previous_dataset_dir / f"train_dataset.txt"))
+                previous_train_structures = read_structures_paths(str(previous_dataset_dir / f"train_dataset.txt"))
+                previous_val_structures = read_structures_paths(str(previous_dataset_dir / f"val_dataset.txt"))
 
-                if set(structures) != set(previous_structures): # We use set() to compare because order does not matter
+                # Check training_dataset
+                if set(train_structures) != set(previous_train_structures): # We use set() to compare because order does not matter
                     if not self.config["debug_mode"]:
                         raise ValueError("The training dataset is different from the loaded one!")
+                    else:
+                        print("Training dataset is not the same but we are in DEBUG MODE so don't worry :).")
                 else:
                     print("Training dataset is the same as the loaded one :)")
 
-            # Check if the validation dataset is the same as in the loaded model
-            if self.execution_id == 1:
-                write_structures_paths(structures, str(current_dataset_dir / f"val_dataset.txt"))
-            else:
-                previous_structures = read_structures_paths(str(previous_dataset_dir / f"val_dataset.txt"))
-
-                if set(structures) != set(previous_structures): # We use set() to compare because order does not matter
+                # Check val_dataset
+                if set(val_structures) != set(previous_val_structures): # We use set() to compare because order does not matter
                     if not self.config["debug_mode"]:
                         raise ValueError("The validation dataset is different from the loaded one!")
+                    else:
+                        print("Validation dataset is not the same but we are in DEBUG MODE so don't worry :).")
                 else:
                     print("Validation dataset is the same as the loaded one :)")
-
 
 
         # === Training loop ===
@@ -313,7 +319,7 @@ class Trainer:
             if self.lr_scheduler is not None and self.config["scheduler"]["type"] == "CosineAnnealingWarmRestarts":
                 self.lr_scheduler.step()
             elif self.lr_scheduler is not None and self.config["scheduler"]["type"] == "ReduceLROnPlateau":
-                self.lr_scheduler.step(self.history["val_loss"][-1])
+                self.lr_scheduler.step(self.history["train_loss"][-1])
             elif self.lr_scheduler is None:
                 # Do sth here manually.
                 pass
@@ -495,15 +501,15 @@ class Trainer:
         )
 
         # Add a flag (vertical line) in each epoch where the training was resumed.
-        # for x_value in self.resumed_in_epochs:
-        #     if x_value == -1:
-        #         continue
+        for x_value in self.resumed_in_epochs:
+            if x_value == -1:
+                continue
 
-        #     fig.add_vline(
-        #         x=x_value,
-        #         line_dash="solid",
-        #         line_color="lightgray"
-        #     )
+            fig.add_vline(
+                x=x_value,
+                line_dash="solid",
+                line_color="lightgray"
+            )
         
         # Set axis titles and layout
         ylim_up = int(np.percentile(df.drop(columns=["Learning rate"]).to_numpy().flatten(), 95)) + 10
