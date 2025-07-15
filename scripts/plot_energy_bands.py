@@ -41,7 +41,7 @@ def main():
     check_existing_plots = True
 
     # * Write here the directory where the model is stored
-    directory = Path("results/hamiltonian_2") 
+    directory = Path("results/h_crystalls_1") 
     # * And the model name
     filename = "train_best_model.tar"
     # * Set the (max) number of each structure type that you want to plot

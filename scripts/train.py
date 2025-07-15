@@ -34,7 +34,7 @@ from graph2mat4abn.modules.trainer import Trainer
 
 def main():
     # === Configuration load ===
-    config = load_config("./config_gpu1.yaml")
+    config = load_config("./config_gpu0.yaml")
     debug_mode = config.get("debug_mode", False)
     trainer_config = config["trainer"]
     dataset_config = config["dataset"]
@@ -445,7 +445,6 @@ def main():
 
 
     # === Start training ===
-    # TODO: This message shows pool_size instead of dataset length. 
     print(f"\nTRAINING STARTS with {len(train_dataset)} train samples and {len(val_dataset)} validation samples.")
     print(f"Using device: {device}")
 

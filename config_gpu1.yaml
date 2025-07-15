@@ -100,7 +100,7 @@ scheduler:
 
 trainer:
   batch_size: 120
-  checkpoint_freq: 200
+  checkpoint_freq: 500
 
   live_plot: true
   live_plot_freq: 1
