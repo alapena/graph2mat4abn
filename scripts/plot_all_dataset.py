@@ -1,10 +1,6 @@
 # === Simulate a proper Python package (temporal, I did not want to waste time on installing things) ===
 import sys
 from pathlib import Path
-
-import sisl
-from tools.debug import create_sparse_matrix
-from tools.plot import plot_dataset_results
 # Add the root directory to Python path
 root_dir = Path(__file__).parent.parent  # Assuming train.py is in scripts/
 sys.path.append(str(root_dir))
@@ -17,6 +13,9 @@ from tools.tools import get_basis_from_structures_paths, load_model
 from torch_geometric.loader import DataLoader
 from tqdm import tqdm
 import warnings
+import sisl
+from tools.debug import create_sparse_matrix
+from tools.plot import plot_dataset_results
 
 from graph2mat import (
     BasisTableWithEdges,
@@ -122,18 +121,17 @@ def main():
             n_atoms = h_pred.shape[0] // n_orbs
             cols = h_pred.shape[1]
 
-            # Store data to plot
-            # if i == 0:
             true_matrices[k].append(h_true.todense())
             pred_matrices[k].append(h_pred.todense())
-            # elif i == 1:
-            #     true_matrices[k] = np.stack(true_matrices[k], h_true.todense())
-            #     pred_matrices[k] = np.stack(pred_matrices[k], h_pred.todense())
-            # else:
-            #     true_matrices[k] = np.concatenate(true_matrices[k], h_true.todense())
-            #     pred_matrices[k] = np.concatenate(pred_matrices[k], h_pred.todense())
 
-            # Compute labels.
+
+
+    # Compute labels.
+    print("NOW COMPUTING LABELS")
+    for k, dataset in enumerate(splits):
+        print(f"Computing split {k}...")
+        for i, data in tqdm(enumerate(dataset)):
+
             # Orbitals incoming (cols) and shift indices
             orb_in = np.empty([n_atoms*n_orbs,cols], dtype='<U10')
             isc = np.empty([n_atoms*n_orbs,cols], dtype='<U10')
@@ -157,12 +155,7 @@ def main():
                 labels = np.char.add(labels, characters[j+1])
 
             # Store the labels 
-            # if i == 0:
             split_labels[k].append(labels)
-            # elif i == 1:
-            #     split_labels[k] = np.stack(split_labels[k], labels)
-            # else:
-            #     split_labels[k] = np.concatenate(split_labels[k], labels)
             
             
 
@@ -192,8 +185,6 @@ def main():
     maxaes = ([maxae_train, maxae_val])
     maxaes_labels = ([path.parts[-2][14:] +"/"+ path.parts[-1] for path in train_paths], [path.parts[-2][14:] +"/"+ path.parts[-1] for path in val_paths])
 
-    n_train_samples = len(train_paths)
-    n_val_samples = len(val_paths)
     colors = [
         '#1f77b4',  # muted blue
         '#ff7f0e',  # safety orange

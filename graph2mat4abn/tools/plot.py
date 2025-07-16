@@ -126,7 +126,7 @@ def plot_error_matrices_big(true_matrix, predicted_matrix, matrix_label=None, fi
         if filepath.suffix.lower() == ".html":
             fig.write_html(str(filepath))
         elif filepath.suffix.lower() == ".png":
-            fig.write_image(str(filepath))
+            fig.write_image(str(filepath), height=1200, width=900,)
         else:
             raise ValueError(f"Unsupported file extension: {filepath.suffix}")
         

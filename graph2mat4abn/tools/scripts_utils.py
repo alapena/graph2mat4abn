@@ -30,13 +30,13 @@ def get_model_dataset(model_dir, verbose=False):
 
 
 
-def generate_g2m_dataset_from_paths(config, basis, table, train_paths, val_paths, device="cpu", verbose=False):
+def generate_g2m_dataset_from_paths(config, basis, table, train_paths, val_paths=None, device="cpu", verbose=False):
     print("Generating dataset...") if verbose else None
 
     trainer_config = config["trainer"]
     processor = MatrixDataProcessor(basis_table=table, symmetric_matrix=True, sub_point_matrix=False)
 
-    splits = [train_paths, val_paths]
+    splits = [train_paths, val_paths] if val_paths is not None else [train_paths]
     datasets = []
     for j, split in enumerate(splits):
         print(f"Generating split {j}...") if verbose else None
@@ -95,7 +95,7 @@ def generate_g2m_dataset_from_paths(config, basis, table, train_paths, val_paths
         datasets.append(TorchBasisMatrixDataset(embeddings_configs, data_processor=processor))
 
     train_dataset = datasets[0]
-    val_dataset = datasets[1]
+    val_dataset = datasets[1] if val_paths is not None else None
 
     # Keep all the dataset in memory
     keep_in_memory = trainer_config.get("keep_in_memory", False)
@@ -104,13 +104,16 @@ def generate_g2m_dataset_from_paths(config, basis, table, train_paths, val_paths
     if keep_in_memory:
         print("Keeping all the dataset in memory.")
         train_dataset = InMemoryData(train_dataset)
-        val_dataset = InMemoryData(val_dataset)
+        val_dataset = InMemoryData(val_dataset) if val_paths is not None else None
     elif rotating_pool:
         print("Using rotating pool for the dataset.")
         train_dataset = RotatingPoolData(train_dataset, pool_size=rotating_pool_size)
-        val_dataset = RotatingPoolData(val_dataset, pool_size=rotating_pool_size)
+        val_dataset = RotatingPoolData(val_dataset, pool_size=rotating_pool_size) if val_paths is not None else None
 
-    return train_dataset, val_dataset, processor
+    if val_paths is not None:
+        return train_dataset, val_dataset, processor
+    else:
+        return train_dataset, processor
 
 
 
