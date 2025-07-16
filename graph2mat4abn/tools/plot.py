@@ -80,8 +80,10 @@ def plot_error_matrices_big(true_matrix, predicted_matrix, matrix_label=None, fi
     max_absolute_error = np.max(absolute_error_matrix)
     min_absolute_error = np.min(absolute_error_matrix)
     max_abs = np.max(np.absolute([max_absolute_error, min_absolute_error]))
+    mean = np.mean(absolute_error_matrix)
+    std = np.std(absolute_error_matrix)
     fig.add_annotation(
-        text=f"max = {max_absolute_error:.2f} eV,  min = {min_absolute_error:.2f} eV,  |max| = {max_abs:.2f} eV",
+        text=f"max = {max_absolute_error:.2f} eV,  min = {min_absolute_error:.2f} eV,  |max| = {max_abs:.2f} eV,  mean = {mean:.2e}, std = {std:.2e}",
         xref='x3 domain', yref='y3 domain',
         x=0.5, y=-0.12,
         showarrow=False,
@@ -243,8 +245,11 @@ def plot_error_matrices_small(true_matrix, predicted_matrix, matrix_label=None, 
     # Absolute error stats
     max_absolute_error = np.max(absolute_error_matrix)
     min_absolute_error = np.min(absolute_error_matrix)
+    max_abs = np.max(np.absolute([max_absolute_error, min_absolute_error]))
+    mean = np.mean(absolute_error_matrix)
+    std = np.std(absolute_error_matrix)
     fig.add_annotation(
-        text=f"max = {max_absolute_error:.2f} eV, min = {min_absolute_error:.2f} eV",
+        text=f"max = {max_absolute_error:.2f} eV,  min = {min_absolute_error:.2f} eV,  |max| = {max_abs:.2f} eV,  mean = {mean:.2e}, std = {std:.2e}",
         xref='x3 domain', yref='y3 domain',
         x=0.5, y=-0.07,
         showarrow=False,

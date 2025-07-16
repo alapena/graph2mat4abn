@@ -1,7 +1,7 @@
 debug_mode: false
 device: "cuda:0"
-results_dir: "./results/h_noc_2"
-trained_model_path: "./results/h_noc_1/checkpoints/model_epoch_14000.tar"
+results_dir: "./results/h_noc_3"
+trained_model_path: "./results/h_noc_2/checkpoints/model_epoch_22000.tar"
 dataset:
   train_split_ratio: 0.90
   # test_split_ratio: 0.50
@@ -62,7 +62,7 @@ scheduler:
   args:
   kwargs:
     mode: 'min'
-    factor: 0.1 
+    factor: 0.5 
     patience: 20
     cooldown: 0
     min_lr: 0

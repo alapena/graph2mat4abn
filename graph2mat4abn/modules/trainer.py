@@ -278,6 +278,7 @@ class Trainer:
                         print("Training dataset is not the same but we are in DEBUG MODE so don't worry :).")
                 else:
                     print("Training dataset is the same as the loaded one :)")
+                    write_structures_paths(train_structures, (current_dataset_dir / f"train_dataset.txt"))
 
                 # Check val_dataset
                 if set(val_structures) != set(previous_val_structures): # We use set() to compare because order does not matter
@@ -287,6 +288,7 @@ class Trainer:
                         print("Validation dataset is not the same but we are in DEBUG MODE so don't worry :).")
                 else:
                     print("Validation dataset is the same as the loaded one :)")
+                    write_structures_paths(val_structures, (current_dataset_dir / f"val_dataset.txt"))
 
 
         # === Training loop ===
@@ -612,17 +614,26 @@ class Trainer:
                 title = f"Results of sample {j} of {dataloader_type} dataset (seed {self.config["dataset"]["seed"]}). There are {n_atoms} in the unit cell."
                 predicted_matrix_text = f"Saved training loss at epoch {epoch}:     {self.history["train_loss"][-1]:.2f} eV²\nMSE evaluation:     {loss.item():.2f} eV²" if dataloader_type == "training" else f"Saved training loss at epoch {epoch}:     {self.history["val_loss"][-1]:.2f} eV²\nMSE evaluation:     {loss.item():.2f} eV²"
                 if self.config["trainer"]["matrix"] == "hamiltonian" or self.config["trainer"]["matrix"] == "overlap":
-                    plot_error_matrices_big(
-                        true_matrix, pred_matrix,
-                        matrix_label="Hamiltonian",
-                        figure_title=title,
-                        predicted_matrix_text=predicted_matrix_text,
-                        filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{epoch}.html")
-                    )
-                elif self.config["trainer"]["matrix"] == "overlap":
+                    if n_atoms <= 32:
+                        plot_error_matrices_big(
+                            true_matrix, pred_matrix,
+                            matrix_label=self.config["trainer"]["matrix"],
+                            figure_title=title,
+                            predicted_matrix_text=predicted_matrix_text,
+                            filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{epoch}.html")
+                        )
+                    else:
+                        plot_error_matrices_big(
+                            true_matrix, pred_matrix,
+                            matrix_label=self.config["trainer"]["matrix"],
+                            figure_title=title,
+                            predicted_matrix_text=predicted_matrix_text,
+                            filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{epoch}.png")
+                        )
+                elif self.config["trainer"]["matrix"] == "tim":
                     plot_error_matrices_small(
                         true_matrix, pred_matrix,
-                        matrix_label="Hamiltonian",
+                        matrix_label="Transfer Integral Matrix",
                         figure_title=title,
                         predicted_matrix_text=predicted_matrix_text,
                         filepath = Path(results_directory / f"{dataloader_type}_{n_atoms}atoms_sample{j}_epoch{epoch}.html")
