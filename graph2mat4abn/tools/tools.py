@@ -291,5 +291,9 @@ def write_structures_paths(structures_paths, filepath):
         f.write("\n".join(structures_paths))
 
 def read_structures_paths(filepath):
-    with open(filepath, "r") as f:
-        return f.read().splitlines()
+    try:
+        with open(filepath, "r") as f:
+            return f.read().splitlines()
+    except FileNotFoundError:
+        print(f"File not found: {filepath}")
+        return None

@@ -34,7 +34,7 @@ from graph2mat4abn.modules.trainer import Trainer
 
 def main():
     # === Configuration load ===
-    config = load_config("./config_gpu0.yaml")
+    config = load_config("./config_gpu1.yaml")
     debug_mode = config.get("debug_mode", False)
     trainer_config = config["trainer"]
     dataset_config = config["dataset"]
@@ -86,6 +86,7 @@ def main():
     # paths = flatten(paths)
 
     # === List of paths to all desired structures ===
+    extra_custom_validation = dataset_config.get("extra_custom_validation", False)
     exclude_carbons = dataset_config.get("exclude_carbons", True)
     use_only = dataset_config.get("use_only", None)
     custom_dataset = dataset_config.get("custom_dataset", False)
@@ -160,33 +161,46 @@ def main():
 
         # Custom training dataset
         else:
-            # In this case, we want to train with only crystals, including also some amorphous. Thus, we need to 1. exclude B-B and N-N bonds and 2. exclude 64 atms.
-            # First one is difficult. Second is easy.
-
-            # Exclude 64 atm:
-            # // x_atoms_paths = [Path('/'.join(path.parts[:-1])) for path in paths]
-            train_paths = [path for path in paths if int(Path(path.parts[1]).stem.split('_')[2]) != 64] # Define here the amorphous structures
-            val_paths = [path for path in paths if path not in train_paths]
-
+            pass
+            # Train only on crystalls. This is, just 2, 8 atoms structures. At this point, the paths variable already has only these structures.
+            # Stratify
+            # x_atoms_list = [int(Path(p.parts[1]).stem.split('_')[2]) for p in paths] if config["dataset"]["stratify"] == True else None
+            # train_paths, val_paths = train_test_split(
+            #     paths, 
+            #     train_size=config["dataset"]["train_split_ratio"],
+            #     stratify=x_atoms_list,
+            #     random_state=None # Dataset already shuffled (paths)
+            #     )
             
-            # Now include some of them
-            count_64 = 0
-            count_8 = 0
-            for path in paths:
-                if int(Path(path.parts[1]).stem.split('_')[2]) == 64 and count_64 < 3:
-                    train_paths.append(path)
-                    val_paths.remove(path)
-                    count_64 += 1
+            # Now, take out of the training dataset the structure of standard hBN
 
-                # Also move some crystalls to validation:
-                elif int(Path(path.parts[1]).stem.split('_')[2]) == 8 and count_8 < 3:
-                    train_paths.remove(path)
-                    val_paths.append(path)
-                    count_8 += 1
 
-                if count_64 >= 3 and count_8 >= 3:
-                    break
+            # print(f"Dataset splitted in {len(train_paths)} training paths and {len(val_paths)} validation paths.")
 
+            # # Test the stratification.
+            # unique_x = [int(Path(p).stem.split('_')[2]) for p in unique_x_atoms]
+            # x_atoms_list_train = [int(Path(p.parts[1]).stem.split('_')[2]) for p in train_paths]
+            # x_atoms_list_val = [int(Path(p.parts[1]).stem.split('_')[2]) for p in val_paths]
+            # print(f"They are stratified: {[x_atoms_list_train.count(x) for x in unique_x]} versus {[x_atoms_list_val.count(x) for x in unique_x]}.")
+            # print(f"The proportions are \n{[x_atoms_list_train.count(x)/len(train_paths) for x in unique_x]} versus \n{[x_atoms_list_val.count(x)/len(val_paths) for x in unique_x]}.")
+
+        # Set extra validation curve
+            val_paths_extra = []
+            if extra_custom_validation:
+                use_only = ["64_ATOMS"]
+                x_atoms_paths = [pointers_folder / f"SHARE_OUTPUTS_{n}" for n in use_only]
+                filepath = "structures.txt"
+                structures_paths = [[] for _ in x_atoms_paths]
+                for i, x_atoms_path in enumerate(x_atoms_paths):
+                    structures = read_structures_paths(str(x_atoms_path / filepath))
+                    for structure in structures:
+                        structures_paths[i].append(x_atoms_path.parts[-1] +"/"+ structure)
+
+                # Now we join them with the true parent folder
+                for structures in structures_paths:
+                    for structure in structures:
+                        true_path = true_dataset_folder / structure
+                        val_paths_extra.append(true_path)
 
     # Use previous dataset
     else:
@@ -200,9 +214,15 @@ def main():
         val_paths = [Path(path) for path in val_paths]
         paths = train_paths + val_paths
 
+        val_paths_extra = read_structures_paths(str(previous_dataset_dir / f"val_dataset_extra.txt")) if extra_custom_validation else None
+        val_paths_extra = [Path(path) for path in val_paths_extra] if extra_custom_validation else None
+
         if debug_mode:
             train_paths=[train_paths[0]]
             val_paths=[val_paths[0]]
+
+
+    
 
 
 
@@ -331,7 +351,7 @@ def main():
 
     print("Creating dataset...")
     processor = MatrixDataProcessor(basis_table=table, symmetric_matrix=True, sub_point_matrix=False)
-    splits = [train_paths, val_paths]
+    splits = [train_paths, val_paths] if not extra_custom_validation else [train_paths, val_paths, val_paths_extra]
     datasets = []
     for split in splits:
         embeddings_configs = []
@@ -390,6 +410,8 @@ def main():
 
     train_dataset = datasets[0]
     val_dataset = datasets[1]
+    if extra_custom_validation:
+        val_dataset_extra = datasets[2]
 
     # # Split dataset (also stratify)
     # split = config["dataset"]["max_samples"] is None or config["dataset"]["max_samples"] > 1
@@ -415,10 +437,12 @@ def main():
         print("Keeping all the dataset in memory.")
         train_dataset = InMemoryData(train_dataset)
         val_dataset = InMemoryData(val_dataset)
+        val_dataset_extra = InMemoryData(val_dataset_extra) if extra_custom_validation else None
     elif rotating_pool:
         print("Using rotating pool for the dataset.")
         train_dataset = RotatingPoolData(train_dataset, pool_size=rotating_pool_size)
         val_dataset = RotatingPoolData(val_dataset, pool_size=rotating_pool_size)
+        val_dataset_extra = RotatingPoolData(val_dataset_extra, pool_size=rotating_pool_size) if extra_custom_validation else None
 
         
     # Trainer
@@ -427,6 +451,7 @@ def main():
         config = config,
         train_dataset = train_dataset,
         val_dataset = val_dataset,
+        val_dataset_extra = val_dataset_extra,
         loss_fn = loss_fn,
         optimizer = optimizer,
         device = device,

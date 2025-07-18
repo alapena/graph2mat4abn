@@ -474,7 +474,7 @@ def plot_predictions_vs_truths(predictions, truths, series_names=None,
 
 def plot_dataset_results(
         train_data, val_data,
-        colors,
+        colors, title,
         train_labels, val_labels,
         train_means, val_means,
         train_stds, val_stds,
@@ -485,15 +485,22 @@ def plot_dataset_results(
     n_train_samples = len(train_data[0])
     n_val_samples = len(val_data[0])
 
+    train_data = [[train_data[k][i].data for i in range(n_train_samples)] for k in range(len(train_data))]
+    val_data = [[val_data[k][i].data for i in range(n_val_samples)] for k in range(len(val_data))]
+    
+
     # ====== TRAINING DATA ======
     matrix_traces = []
     mean_traces = []
     std_traces = []
     for i in range(n_train_samples):
         # Training matrix elements
+        # print("It", i)
+        # print("True=",train_data[0][i])
+        # print("Pred=",train_data[1][i])
         trace = go.Scatter(
-            x=np.array(train_data[0][i]).reshape(-1),
-            y=np.array(train_data[1][i]).reshape(-1),
+            x=train_data[0][i],
+            y=train_data[1][i],
             mode='markers',
             marker=dict(
                 # symbol='dash',
@@ -502,7 +509,7 @@ def plot_dataset_results(
                 line=dict(width=0)
             ),
             name=f'Training sample {i}',
-            text=train_labels[i].reshape(-1),
+            text=train_labels[i],
             # hovertemplate='True: %{x:.2f}<br>Pred: %{y:.2f}<br>%{text}',
             legendgroup='training',
             # legendgrouptitle="Training samples",
@@ -553,8 +560,8 @@ def plot_dataset_results(
     # === Validation ===
     for i in range(n_val_samples):
         trace = go.Scatter(
-            x=np.array(val_data[0][i]).reshape(-1),
-            y=np.array(val_data[1][i]).reshape(-1),
+            x=val_data[0][i],
+            y=val_data[1][i],
             mode='markers',
             marker=dict(
                 symbol='circle-open',
@@ -563,7 +570,7 @@ def plot_dataset_results(
                 line=dict(width=1,)
             ),
             name=f'Validation sample {i}',
-            text=val_labels[i].reshape(-1),
+            text=val_labels[i],
             # hovertemplate='True: %{x:.2f}<br>Pred: %{y:.2f}<br>%{text}',
             legendgroup='validation',
             # legendgrouptitle="Validation samples",
@@ -614,7 +621,9 @@ def plot_dataset_results(
 
 
     # Add identity line
-    min, max = np.min(train_data[0]), np.max(train_data[0])
+    train_flattened_data = ([np.min(train_data[0][i]) for i in range(n_train_samples)], [np.max(train_data[0][i]) for i in range(n_val_samples)]) # [train, val]
+    train_flattened_data = [train_flattened_data[k] for k in range(len(train_flattened_data))]
+    min, max = np.min(train_flattened_data), np.max(train_flattened_data)
     diagonal_trace = go.Scatter(
         x=[min, max],
         y=[min, max],
@@ -670,7 +679,7 @@ def plot_dataset_results(
     fig.update_layout(
         width=1000,
         height=1000,
-        title='Dataset analysis',
+        title=title,
         # xaxis_title='True Values',
         # yaxis_title='Predicted Values',
         legend_title='Legend',
@@ -687,8 +696,8 @@ def plot_dataset_results(
     )
 
     # Add dropdown
-    data_true = np.concatenate([train_data[0], val_data[0]])
-    data_pred = np.concatenate([train_data[1], val_data[1]])
+    data_true = np.concatenate(train_data[0] + val_data[0], axis=0)
+    data_pred = np.concatenate(train_data[1] + val_data[1], axis=0)
     min_x_data = data_true.min()
     max_x_data = data_true.max()
     min_y_data = data_pred.min()
@@ -763,7 +772,7 @@ def plot_dataset_results(
                 direction="down",
                 pad={"r": 10, "t": 10},
                 showactive=True,
-                x=0.2,
+                x=0.3,
                 xanchor="left",
                 y=1.1,
                 yanchor="top"
@@ -773,6 +782,14 @@ def plot_dataset_results(
 
     # Save to HTML if path is provided
     if filepath:
-        fig.write_html(filepath)
+        f = open(filepath, "w")
+        f.close()
+        with open(filepath, 'a') as f:
+            f.write(fig.to_html(full_html=False, include_plotlyjs='cdn'))
+        f.close()
+        
+        with open(f"{str(filepath)[:-4]}.json", "w") as f:
+            f.write(fig.to_json())
+
     
     return fig

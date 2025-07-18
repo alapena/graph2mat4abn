@@ -1,9 +1,9 @@
 debug_mode: false
 device: "cuda:1"
-results_dir: "./results/h_crystalls_1"
-trained_model_path: "./results/h_crystalls_1/checkpoints/model_epoch_1800.tar"
+results_dir: "./results/h_crystalls_2"
+trained_model_path: "./results/h_crystalls_2/val_best_model.tar"
 dataset:
-  train_split_ratio: 0.90
+  train_split_ratio: 0.80
   # test_split_ratio: 0.50
   stratify: true # set to false if max_samples < 200
   # max_samples: null
@@ -11,9 +11,10 @@ dataset:
   num_unique_z: 2 # Fasten the basis calculation
 
   # use_previous_dataset: true # Automatically to true if trained_model_path is not null
-  # use_only: null # Write dataset subfolders suffix. E.g. ["64_ATOMS"]
+  use_only: ["2_ATOMS", "8_ATOMS"] # Write dataset subfolders suffix. E.g. ["64_ATOMS"]
   exclude_carbons: true
-  custom_dataset: true
+  custom_dataset: false
+  extra_custom_validation: true
 
 orbitals:
   1: 13
@@ -55,7 +56,7 @@ model:
 optimizer:
   lr: 1e-3 # Useless when loading a model.
   # weight_decay: 1e-4
-  initial_lr: 1e-2 # Force an initial lr in the scheduler when loading a model.
+  initial_lr: 1e-3 # Force an initial lr in the scheduler when loading a model.
 
 scheduler:
   type: ReduceLROnPlateau
@@ -63,9 +64,9 @@ scheduler:
   kwargs:
     mode: 'min'
     factor: 0.5 
-    patience: 20
+    patience: 30
     cooldown: 0
-    min_lr: 0
+    min_lr: 0.000000000000001
     eps: 0
 
 

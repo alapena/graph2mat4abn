@@ -1,7 +1,7 @@
 debug_mode: false
 device: "cuda:0"
-results_dir: "./results/h_noc_3"
-trained_model_path: "./results/h_noc_2/checkpoints/model_epoch_22000.tar"
+results_dir: "./results/h_noc_5"
+trained_model_path: "./results/h_noc_4/train_best_model.tar"
 dataset:
   train_split_ratio: 0.90
   # test_split_ratio: 0.50
@@ -14,6 +14,7 @@ dataset:
   # use_only: null # Write dataset subfolders suffix. E.g. ["64_ATOMS"]
   exclude_carbons: true
   custom_dataset: false
+  extra_custom_validation: false
 
 orbitals:
   1: 13
@@ -55,7 +56,7 @@ model:
 optimizer:
   lr: 1e-3
   # weight_decay: 1e-4
-  initial_lr: 1e-3 # Force an initial lr in the scheduler when loading a model.
+  initial_lr: 1e-2 # Force an initial lr in the scheduler when loading a model.
 
 scheduler:
   type: ReduceLROnPlateau
@@ -63,9 +64,9 @@ scheduler:
   kwargs:
     mode: 'min'
     factor: 0.5 
-    patience: 20
+    patience: 30
     cooldown: 0
-    min_lr: 0
+    min_lr: 1e-15
     eps: 0
 
 
