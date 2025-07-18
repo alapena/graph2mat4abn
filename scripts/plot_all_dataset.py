@@ -29,7 +29,7 @@ def main():
     # *********************************** #
     model_dir = Path("results/h_crystalls_1") # Results directory
     filename = "train_best_model.tar" # Model name (or relative path to the results directory)
-    compute_calculations = True # Save or Load calculations.
+    compute_calculations = False # Save or Load calculations.
 
     # *********************************** #
 
@@ -189,8 +189,10 @@ def main():
         print("Calculations saved!")
 
     # Load the results
+    print("Loading the results...")
     try:
         data = load(calculations_path)
+        print("Results loaded!")
     except FileNotFoundError:
         raise FileNotFoundError(f"Could not find the saved calculations at {calculations_path}")
 

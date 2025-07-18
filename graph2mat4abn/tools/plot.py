@@ -623,6 +623,8 @@ def plot_dataset_results(
     # Add identity line
     train_flattened_data = ([np.min(train_data[0][i]) for i in range(n_train_samples)], [np.max(train_data[0][i]) for i in range(n_val_samples)]) # [train, val]
     train_flattened_data = [train_flattened_data[k] for k in range(len(train_flattened_data))]
+    print(train_flattened_data)
+    print(train_flattened_data)
     min, max = np.min(train_flattened_data), np.max(train_flattened_data)
     diagonal_trace = go.Scatter(
         x=[min, max],

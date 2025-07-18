@@ -45,21 +45,9 @@ def main():
     # *********************************** #
     # * VARIABLES TO CHANGE BY THE USER * #
     # *********************************** #
-    paths = [
-        # "./dataset/SHARE_OUTPUTS_2_ATOMS/c924-ac64-4837-a960-ff786d6c6836",
-        # "./dataset/SHARE_OUTPUTS_2_ATOMS/db65-6186-4188-b955-0dca4cd7daa1",
-        # "./dataset/SHARE_OUTPUTS_2_ATOMS/4130-44f6-445e-8a26-4f6afcdd73ea",
-        # "./dataset/SHARE_OUTPUTS_2_ATOMS/c185-8b61-445e-8068-be370e3617c6",
-        # "./dataset/SHARE_OUTPUTS_8_ATOMS/bca3-f473-4c5e-8407-cbdc2d7c68a1",
-        # "./dataset/SHARE_OUTPUTS_8_ATOMS/848a-19bd-414b-9ef2-40f39b1e2027",
-        # "./dataset/SHARE_OUTPUTS_8_ATOMS/7651-acf9-490f-81d6-a8a9d1c2de76",
-        "./dataset/SHARE_OUTPUTS_64_ATOMS/dcd8-ab99-4e8b-81ba-401f6739412e",
-        "./dataset/SHARE_OUTPUTS_64_ATOMS/348a-4ea5-4c95-8d6b-7d32485b3156",
-        "./dataset/SHARE_OUTPUTS_64_ATOMS/342f-eb3b-4268-820f-747c3936102b",
-    ]
     model_dir = Path("results/h_crystalls_1") # Results directory
     filename = "train_best_model.tar" # Model name (or relative path to the results directory)
-    compute_calculations = True # Save or Load calculations.
+    compute_calculations = False # Save or Load calculations.
 
     # *********************************** #
 
