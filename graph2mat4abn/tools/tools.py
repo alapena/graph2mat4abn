@@ -70,6 +70,7 @@ def get_basis_from_structures_paths(paths, verbose=False, num_unique_z=None):
     # Look for all atom types in your list of structures
     iterator = tqdm(enumerate(paths)) if verbose else enumerate(paths)
     for i, path in iterator:
+        path = Path(path)
         if num_unique_z is not None and len(unique_atom_types) == num_unique_z:
             print("Found enough basis points. Breaking the search...")
             break
@@ -205,7 +206,7 @@ def get_scheduler_args_and_kwargs(config, verbose=False):
     return args, kwargs
 
 
-def load_model(model, optimizer, path, lr_scheduler=None, device="cpu"):
+def load_model(model, optimizer, path, lr_scheduler=None, initial_lr=None, device="cpu"):
     path = Path(path)
 
     checkpoint = torch.load(path, weights_only=True, map_location=device)
@@ -214,6 +215,11 @@ def load_model(model, optimizer, path, lr_scheduler=None, device="cpu"):
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     if lr_scheduler is not None:
         lr_scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+
+    # Set the initial lr of the optimizer if specified
+    if initial_lr is not None:
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = initial_lr
 
     return model, checkpoint, optimizer, lr_scheduler
 
@@ -285,5 +291,9 @@ def write_structures_paths(structures_paths, filepath):
         f.write("\n".join(structures_paths))
 
 def read_structures_paths(filepath):
-    with open(filepath, "r") as f:
-        return f.read().splitlines()
+    try:
+        with open(filepath, "r") as f:
+            return f.read().splitlines()
+    except FileNotFoundError:
+        print(f"File not found: {filepath}")
+        return None

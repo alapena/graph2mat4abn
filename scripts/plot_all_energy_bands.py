@@ -1,6 +1,10 @@
 # === Simulate a proper Python package (temporal, I did not want to waste time on installing things) ===
 import sys
 from pathlib import Path
+import warnings
+
+from tools.debug import create_sparse_matrix
+from tools.scripts_utils import generate_g2m_dataset_from_paths, get_model_dataset, init_mace_g2m_model
 # Add the root directory to Python path
 root_dir = Path(__file__).parent.parent  # Assuming train.py is in scripts/
 sys.path.append(str(root_dir))
@@ -37,197 +41,77 @@ from graph2mat4abn.tools.import_utils import get_object_from_module
 
 def main():
 
-    debug_mode = False # Set all values to min so that the exec time is fastest
-    check_existing_plots = True
+    debug_mode = False
+    # *********************************** #
+    # * VARIABLES TO CHANGE BY THE USER * #
+    # *********************************** #
+    model_dir = Path("results/h_crystalls_1") # Results directory
+    filename = "train_best_model.tar" # Model name (or relative path to the results directory)
+    compute_calculations = False # Save or Load calculations.
 
-    # * Write here the directory where the model is stored
-    directory = Path("results/h_crystalls_1") 
-    # * And the model name
-    filename = "train_best_model.tar"
-    # * Set the (max) number of each structure type that you want to plot
-    n = 3
-    # * Set the max number of energy bands you want in each plot
-    n_bands = None
+    # *********************************** #
 
+    # Hide some warnings
+    warnings.filterwarnings("ignore", message="The TorchScript type system doesn't support")
+    warnings.filterwarnings("ignore", message=".*is not a known matrix type key.*")
+    if debug_mode:
+        print("**************************************************")
+        print("*                                                *")
+        print("*              DEBUG MODE ACTIVATED              *")
+        print("*                                                *")
+        print("**************************************************")
 
-    n_plots_each = {
-        2: n,
-        3: n,
-        8: n,
-        32: n,
-        64: n,
-    }
+    savedir = model_dir / "results"
+    savedir.mkdir(exist_ok=True, parents=True)
+    calculations_path = savedir / "calculations_energybands.joblib"
 
-    # === Configuration load ===
-    # device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
-    device=torch.device("cpu")
-    print(f"Loading model {directory / filename}...")
+    # Load the config of the model
+    config = load_config(model_dir / "config.yaml")
+    device = torch.device("cpu")
 
-
-    config = load_config(directory / "config.yaml")
-
-    # === List of paths to all structures ===
-    parent_path = Path('./dataset')
-    n_atoms_paths = list(parent_path.glob('*/'))
-    paths = []
-    for n_atoms_path in n_atoms_paths:
-        structure_paths = list(n_atoms_path.glob('*/'))
-        paths.append(structure_paths)
-    paths = flatten(paths)
+    # Load the same dataset used to train/validate the model (paths)
+    train_paths, val_paths = get_model_dataset(model_dir, verbose=True)
     
-    random.seed(config["dataset"]["seed"])
-    random.shuffle(paths)
-
-
-
-    # == Basis creation === 
-    basis = get_basis_from_structures_paths(paths, verbose=False, num_unique_z=config["dataset"].get("num_unique_z", None))
-    table = BasisTableWithEdges(basis)
-
-
-
-    # === Dataset creation ===
-    config["dataset"]["max_samples"] = 1 if debug_mode else config["dataset"]["max_samples"]
-    processor = MatrixDataProcessor(basis_table=table, symmetric_matrix=True, sub_point_matrix=False)
-    embeddings_configs = []
-    for i, path in enumerate(paths):
-
-        # We need to keep track of the training/val splits, so we can't plot more than used for training (at least for training dataset)
-        if i==config["dataset"]["max_samples"]:
-            break
-        
-        print(f"Processing structure {i+1} of {len(paths)}...")
-
-        # Load the structure config
-        file = sisl.get_sile(path / "aiida.fdf")
-        file_h = sisl.get_sile(path / "aiida.HSX")
-        geometry = file.read_geometry()
-
-        # Load the true hamiltonian
-        true_h = file_h.read_hamiltonian()
-
-        embeddings_config = BasisConfiguration.from_matrix(
-            matrix = true_h,
-            geometry = geometry,
-            labels = True,
-            metadata={
-                "atom_types": torch.from_numpy(geometry.atoms.Z), # Unlike point_types, this is not rescaled.
-                "path": path,
-            },
-        )
-
-        embeddings_configs.append(embeddings_config)
-
-    dataset = TorchBasisMatrixDataset(embeddings_configs, data_processor=processor)
-
-    # Split and stratify
-    n_atoms_list = [dataset[i].num_nodes for i in range(len(dataset))] if config["dataset"]["stratify"] == True else None
-    if not debug_mode:
-        train_dataset, val_dataset = train_test_split(
-            dataset, 
-            train_size=config["dataset"]["train_split_ratio"],
-            stratify=n_atoms_list,
-            random_state=None # Dataset already shuffled (paths)
-        )
-    else:
-        train_dataset = dataset
-        val_dataset = dataset
-
-    print("Initializing model...")
-
-    # === Model init ===
-    env_config = config["environment_representation"]
-    num_interactions = env_config["num_interactions"]
-    hidden_irreps = o3.Irreps(env_config["hidden_irreps"])
-    mace_descriptor = MACE(
-        r_max=env_config["r_max"],
-        num_bessel=env_config["num_bessel"],
-        num_polynomial_cutoff=env_config["num_polynomial_cutoff"],
-        max_ell=env_config["max_ell"],
-        interaction_cls=RealAgnosticResidualInteractionBlock,
-        interaction_cls_first=RealAgnosticResidualInteractionBlock,
-        num_interactions=num_interactions,
-        num_elements=env_config["num_elements"],
-        hidden_irreps=hidden_irreps,
-        MLP_irreps=o3.Irreps(env_config["MLP_irreps"]),
-        atomic_energies=torch.tensor(env_config["atomic_energies"]),
-        avg_num_neighbors=env_config["avg_num_neighbors"],
-        atomic_numbers=env_config["atomic_numbers"],
-        correlation=env_config["correlation"],
-        gate=get_object_from_module(env_config["gate"], "torch.nn.functional"),
-    )
-
-    model_config = config["model"]
-    model = MatrixMACE(
-        mace = mace_descriptor,
-        readout_per_interaction=model_config.get("readout_per_interaction", False),
-        graph2mat_cls = E3nnGraph2Mat,
-        
-        # Readout-specific arguments
-        unique_basis = table,
-        symmetric = True,
-
-        # Preprocessing
-        preprocessing_edges = get_object_from_module(
-            model_config["preprocessing_edges"], 
-            'graph2mat.bindings.e3nn.modules'
-        ),
-        preprocessing_edges_kwargs = get_kwargs(model_config["preprocessing_edges"], config),
-
-        preprocessing_nodes = get_object_from_module(
-            model_config["preprocessing_nodes"], 
-            'graph2mat.bindings.e3nn.modules'
-        ),
-        preprocessing_nodes_kwargs = get_kwargs(model_config["preprocessing_nodes"], config),
-
-        # Operations
-        node_operation = get_object_from_module(
-            model_config["node_operation"], 
-            'graph2mat.bindings.e3nn.modules'
-        ),
-        node_operation_kwargs = get_kwargs(model_config["node_operation"], config),
-
-        edge_operation = get_object_from_module(
-            model_config["edge_operation"], 
-            'graph2mat.bindings.e3nn.modules'
-        ),
-        edge_operation_kwargs = get_kwargs(model_config["edge_operation"], config),
-    )
-    # Optimizer
-    optimizer_config = config["optimizer"]
-    optimizer = optim.AdamW(
-        model.parameters(),
-        lr=float(optimizer_config["lr"]),
-        weight_decay=float(optimizer_config["weight_decay"])
-    )
-
-    # ! Careful now that we changed the scheduler for some models
-    # Scheduler
-    scheduler_config = config["scheduler"]
-    lr_scheduler = CosineAnnealingWarmRestarts(
-        optimizer,
-        T_0=int(scheduler_config["t_0"]),
-        T_mult=scheduler_config["t_multiplication"],
-        eta_min=float(scheduler_config["eta_min"])
-    )
-
     
+    if compute_calculations:
 
-    # === Model load ===
-    model, checkpoint, optimizer, lr_scheduler = load_model(model, optimizer, directory / filename, lr_scheduler=lr_scheduler, device=device)
-    loss_fn = get_object_from_module(config["trainer"]["loss_function"], "graph2mat.core.data.metrics")
+        # Generate the G2M basis
+        paths = train_paths + val_paths
+        basis = get_basis_from_structures_paths(paths, verbose=True, num_unique_z=config["dataset"].get("num_unique_z", None))
+        table = BasisTableWithEdges(basis)
+
+        if not debug_mode:
+            # Init the model, optimizer and others
+            print("Initializing model...")
+            model, optimizer, lr_scheduler, loss_fn = init_mace_g2m_model(config, table)
+            
+            # Load the model
+            print("Loading model...")
+            model_path = model_dir / filename
+            initial_lr = float(config["optimizer"].get("initial_lr", None))
+
+            model, checkpoint, optimizer, lr_scheduler = load_model(model, optimizer, model_path, lr_scheduler=lr_scheduler, initial_lr=initial_lr, device=device)
+            print(f"Loaded model in epoch {checkpoint["epoch"]} with training loss {checkpoint["train_loss"]} and validation loss {checkpoint["val_loss"]}.")
+        else:
+            model = create_sparse_matrix
+
+        # Generate the G2M dataset (and splits)
+        # if debug_mode:
+        #     train_paths = [train_paths[i] for i in range(2)]
+        #     val_paths = train_paths
+        #     paths = train_paths
+        train_dataset, val_dataset, processor = generate_g2m_dataset_from_paths(config, basis, table, train_paths, val_paths, device=device, verbose=True) if not debug_mode else ([i for i in range(len(train_paths))], [i for i in range(len(val_paths))], None)
+        splits = [train_dataset, val_dataset]
 
 
 
-    # ====== Matrix plots ======
-    results_directory = directory / "results"
-    results_directory.mkdir(exist_ok=True)
 
-    n_atoms_list = list(n_plots_each.keys())
-    # Dataset plots
-    # Create dataloaders
-    train_dataloader = DataLoader(train_dataset, 1)
-    val_dataloader = DataLoader(val_dataset, 1)
+
+
+
+
+
+
 
     dataloaders = [train_dataloader, val_dataloader]
     for dataloader_id, dataloader in enumerate(dataloaders):
