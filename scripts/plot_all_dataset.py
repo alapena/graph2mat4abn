@@ -338,6 +338,10 @@ def main():
 
     
     
+    # ---------------------------------- #
+    # -                                - #
+    # ---------------------------------- #
+
     # Separate on-sites from hoppings:
 
     # Mean of only the on-sites
@@ -404,7 +408,21 @@ def main():
         title, title_x,
         values_train_onsite=values_train_onsites, values_train_hop=values_train_hops, labels_train=labels_train, n_train_samples=len(values_train_onsites),
         values_val_onsite=values_val_onsites, values_val_hop=values_val_hops, labels_val=labels_val, n_val_samples=len(values_val_onsites),
-        filepath=None
+        filepath=filepath
+    )
+
+    values_train_onsites = splits_absstd_onsites[0]
+    values_val_onsites = splits_absstd_onsites[1]
+    values_train_hops = splits_absstd_hops[0]
+    values_val_hops = splits_absstd_hops[1]
+    filepath= savedir / "alldataset_absstd.html"
+    title = f"Std(Abs(T-P)). Used model {model_dir.parts[-1]}"
+    title_x="Std(Abs(T-P)) (eV)"
+    plot_alldataset_struct_vs_scalar_onsites_hoppings(
+        title, title_x,
+        values_train_onsite=values_train_onsites, values_train_hop=values_train_hops, labels_train=labels_train, n_train_samples=len(values_train_onsites),
+        values_val_onsite=values_val_onsites, values_val_hop=values_val_hops, labels_val=labels_val, n_val_samples=len(values_val_onsites),
+        filepath=filepath
     )
             
 
