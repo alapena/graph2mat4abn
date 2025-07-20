@@ -1,6 +1,7 @@
 # === Simulate a proper Python package (temporal, I did not want to waste time on installing things) ===
 import sys
 from pathlib import Path
+import warnings
 # Add the root directory to Python path
 root_dir = Path(__file__).parent.parent  # Assuming train.py is in scripts/
 sys.path.append(str(root_dir))
@@ -41,6 +42,10 @@ def main():
     
     device = torch.device(config["device"] if (torch.cuda.is_available() and config["device"]!="cpu") 
     else 'cpu')
+
+    # Hide some warnings
+    warnings.filterwarnings("ignore", message="The TorchScript type system doesn't support")
+    warnings.filterwarnings("ignore", message=".*is not a known matrix type key.*")
 
 
 

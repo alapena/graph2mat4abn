@@ -151,6 +151,12 @@ def get_scheduler_args_and_kwargs(config, verbose=False):
     type = scheduler_config.get("type", None)
     args = scheduler_config.get("args", None)
     kwargs = scheduler_config.get("kwargs", None)
+    if "min_lr" in kwargs:
+        kwargs["min_lr"] = float(kwargs["min_lr"])
+    if "factor" in kwargs:
+        kwargs["factor"] = float(kwargs["factor"])
+    if "eps" in kwargs:
+        kwargs["eps"] = float(kwargs["eps"])
 
     args = list(args.values()) if args is not None else None
 
@@ -215,6 +221,9 @@ def load_model(model, optimizer, path, lr_scheduler=None, initial_lr=None, devic
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     if lr_scheduler is not None:
         lr_scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        # Fix min_lrs after loading scheduler state (important!)
+        if hasattr(lr_scheduler, "min_lrs"):
+            lr_scheduler.min_lrs = [float(lr) for lr in lr_scheduler.min_lrs]
 
     # Set the initial lr of the optimizer if specified
     if initial_lr is not None:
@@ -222,6 +231,7 @@ def load_model(model, optimizer, path, lr_scheduler=None, initial_lr=None, devic
             param_group['lr'] = initial_lr
 
     return model, checkpoint, optimizer, lr_scheduler
+
 
 
 def optimizer_to(optim, device):

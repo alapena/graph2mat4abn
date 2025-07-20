@@ -355,8 +355,7 @@ def main():
     splits_absstd_hops = ([], [])
     # For each split (train, val)
     for k in range(len(splits)):
-        if k != 0:
-            break
+
         true_matrices = splits[k][0]
         pred_matrices = splits[k][1]
         n_matrices = len(true_matrices)
@@ -365,8 +364,6 @@ def main():
         onsite_values = []
         hopping_values = []
         for i in tqdm(range(n_matrices)):
-            if i == 5:
-                break
 
             diff_matrix = (true_matrices[i] - pred_matrices[i]).tocoo()
 
@@ -401,7 +398,7 @@ def main():
     values_val_onsites = splits_absmean_onsites[1]
     values_train_hops = splits_absmean_hops[0]
     values_val_hops = splits_absmean_hops[1]
-    filepath= savedir / "alldataset_absmean.html"
+    filepath= savedir / "alldataset_onsiteshoppings_absmean.html"
     title = f"Mean(Abs(T-P)). Used model {model_dir.parts[-1]}"
     title_x="Mean(Abs(T-P)) (eV)"
     plot_alldataset_struct_vs_scalar_onsites_hoppings(
@@ -410,12 +407,13 @@ def main():
         values_val_onsite=values_val_onsites, values_val_hop=values_val_hops, labels_val=labels_val, n_val_samples=len(values_val_onsites),
         filepath=filepath
     )
+    print(f"AbsMean Separated onsites and hoppings results saved at {filepath}")
 
     values_train_onsites = splits_absstd_onsites[0]
     values_val_onsites = splits_absstd_onsites[1]
     values_train_hops = splits_absstd_hops[0]
     values_val_hops = splits_absstd_hops[1]
-    filepath= savedir / "alldataset_absstd.html"
+    filepath= savedir / "alldataset_onsiteshoppings_absstd.html"
     title = f"Std(Abs(T-P)). Used model {model_dir.parts[-1]}"
     title_x="Std(Abs(T-P)) (eV)"
     plot_alldataset_struct_vs_scalar_onsites_hoppings(
@@ -424,6 +422,7 @@ def main():
         values_val_onsite=values_val_onsites, values_val_hop=values_val_hops, labels_val=labels_val, n_val_samples=len(values_val_onsites),
         filepath=filepath
     )
+    print(f"AbsStd Separated onsites and hoppings results saved at {filepath}")
             
 
     # ! COSTY:
@@ -595,16 +594,16 @@ def plot_alldataset_struct_vs_scalar(
         )
     ]
 
-    # Dummy trace to show x axis on top
-    traces.append(go.Scatter(
-        x=[min(values_train), max(values_train)],
-        y=[-1, -1],  # Place out of view
-        xaxis='x2',
-        mode='markers',
-        marker=dict(opacity=0),
-        visible=True,
-        showlegend=False
-    ))
+    # # Dummy trace to show x axis on top
+    # traces.append(go.Scatter(
+    #     x=[min(values_train), max(values_train)],
+    #     y=[-1, -1],  # Place out of view
+    #     xaxis='x2',
+    #     mode='markers',
+    #     marker=dict(opacity=0),
+    #     visible=True,
+    #     showlegend=False
+    # ))
 
     if n_val_samples:
         traces.append(
@@ -645,16 +644,17 @@ def plot_alldataset_struct_vs_scalar(
             showline=True,
             exponentformat='power',   # use 'e' for scientific, 'E' for capital E, or 'power' for 10^x
             showexponent='all',  
+            mirror="all",
         ),
-        xaxis2=dict(
-            title=title_x,
-            title_standoff=0,
-            overlaying="x",   # share the same data range as xaxis
-            side="top",       # draw it at the top
-            showline=True,
-            exponentformat='power',   # use 'e' for scientific, 'E' for capital E, or 'power' for 10^x
-            showexponent='all',   
-        ),
+        # xaxis2=dict(
+        #     title=title_x,
+        #     title_standoff=0,
+        #     overlaying="x",   # share the same data range as xaxis
+        #     side="top",       # draw it at the top
+        #     showline=True,
+        #     exponentformat='power',   # use 'e' for scientific, 'E' for capital E, or 'power' for 10^x
+        #     showexponent='all',   
+        # ),
         margin=dict(l=40, r=20, t=65, b=45)
     )
 
@@ -714,16 +714,16 @@ def plot_alldataset_struct_vs_scalar_onsites_hoppings(
         ),
     ]
 
-    # Dummy trace to show x axis on top
-    traces.append(go.Scatter(
-        x=[min(values_train_onsite), max(values_train_onsite)],
-        y=[-1, -1],  # Place out of view
-        xaxis='x2',
-        mode='markers',
-        marker=dict(opacity=0),
-        visible=True,
-        showlegend=False
-    ))
+    # # Dummy trace to show x axis on top
+    # traces.append(go.Scatter(
+    #     x=[min(values_train_onsite), max(values_train_onsite)],
+    #     y=[-1, -1],  # Place out of view
+    #     xaxis='x2',
+    #     mode='markers',
+    #     marker=dict(opacity=0),
+    #     visible=True,
+    #     showlegend=False
+    # ))
 
     if n_val_samples:
         traces.append(
@@ -774,16 +774,17 @@ def plot_alldataset_struct_vs_scalar_onsites_hoppings(
             showline=True,
             exponentformat='power',   # use 'e' for scientific, 'E' for capital E, or 'power' for 10^x
             showexponent='all',  
+            mirror="all",
         ),
-        xaxis2=dict(
-            title=title_x,
-            title_standoff=0,
-            overlaying="x",   # share the same data range as xaxis
-            side="top",       # draw it at the top
-            showline=True,
-            exponentformat='power',   # use 'e' for scientific, 'E' for capital E, or 'power' for 10^x
-            showexponent='all',   
-        ),
+        # xaxis2=dict(
+        #     title=title_x,
+        #     title_standoff=0,
+        #     overlaying="x",   # share the same data range as xaxis
+        #     side="top",       # draw it at the top
+        #     showline=True,
+        #     exponentformat='power',   # use 'e' for scientific, 'E' for capital E, or 'power' for 10^x
+        #     showexponent='all',   
+        # ),
         margin=dict(l=40, r=20, t=65, b=45)
     )
 

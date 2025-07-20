@@ -54,9 +54,9 @@ model:
   # hidden_neurons: [64, 64, 64, 64]
 
 optimizer:
-  lr: 1e-3 # Useless when loading a model.
+  lr: 0.001 # Useless when loading a model.
   # weight_decay: 1e-4
-  initial_lr: 1e-3 # Force an initial lr in the scheduler when loading a model.
+  initial_lr: 0.001 # Force an initial lr in the scheduler when loading a model.
 
 scheduler:
   type: ReduceLROnPlateau
