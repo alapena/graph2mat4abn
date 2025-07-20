@@ -17,6 +17,7 @@ import sisl
 from tools.debug import create_sparse_matrix
 from tools.plot import plot_dataset_results
 from joblib import dump, load
+import plotly.graph_objects as go
 
 from graph2mat import (
     BasisTableWithEdges,
@@ -43,7 +44,7 @@ def main():
         print("*                                                *")
         print("**************************************************")
 
-    savedir = model_dir / "results"
+    savedir = model_dir / "results/alldataset"
     savedir.mkdir(exist_ok=True, parents=True)
     calculations_path = savedir / "calculations_alldataset.joblib"
     
@@ -184,9 +185,16 @@ def main():
             'val_true':     val_data[0],
             'val_pred':     val_data[1],
             'train_labels': train_labels,
-            'val_labels':   val_labels
+            'val_labels':   val_labels,
+            'train_paths': train_paths,
+            'val_paths': val_paths,
         }, calculations_path, compress=3)
         print("Calculations saved!")
+
+        # Free the memory
+        del true_sparse_matrices, pred_sparse_matrices, split_labels
+        del train_data, val_data, train_labels, val_labels
+        del train_dataset, val_dataset, processor, model, basis, table
 
     # Load the results
     print("Loading the results...")
@@ -207,74 +215,678 @@ def main():
     train_true, train_pred = train_data
     val_true,   val_pred   = val_data
 
-    # Means
-    train_means = (
-        np.array([m.mean() for m in train_true]),
-        np.array([m.mean() for m in train_pred])
-    )
-    val_means = (
-        np.array([m.mean() for m in val_true]),
-        np.array([m.mean() for m in val_pred])
-    )
+    n_train_samples = len(train_data[0])
+    n_val_samples = len(val_data[0])
 
-    # Standard deviations (ddof=1)
-    train_stds = (
-        np.array([np.std(m.toarray(), ddof=0) for m in train_true]),
-        np.array([np.std(m.toarray(), ddof=0) for m in train_pred])
-    )
-    val_stds = (
-        np.array([np.std(m.toarray(), ddof=0) for m in val_true]),
-        np.array([np.std(m.toarray(), ddof=0) for m in val_pred])
-    )
+    # # Means
+    # train_means = (
+    #     np.array([m.mean() for m in train_true]),
+    #     np.array([m.mean() for m in train_pred])
+    # )
+    # val_means = (
+    #     np.array([m.mean() for m in val_true]),
+    #     np.array([m.mean() for m in val_pred])
+    # )
 
-    # Max absolute error
-    maxae_train = np.array([
-        np.max(np.abs(t - p))
-        for t, p in zip(train_true, train_pred)
-    ])
-    maxae_val = np.array([
-        np.max(np.abs(t - p))
-        for t, p in zip(val_true, val_pred)
-    ])
-
-    maxaes = ([maxae_train, maxae_val])
-    maxaes_labels = ([path.parts[-2][14:] +"/"+ path.parts[-1] for path in train_paths], [path.parts[-2][14:] +"/"+ path.parts[-1] for path in val_paths])
+    # # Standard deviations (ddof=1)
+    # train_stds = (
+    #     np.array([np.std(m.toarray(), ddof=0) for m in train_true]),
+    #     np.array([np.std(m.toarray(), ddof=0) for m in train_pred])
+    # )
+    # val_stds = (
+    #     np.array([np.std(m.toarray(), ddof=0) for m in val_true]),
+    #     np.array([np.std(m.toarray(), ddof=0) for m in val_pred])
+    # )
 
     print("Generating results...")
     
-    colors = [
-        '#1f77b4',  # muted blue
-        '#ff7f0e',  # safety orange
-        '#2ca02c',  # cooked asparagus green
-        '#d62728',  # brick red
-        '#9467bd',  # muted purple
-        '#8c564b',  # chestnut brown
-        '#e377c2',  # raspberry yogurt pink
-        '#7f7f7f',  # medium gray
-        '#bcbd22',  # curry yellow-green
-        '#17becf',  # blue-teal
-        '#fdae61',  # sandy orange
-        '#66c2a5',  # seafoam green
-        '#fc8d62',  # coral
-        '#a6d854',  # light lime
-        '#ffd92f',  # sunflower
-        '#e5c494',  # beige
-        '#b3b3b3'   # soft gray
-    ]
-    filepath= savedir / "dataset_analysis.html"
-    title = f"Dataset analysis. Used model {model_dir.parts[-1]}"
-    plot_dataset_results(
-        train_data=train_data, val_data=val_data,
-        colors=colors, title=title,
-        train_labels=train_labels, val_labels=val_labels,
-        train_means=train_means, val_means=val_means,
-        train_stds=train_stds, val_stds=val_stds,
-        maxaes=maxaes, maxaes_labels=maxaes_labels,
+    # filepath= savedir / "alldataset_matrix_elements.html"
+    # title = f"Dataset analysis. Used model {model_dir.parts[-1]}"
+    # plot_dataset_results(
+    #     train_data=train_data, val_data=val_data,
+    #     colors=colors, title=title,
+    #     train_labels=train_labels, val_labels=val_labels,
+    #     train_means=train_means, val_means=val_means,
+    #     train_stds=train_stds, val_stds=val_stds,
+    #     maxaes=maxaes, maxaes_labels=maxaes_labels,
+    #     filepath=filepath
+    # )
+
+    # plot_pred_vs_true_matrix_elements(
+    #     train_data=train_data, val_data=val_data,
+    #     colors=colors, title=title,
+    #     train_labels=train_labels, val_labels=val_labels,
+    #     filepath=filepath
+    # )
+    # print(f"Results of matrix elements saved at {filepath}!")
+
+    # filepath= savedir / "alldataset_mean.html"
+    # title = f"Mean Dataset analysis. Used model {model_dir.parts[-1]}"
+    # plot_pred_vs_true_mean(
+    #     colors=colors, title=title,
+    #     train_means=train_means, val_means=val_means,
+    #     train_stds=train_stds, val_stds=val_stds,
+    #     labels=maxaes_labels,
+    #     n_train_samples=n_train_samples, n_val_samples=n_val_samples,
+    #     filepath=filepath
+    # )
+
+    # Compute the labels of the scalar values plots.
+    labels_train = [path.parts[-2][14:] +"/"+ path.parts[-1] for path in train_paths]
+    labels_val = [path.parts[-2][14:] +"/"+ path.parts[-1] for path in val_paths]
+
+    # Mean of the absolute error
+    diff_train = [t - p for t, p in zip(train_true, train_pred)]
+    diff_val = [t - p for t, p in zip(val_true, val_pred)]
+    values_train = [np.mean(diff_train[i]) for i in range(len(diff_train))]
+    values_val = [np.mean(diff_val[i]) for i in range(len(diff_val))]
+
+    filepath= savedir / "alldataset_mean.html"
+    title = f"Mean of non-zero elements of (True-Pred) Dataset analysis. Used model {model_dir.parts[-1]}"
+    title_x="Mean(True-Pred) (eV)"
+    plot_alldataset_struct_vs_scalar(
+        title, title_x,
+        values_train, labels_train, n_train_samples,
+        values_val=values_val, labels_val=labels_val, n_val_samples=n_val_samples,
         filepath=filepath
     )
-    print(f"Results saved at {filepath}!")
+    print(f"Mean results saved at {filepath}")
+
+    # Standard deviation of Absolute Error
+    values_train = [np.std(diff_train[i]) for i in range(len(diff_train))]
+    values_val = [np.std(diff_val[i]) for i in range(len(diff_val))]
+
+    filepath= savedir / "alldataset_std.html"
+    title = f"Std of non-zero elements of (True-Pred) Dataset analysis. Used model {model_dir.parts[-1]}"
+    title_x="Std(True-Pred) (eV)"
+    plot_alldataset_struct_vs_scalar(
+        title, title_x,
+        values_train, labels_train, n_train_samples,
+        values_val=values_val, labels_val=labels_val, n_val_samples=n_val_samples,
+        filepath=filepath
+    )
+    print(f"Std results saved at {filepath}")
+
+    # Maximum absolute Error
+    values_train = np.array([np.max(np.abs(t - p)) for t, p in zip(train_true, train_pred)])
+    values_val = np.array([np.max(np.abs(t - p)) for t, p in zip(val_true, val_pred)])
+
+    filepath= savedir / "alldataset_maxae.html"
+    title = f"Max Absolute Error Dataset analysis. Used model {model_dir.parts[-1]}"
+    title_x="|True-Pred| (eV)"
+    plot_alldataset_struct_vs_scalar(
+        title, title_x,
+        values_train, labels_train, n_train_samples,
+        values_val=values_val, labels_val=labels_val, n_val_samples=n_val_samples,
+        filepath=filepath
+    )
+    print(f"Maxae results saved at {filepath}")
+
+    # Diagonal plot for each structure
+    split_paths = (train_paths, val_paths)
+
+    structures_train = [path.parts[-2][14:] +"/"+ path.parts[-1] for path in train_paths]
+    structures_val = [path.parts[-2][14:] +"/"+ path.parts[-1] for path in val_paths]
+    splits_structures = (structures_train, structures_val)
+
+    title_x="True matrix elements (eV)"
+    title_y="Predicted matrix elements (eV)"
+
+    splits = [train_data, val_data]
+    splits_str = ["train", "val"]
+
+    # For each split (train, val)
+    for j in range(len(splits)):
+        print(f"Plotting split {j}...")
+        true_matrices = splits[j][0]
+        pred_matrices = splits[j][1]
+        n_matrices = len(true_matrices)
+
+        # For each matrix
+        for i in tqdm(range(n_matrices)):
+
+            # Compute labels
+            path = Path("../") / split_paths[j][i]
+            geometry = sisl.get_sile(path / "aiida.fdf").read_geometry()
+            matrix_labels = []
+            for k in range(len(true_matrices[i].data)):
+                row = true_matrices[i].row[k]
+                col = true_matrices[i].col[k]
+                orb_in = orbitals[col % n_orbs]
+                orb_out = orbitals[row % n_orbs]
+                isc = str(geometry.o2isc(col))
+
+                # Join altogether
+                label = ''.join([orb_in, " -> ", orb_out, " ", isc])
+
+                # Store the labels 
+                matrix_labels.append(label)
+
+            filepath= savedir / f"nnz_elements_{splits_str[j]}_{Path(splits_structures[j][i]).parts[-2]}_{Path(splits_structures[j][i]).parts[-1]}.html"
+            title = f"Matrix elements of structure {splits_structures[j][i]}.<br>{splits_str[j]} dataset.<br>Used model {model_dir.parts[-1]}"
+            true_values = true_matrices[i].data
+            pred_values = pred_matrices[i].data
+            plot_diagonal(
+                true_values, pred_values, matrix_labels, # 1D array of elements.
+                title=title, title_x=title_x, title_y=title_y, colors=None,
+                filepath=filepath
+            )
+    print(f"Matrix elements results saved at {savedir}")
 
 
+
+
+
+    
+def plot_diagonal(
+    true_values, pred_values, labels, # 1D array of elements.
+    title="Default title", title_x="X axis", title_y="Y axis", colors=None,
+    filepath=None
+):
+
+    fig = go.Figure()
+    
+    # ====== TRAINING DATA ======
+    traces = []
+    # Training matrix elements
+    trace = go.Scattergl(
+        x=true_values,
+        y=pred_values,
+        mode='markers',
+        marker=dict(
+            # symbol='dash',
+            size=5,
+            # color=colors[i % len(colors)],
+            line=dict(width=0)
+        ),
+        name=f'Matrix elements',
+        text=labels,
+        # hovertemplate='True: %{x:.2f}<br>Pred: %{y:.2f}<br>%{text}',
+        # legendgroup='training',
+        # legendgrouptitle="Training samples",
+        # showlegend=True
+    )
+    traces.append(trace)
+        
+
+    # Add identity line
+    all_data = np.concatenate([true_values, pred_values])
+    vmin, vmax = np.min(all_data), np.max(all_data)
+    diagonal_trace = go.Scatter(
+        x=[vmin, vmax],
+        y=[vmin, vmax],
+        mode='lines',
+        line=dict(color='black', dash='dash'),
+        name='Ideal'
+    )
+    traces.append(diagonal_trace)
+
+
+    # Create figure and update layout
+    fig = go.Figure(data=traces)
+    fig.update_layout(
+        width=900,
+        height=900,
+        title=title,
+        # xaxis_title=title_x,
+        # yaxis_title=title_y,
+        # legend_title='Legend',
+        # hovermode='closest',
+        # template='plotly_white',
+        xaxis=dict(
+            title=title_x,
+            tickformat=".2f"
+        ),
+        yaxis=dict(
+            title=title_y,
+            tickformat=".2f"
+        )
+    )
+
+    # Save to HTML if path is provided
+    if filepath:
+        f = open(filepath, "w")
+        f.close()
+        with open(filepath, 'a') as f:
+            f.write(fig.to_html(full_html=False, include_plotlyjs='cdn'))
+        f.close()
+        
+        with open(f"{str(filepath)[:-4]}.json", "w") as f:
+            f.write(fig.to_json())
+
+    else:
+        fig.show()
+
+    return fig
+
+
+
+def plot_alldataset_struct_vs_scalar(
+    title, title_x,
+    values_train, labels_train, n_train_samples,
+    values_val=None, labels_val=None, n_val_samples=None,
+    filepath=None
+):
+    # 1) Build a master list of unique labels in the order you want them
+    all_labels = list(dict.fromkeys(
+        labels_train + (labels_val if n_val_samples else [])
+    ))
+
+    # 2) Map each label to its integer position
+    idx_map = {lab: i for i, lab in enumerate(all_labels)}
+
+    # 3) Convert your y-arrays to numeric
+    y_train = [idx_map[l] for l in labels_train]
+    y_val   = [idx_map[l] for l in (labels_val if n_val_samples else [])]
+
+    # 4) Build your traces using numeric y
+    traces = [
+        go.Scatter(
+            x=values_train, y=y_train,
+            mode='markers',
+            marker=dict(symbol='x', size=6, color='blue'),
+            name='Training',
+            showlegend=True
+        )
+    ]
+
+    # Dummy trace to show x axis on top
+    traces.append(go.Scatter(
+        x=[min(values_train), max(values_train)],
+        y=[-1, -1],  # Place out of view
+        xaxis='x2',
+        mode='markers',
+        marker=dict(opacity=0),
+        visible=True,
+        showlegend=False
+    ))
+
+    if n_val_samples:
+        traces.append(
+            go.Scatter(
+                x=values_val, y=y_val,
+                mode='markers',
+                marker=dict(symbol='x', size=6, color='red'),
+                name='Validation',
+                showlegend=True
+            )
+        )
+
+    fig = go.Figure(traces)
+
+    # 5) Set the axis so categories sit exactly at integer ticks from 0…N-1
+    fig.update_layout(
+        width=800,
+        height=(n_train_samples + (n_val_samples or 0)) * 15 + 100,
+        title={
+            'text': title,
+            'y':1,
+            'x':0.01,
+            'xanchor': 'left',
+            'yanchor': 'top',
+            "pad": dict(t=10),
+        },
+        yaxis=dict(
+            tickmode='array',
+            tickvals=list(range(len(all_labels))),
+            ticktext=all_labels,
+            range=[-0.5, len(all_labels) - 0.5],
+            autorange=False
+        ),
+        xaxis=dict(
+            title=title_x,
+            title_standoff=0,
+            side="bottom",
+            showline=True,
+            exponentformat='power',   # use 'e' for scientific, 'E' for capital E, or 'power' for 10^x
+            showexponent='last',   # always show exponent
+        ),
+        xaxis2=dict(
+            title=title_x,
+            title_standoff=0,
+            overlaying="x",   # share the same data range as xaxis
+            side="top",       # draw it at the top
+            exponentformat='power',   # use 'e' for scientific, 'E' for capital E, or 'power' for 10^x
+            showexponent='last',   # always show exponent
+        ),
+        margin=dict(l=40, r=20, t=65, b=45)
+    )
+
+    # 6) Save or show
+    if filepath:
+        fig.write_html(filepath, include_plotlyjs='cdn', full_html=False)
+        fig.write_json(filepath.replace('.html', '.json'))
+    else:
+        fig.show()
+
+    return fig
+
+
+
+
+
+
+
+def plot_pred_vs_true_mean(
+        colors, title,
+        train_means, val_means,
+        train_stds, val_stds,
+        labels,
+        n_train_samples, n_val_samples=None,
+        filepath=None
+):
+
+    fig = go.Figure()
+
+    # ====== TRAINING DATA ======
+    mean_traces = []
+    std_traces = []
+    for i in range(n_train_samples):
+
+        # Training means
+        trace = go.Scatter(
+            x=[train_means[0][i]],
+            y=[train_means[1][i]],
+            mode='markers',
+            marker=dict(
+                symbol='square',
+                size=5,
+                color=colors[i % len(colors)],
+                line=dict(width=0)
+            ),
+            name=f'Mean training {i}',
+            # text=labels[0][i],
+            # hovertemplate='True: %{x:.2f}<br>Pred: %{y:.2f}<br>%{text}',
+            legendgroup='training_mean',
+            visible=True,
+            showlegend=True,
+        )
+        mean_traces.append(trace)
+
+        # Training std
+        trace = go.Scatter(
+            x=[train_stds[0][i]],
+            y=[train_stds[1][i]],
+            mode='markers',
+            marker=dict(
+                symbol='triangle-up',
+                size=5,
+                color=colors[i % len(colors)],
+                line=dict(width=0)
+            ),
+            name=f'Std training {i}',
+            text=labels[0][i],
+            # hovertemplate='True: %{x:.2f}<br>Pred: %{y:.2f}<br>%{text}',
+            legendgroup='training_std',
+            visible=False,
+            showlegend=True,
+        )
+        std_traces.append(trace)
+
+    # === Validation ===
+    for i in range(n_val_samples):
+
+        # Val means
+        trace = go.Scatter(
+            x=[val_means[0][i]],
+            y=[val_means[1][i]],
+            mode='markers',
+            marker=dict(
+                symbol='square-open',
+                size=5,
+                color=colors[i % len(colors)],
+                line=dict(width=1,)
+            ),
+            name=f'Mean val {i}',
+            text=labels[1][i],
+            # hovertemplate='True: %{x:.2f}<br>Pred: %{y:.2f}<br>%{text}',
+            legendgroup='val_mean',
+            visible=True,
+            showlegend=True,
+        )
+        mean_traces.append(trace)
+
+        # Validation std
+        trace = go.Scatter(
+            x=[val_stds[0][i]],
+            y=[val_stds[1][i]],
+            mode='markers',
+            marker=dict(
+                symbol='triangle-up-open',
+                size=5,
+                color=colors[i % len(colors)],
+                line=dict(width=0)
+            ),
+            name=f'Std validation {i}',
+            text=labels[1][i],
+            # hovertemplate='True: %{x:.2f}<br>Pred: %{y:.2f}<br>%{text}',
+            legendgroup='val_std',
+            visible=False,
+            showlegend=True,
+        )
+        std_traces.append(trace)
+        
+
+
+    # Add identity line
+    all_x = np.concatenate([train_means[0], val_means[0],
+                            train_stds[0],  val_stds[0]])
+    vmin, vmax = all_x.min(), all_x.max()
+
+    # use this for the diagonal
+    diagonal_trace = go.Scatter(
+        x=[vmin, vmax], y=[vmin, vmax],
+        mode='lines', line=dict(color='black'),
+        name='Ideal', visible=True, showlegend=True
+    )
+
+    # Create figure and update layout
+    min_x_mean = np.min([train_means[0].min(), val_means[0].min()])
+    max_x_mean = np.max([train_means[0].max(), val_means[0].max()])
+    min_y_mean = np.min([train_means[1].min(), val_means[1].min()])
+    max_y_mean = np.max([train_means[1].max(), val_means[1].max()])
+
+    min_x_std = np.min([train_stds[0].min(), val_stds[0].min()])
+    max_x_std = np.max([train_stds[0].max(), val_stds[0].max()])
+    min_y_std = np.min([train_stds[1].min(), val_stds[1].min()])
+    max_y_std = np.max([train_stds[1].max(), val_stds[1].max()])
+
+    traces = mean_traces + std_traces + [diagonal_trace]
+    fig = go.Figure(data=traces)
+    fig.update_layout(
+        width=1000,
+        height=1000,
+        title=title,
+        # xaxis_title='True Values',
+        # yaxis_title='Predicted Values',
+        legend_title='Legend',
+        # hovermode='closest',
+        # template='plotly_white',
+        xaxis=dict(
+            title='True Values',
+            tickformat=".2f",
+            range = [min_x_mean, max_x_mean]
+        ),
+        yaxis=dict(
+            title='Predicted Values',
+            tickformat=".2f",
+            range = [min_y_mean, max_y_mean]
+        )
+    )
+
+    # Add dropdown
+    fig.update_layout(
+        updatemenus=[
+            dict(
+                buttons=[
+                    dict(
+                        label="Mean",
+                        method="update",
+                        args=[
+                            {"visible": [True]*len(mean_traces) + [False]*len(std_traces) + [True]},
+                            {
+                                "xaxis": {"range": [min_x_mean-0.0005*min_x_mean, max_x_mean+0.0005*max_x_mean]},
+                                "yaxis": {"range": [min_y_mean-0.0005*min_y_mean, max_y_mean+0.0005*max_y_mean]},
+                            }
+
+                        ]
+                    ),
+                    dict(
+                        label="Std",
+                        method="update",
+                        args=[
+                            {"visible": [False]*len(mean_traces) + [True]*len(std_traces) + [True]},
+                            {
+                                "xaxis": {"range": [min_x_std-0.0005*min_x_std, max_x_std+0.0005*max_x_std]},
+                                "yaxis": {"range": [min_y_std-0.0005*min_y_std, max_y_std+0.0005*max_y_std]},
+                            }
+
+                        ]
+                    ),
+                ],
+                direction="down",
+                pad={"r": 10, "t": 10},
+                showactive=True,
+                x=0.75,
+                xanchor="left",
+                y=1.1,
+                yanchor="top"
+            ),
+        ]
+    )
+
+    # Save to HTML if path is provided
+    if filepath:
+        f = open(filepath, "w")
+        f.close()
+        with open(filepath, 'a') as f:
+            f.write(fig.to_html(full_html=False, include_plotlyjs='cdn'))
+        f.close()
+        
+        with open(f"{str(filepath)[:-4]}.json", "w") as f:
+            f.write(fig.to_json())
+
+    
+    return fig
+
+
+
+
+
+def plot_pred_vs_true_matrix_elements(
+        train_data, val_data,
+        colors, title,
+        train_labels, val_labels,
+        filepath
+):
+    
+    # Three figures. One for the matrix elements (HUGE), one for stats such as mean and std, and one for max abs difference (maxae) because it needs a very long fig. 
+
+    fig = go.Figure()
+    n_train_samples = len(train_data[0])
+    n_val_samples = len(val_data[0])
+
+    train_data = [[train_data[k][i].data for i in range(n_train_samples)] for k in range(len(train_data))]
+    val_data = [[val_data[k][i].data for i in range(n_val_samples)] for k in range(len(val_data))]
+    
+
+    # ====== TRAINING DATA ======
+    matrix_traces = []
+    for i in range(n_train_samples):
+        # Training matrix elements
+        trace = go.Scattergl(
+            x=train_data[0][i],
+            y=train_data[1][i],
+            mode='markers',
+            marker=dict(
+                # symbol='dash',
+                size=5,
+                color=colors[i % len(colors)],
+                line=dict(width=0)
+            ),
+            name=f'Training sample {i}',
+            text=train_labels[i],
+            # hovertemplate='True: %{x:.2f}<br>Pred: %{y:.2f}<br>%{text}',
+            legendgroup='training',
+            # legendgrouptitle="Training samples",
+            showlegend=True
+        )
+        matrix_traces.append(trace)
+
+
+    # === Validation ===
+    for i in range(n_val_samples):
+        trace = go.Scattergl(
+            x=val_data[0][i],
+            y=val_data[1][i],
+            mode='markers',
+            marker=dict(
+                symbol='circle-open',
+                size=5,
+                color=colors[i % len(colors)],
+                line=dict(width=1,)
+            ),
+            name=f'Validation sample {i}',
+            text=val_labels[i],
+            # hovertemplate='True: %{x:.2f}<br>Pred: %{y:.2f}<br>%{text}',
+            legendgroup='validation',
+            # legendgrouptitle="Validation samples",
+            showlegend=True
+        )
+        matrix_traces.append(trace)
+        
+
+
+    # Add identity line
+    train_flattened_data = ([np.min(train_data[0][i]) for i in range(n_train_samples)], [np.max(train_data[0][i]) for i in range(n_val_samples)]) # [train, val]
+    train_flattened_data = [train_flattened_data[k] for k in range(len(train_flattened_data))]
+    min, max = np.min(train_flattened_data[0]), np.max(train_flattened_data[1])
+    diagonal_trace = go.Scatter(
+        x=[min, max],
+        y=[min, max],
+        mode='lines',
+        line=dict(color='black', dash='solid'),
+        name='Ideal'
+    )
+
+
+    # Create figure and update layout
+    traces = matrix_traces + [diagonal_trace]
+    fig = go.Figure(data=traces)
+    fig.update_layout(
+        width=1000,
+        height=1000,
+        title=title,
+        # xaxis_title='True Values',
+        # yaxis_title='Predicted Values',
+        legend_title='Legend',
+        # hovermode='closest',
+        # template='plotly_white',
+        xaxis=dict(
+            title='True Values',
+            tickformat=".2f"
+        ),
+        yaxis=dict(
+            title='Predicted Values',
+            tickformat=".2f"
+        )
+    )
+
+    # Save to HTML if path is provided
+    if filepath:
+        f = open(filepath, "w")
+        f.close()
+        with open(filepath, 'a') as f:
+            f.write(fig.to_html(full_html=False, include_plotlyjs='cdn'))
+        f.close()
+        
+        with open(f"{str(filepath)[:-4]}.json", "w") as f:
+            f.write(fig.to_json())
+
+    else:
+        fig.show()
+
+    return fig
 
 if __name__ == "__main__":
     main()
