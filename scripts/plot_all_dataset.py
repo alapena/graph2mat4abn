@@ -156,9 +156,9 @@ def main():
                 # for j, nnz_element in enumerate(h_pred.data):
 
                 # Predicted labels
-                for j in range(len(h_pred.data)):
-                    row = h_pred.row[j]
-                    col = h_pred.col[j]
+                for k in range(len(h_pred.data)):
+                    row = h_pred.row[k]
+                    col = h_pred.col[k]
                     orb_in = orbitals[col % n_orbs]
                     orb_out = orbitals[row % n_orbs]
                     isc = str(geometry.o2isc(col))
@@ -336,6 +336,79 @@ def main():
     )
     print(f"Maxae results saved at {filepath}")
 
+    
+    
+    # Separate on-sites from hoppings:
+
+    # Mean of only the on-sites
+    splits = [train_data, val_data]
+    split_paths = (train_paths, val_paths)
+
+
+    splits_absmean_onsites = ([], [])
+    splits_absmean_hops = ([], [])
+    splits_absstd_onsites = ([], [])
+    splits_absstd_hops = ([], [])
+    # For each split (train, val)
+    for k in range(len(splits)):
+        if k != 0:
+            break
+        true_matrices = splits[k][0]
+        pred_matrices = splits[k][1]
+        n_matrices = len(true_matrices)
+
+        # For each matrix
+        onsite_values = []
+        hopping_values = []
+        for i in tqdm(range(n_matrices)):
+            if i == 5:
+                break
+
+            diff_matrix = (true_matrices[i] - pred_matrices[i]).tocoo()
+
+            # Compute labels for each nnz element
+            path = Path("./") / split_paths[k][i]
+            geometry = sisl.get_sile(path / "aiida.fdf").read_geometry()
+            for j in range(len(diff_matrix.data)):
+                row = diff_matrix.row[j]
+                col = diff_matrix.col[j]
+                orb_in = orbitals[col % n_orbs]
+                orb_out = orbitals[row % n_orbs]
+                isc = str(geometry.o2isc(col))
+
+                # Join altogether
+                label = ''.join([orb_in, " -> ", orb_out, " ", isc])
+
+                # Store
+                if isc == '[0 0 0]' and row == col:
+                    onsite_values.append(diff_matrix.data[j])
+                else:
+                    hopping_values.append(diff_matrix.data[j])
+
+            # Store the result for each matrix
+            splits_absmean_onsites[k].append(np.mean(np.abs(onsite_values)))
+            splits_absmean_hops[k].append(np.mean(np.abs(hopping_values)))
+            splits_absstd_onsites[k].append(np.std(np.abs(onsite_values)))
+            splits_absstd_hops[k].append(np.std(np.abs(hopping_values)))
+            
+
+    # Plot the results
+    values_train_onsites = splits_absmean_onsites[0]
+    values_val_onsites = splits_absmean_onsites[1]
+    values_train_hops = splits_absmean_hops[0]
+    values_val_hops = splits_absmean_hops[1]
+    filepath= savedir / "alldataset_absmean.html"
+    title = f"Mean(Abs(T-P)). Used model {model_dir.parts[-1]}"
+    title_x="Mean(Abs(T-P)) (eV)"
+    plot_alldataset_struct_vs_scalar_onsites_hoppings(
+        title, title_x,
+        values_train_onsite=values_train_onsites, values_train_hop=values_train_hops, labels_train=labels_train, n_train_samples=len(values_train_onsites),
+        values_val_onsite=values_val_onsites, values_val_hop=values_val_hops, labels_val=labels_val, n_val_samples=len(values_val_onsites),
+        filepath=None
+    )
+            
+
+    # ! COSTY:
     # # Diagonal plot for each structure
     # split_paths = (train_paths, val_paths)
 
@@ -527,6 +600,135 @@ def plot_alldataset_struct_vs_scalar(
         )
 
     fig = go.Figure(traces)
+
+    # 5) Set the axis so categories sit exactly at integer ticks from 0…N-1
+    fig.update_layout(
+        width=800,
+        height=(n_train_samples + (n_val_samples or 0)) * 15 + 100,
+        title={
+            'text': title,
+            'y':1,
+            'x':0.01,
+            'xanchor': 'left',
+            'yanchor': 'top',
+            "pad": dict(t=10),
+        },
+        yaxis=dict(
+            tickmode='array',
+            tickvals=list(range(len(all_labels))),
+            ticktext=all_labels,
+            range=[-0.5, len(all_labels) - 0.5],
+            autorange=False
+        ),
+        xaxis=dict(
+            title=title_x,
+            title_standoff=0,
+            side="bottom",
+            showline=True,
+            exponentformat='power',   # use 'e' for scientific, 'E' for capital E, or 'power' for 10^x
+            showexponent='all',  
+        ),
+        xaxis2=dict(
+            title=title_x,
+            title_standoff=0,
+            overlaying="x",   # share the same data range as xaxis
+            side="top",       # draw it at the top
+            showline=True,
+            exponentformat='power',   # use 'e' for scientific, 'E' for capital E, or 'power' for 10^x
+            showexponent='all',   
+        ),
+        margin=dict(l=40, r=20, t=65, b=45)
+    )
+
+    # 6) Save or show
+    if filepath:
+        f = open(filepath, "w")
+        f.close()
+        with open(filepath, 'a') as f:
+            f.write(fig.to_html(full_html=False, include_plotlyjs='cdn'))
+        f.close()
+        
+        # with open(f"{str(filepath)[:-4]}.json", "w") as f:
+        #     f.write(fig.to_json())
+
+    else:
+        fig.show()
+
+    return fig
+
+
+
+
+def plot_alldataset_struct_vs_scalar_onsites_hoppings(
+    title, title_x,
+    values_train_onsite, values_train_hop, labels_train, n_train_samples,
+    values_val_onsite=None, values_val_hop=None, labels_val=None, n_val_samples=None,
+    filepath=None
+):
+    # 1) Build a master list of unique labels in the order you want them
+    all_labels = list(dict.fromkeys(
+        labels_train + (labels_val if n_val_samples else [])
+    ))
+
+    # 2) Map each label to its integer position
+    idx_map = {lab: i for i, lab in enumerate(all_labels)}
+
+    # 3) Convert your y-arrays to numeric
+    y_train = [idx_map[l] for l in labels_train]
+    y_val   = [idx_map[l] for l in (labels_val if n_val_samples else [])]
+
+    # 4) Build your traces using numeric y
+    traces = [
+        go.Scatter(
+            x=values_train_onsite, y=y_train,
+            mode='markers',
+            marker=dict(symbol='0', size=6, color='blue'),
+            name='Training onsites',
+            showlegend=True
+        ),
+
+        go.Scatter(
+            x=values_train_hop, y=y_train,
+            mode='markers',
+            marker=dict(symbol='x', size=6, color='blue'),
+            name='Training hoppings',
+            showlegend=True
+        ),
+    ]
+
+    # Dummy trace to show x axis on top
+    traces.append(go.Scatter(
+        x=[min(values_train_onsite), max(values_train_onsite)],
+        y=[-1, -1],  # Place out of view
+        xaxis='x2',
+        mode='markers',
+        marker=dict(opacity=0),
+        visible=True,
+        showlegend=False
+    ))
+
+    if n_val_samples:
+        traces.append(
+            go.Scatter(
+                x=values_val_onsite, y=y_val,
+                mode='markers',
+                marker=dict(symbol='0', size=6, color='red'),
+                name='Validation onsites',
+                showlegend=True
+            )
+        )
+
+        traces.append(
+            go.Scatter(
+                x=values_val_hop, y=y_val,
+                mode='markers',
+                marker=dict(symbol='x', size=6, color='red'),
+                name='Validation hoppings',
+                showlegend=True
+            )
+        )
+
+    fig = go.Figure(data=traces)
 
     # 5) Set the axis so categories sit exactly at integer ticks from 0…N-1
     fig.update_layout(

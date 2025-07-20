@@ -15,6 +15,7 @@ import torch
 import torch.optim as optim
 from e3nn import o3
 import time
+from joblib import dump, load
 
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from sklearn.model_selection import train_test_split
@@ -45,7 +46,7 @@ def main():
     # *********************************** #
     model_dir = Path("results/h_crystalls_1") # Results directory
     filename = "train_best_model.tar" # Model name (or relative path to the results directory)
-    path = Path('./dataset/SHARE_OUTPUTS_64_ATOMS/5dfc-7444-43ac-a2b0-db75f49a7bb9') # Path to desired structure
+    path = Path('./dataset/SHARE_OUTPUTS_2_ATOMS/0a4c-6759-46e6-bf5e-6439eefcaad2') # Path to desired structure
 
     # *********************************** #
 
@@ -76,6 +77,7 @@ def main():
         metadata={
             "device": device,
             "atom_types": torch.from_numpy(geometry.atoms.Z), # Unlike point_types, this is not rescaled.
+            "path": path
         },
     )
     embeddings_config = [embeddings_config]
@@ -83,7 +85,16 @@ def main():
     processor = MatrixDataProcessor(basis_table=table, symmetric_matrix=True, sub_point_matrix=False)
     dataset = TorchBasisMatrixDataset(embeddings_config, data_processor=processor)
 
-
+    # # Save the true matrix
+    # dataloader = DataLoader(dataset, 1)
+    # data = next(iter(dataloader))
+    # dump({
+    #     'coo_matrix': processor.matrix_from_data(data,)[0].tocsr().tocoo(),
+    #     'path': data.metadata["path"]
+    # }, "./scripts/coo_matrix_2atm.joblib", compress=3)
+    # print("Saved!")
+    # a
+    
     # Init the model, optimizer and others
     print("Initializing model...")
     model, optimizer, lr_scheduler, loss_fn = init_mace_g2m_model(config, table)
@@ -129,6 +140,7 @@ def main():
         )[0].todense()
         time5 = time.time()
 
+
     print("Time results of the inference:")
     print(f"Time to init the model: {time1 - time0:.2f}s")
     print(f"Time forward pass: {time2 - time1:.2f}s")
@@ -142,13 +154,13 @@ def main():
     n_atoms = data.num_nodes
     title = f"Results (seed {config["dataset"]["seed"]}). There are {n_atoms} in the unit cell. Structure {path.parts[-1]}"
     predicted_matrix_text = f"Saved training loss at epoch {len(history["train_loss"])}:     {history["train_loss"][-1]:.2f} eV²·100<br>Saved validation loss at epoch {len(history["train_loss"])}:     {history["val_loss"][-1]:.2f} eV²·100<br>MSE evaluation:     {loss.item():.2f} eV²·100"
-    plot_error_matrices_big(
-        true_matrix, pred_matrix,
-        matrix_label="Hamiltonian",
-        figure_title=title,
-        predicted_matrix_text=predicted_matrix_text,
-        filepath = Path(results_directory / f"inference_{n_atoms}atoms_epoch{len(history["train_loss"])}_struct_{path.parts[-1]}.html")
-    )
+    # plot_error_matrices_big(
+    #     true_matrix, pred_matrix,
+    #     matrix_label="Hamiltonian",
+    #     figure_title=title,
+    #     predicted_matrix_text=predicted_matrix_text,
+    #     filepath = Path(results_directory / f"inference_{n_atoms}atoms_epoch{len(history["train_loss"])}_struct_{path.parts[-1]}.html")
+    # )
   
 
 if __name__ == "__main__":
