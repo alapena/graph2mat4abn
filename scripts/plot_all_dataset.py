@@ -1,6 +1,8 @@
 # === Simulate a proper Python package (temporal, I did not want to waste time on installing things) ===
 import sys
 from pathlib import Path
+
+import scipy
 # Add the root directory to Python path
 root_dir = Path(__file__).parent.parent  # Assuming train.py is in scripts/
 sys.path.append(str(root_dir))
@@ -9,7 +11,7 @@ import numpy as np
 import torch
 from tools.import_utils import load_config
 from tools.scripts_utils import generate_g2m_dataset_from_paths, get_model_dataset, init_mace_g2m_model
-from tools.tools import get_basis_from_structures_paths, load_model
+from tools.tools import get_basis_from_structures_paths, load_model, reconstruct_tim_from_coo, reduced_coord
 from torch_geometric.loader import DataLoader
 from tqdm import tqdm
 import warnings
@@ -17,19 +19,24 @@ import sisl
 from tools.debug import create_sparse_matrix
 from joblib import dump, load
 import plotly.graph_objects as go
+from plotly.colors import sample_colorscale
 
 from graph2mat import (
     BasisTableWithEdges,
 )
 
 def main():
-    debug_mode = False
+    debug_mode = True
     # *********************************** #
     # * VARIABLES TO CHANGE BY THE USER * #
     # *********************************** #
     model_dir = Path("results/h_crystalls_1") # Results directory
     filename = "train_best_model.tar" # Model name (or relative path to the results directory)
-    compute_calculations = False # Save or Load calculations.
+    compute_matrices_calculations = False # Save or Load calculations.
+    compute_eigenvalues_calculations = True
+
+    plot_onsites_hops = False
+    plot_eigenvalues = True
 
     # *********************************** #
 
@@ -45,7 +52,7 @@ def main():
 
     savedir = model_dir / "results/alldataset"
     savedir.mkdir(exist_ok=True, parents=True)
-    calculations_path = savedir / "calculations_alldataset.joblib"
+    calculations_path = savedir / "calculations_alldataset.joblib" if not debug_mode else Path('scripts/debug_data.joblib')
     
     # Define orbital labels (for now we will assume that all atoms have the same orbitals). Use the same order as appearance in the hamiltonian.
     orbitals = {
@@ -72,14 +79,14 @@ def main():
     # Load the same dataset used to train/validate the model (paths)
     train_paths, val_paths = get_model_dataset(model_dir, verbose=True)
     
-    if compute_calculations:
+    if compute_matrices_calculations:
 
         # Generate the G2M basis
         paths = train_paths + val_paths
         basis = get_basis_from_structures_paths(paths, verbose=True, num_unique_z=config["dataset"].get("num_unique_z", None))
         table = BasisTableWithEdges(basis)
 
-        if not debug_mode:
+        if True:#not debug_mode:
             # Init the model, optimizer and others
             print("Initializing model...")
             model, optimizer, lr_scheduler, loss_fn = init_mace_g2m_model(config, table)
@@ -99,7 +106,7 @@ def main():
         #     train_paths = [train_paths[i] for i in range(2)]
         #     val_paths = train_paths
         #     paths = train_paths
-        train_dataset, val_dataset, processor = generate_g2m_dataset_from_paths(config, basis, table, train_paths, val_paths, device=device, verbose=True) if not debug_mode else ([i for i in range(len(train_paths))], [i for i in range(len(val_paths))], None)
+        train_dataset, val_dataset, processor = generate_g2m_dataset_from_paths(config, basis, table, train_paths, val_paths, device=device, verbose=True)# if not debug_mode else ([i for i in range(len(train_paths))], [i for i in range(len(val_paths))], None)
         splits = [train_dataset, val_dataset]
                 
                 
@@ -111,18 +118,18 @@ def main():
         for k, dataset in enumerate(splits):
             print(f"Computing split {k}...")
             for i, data in tqdm(enumerate(dataset)):
-                if debug_mode and i==5:
-                    break
+                # if debug_mode and i==5:
+                #     break
                 # Generate prediction. Create dataloaders (needed to generate a prediction)
                 data = DataLoader([data], 1)
                 data = next(iter(data))
 
                 # Generate prediction
-                model_predictions = model(data=data) if not debug_mode else None
+                model_predictions = model(data=data) #if not debug_mode else None
 
                 # Reconstruct matrices (sparse format)
-                h_pred = processor.matrix_from_data(data, predictions={"node_labels": model_predictions["node_labels"], "edge_labels": model_predictions["edge_labels"]})[0].tocsr().tocoo() if not debug_mode else model(n_atoms=2, n_orbs=13, n_shifts=10, size=100).tocsr().tocoo()
-                h_true = processor.matrix_from_data(data)[0].tocsr().tocoo() if not debug_mode else model(n_atoms=2, n_orbs=13, n_shifts=10, size=100).tocsr().tocoo()
+                h_pred = processor.matrix_from_data(data, predictions={"node_labels": model_predictions["node_labels"], "edge_labels": model_predictions["edge_labels"]})[0].tocsr().tocoo() #if not debug_mode else model(n_atoms=2, n_orbs=13, n_shifts=10, size=100).tocsr().tocoo()
+                h_true = processor.matrix_from_data(data)[0].tocsr().tocoo() #if not debug_mode else model(n_atoms=2, n_orbs=13, n_shifts=10, size=100).tocsr().tocoo()
 
                 true_sparse_matrices[k].append(h_true)
                 pred_sparse_matrices[k].append(h_pred)
@@ -135,7 +142,7 @@ def main():
                 # orb_in = np.empty([n_atoms*n_orbs,cols], dtype='<U10')
                 # isc = np.empty([n_atoms*n_orbs,cols], dtype='<U10')
 
-                path = Path(data.metadata["path"][0]) if not debug_mode else paths[i + k*len(splits[0])]
+                path = Path(data.metadata["path"][0]) #if not debug_mode else paths[i + k*len(splits[0])]
                 geometry = sisl.get_sile(path / "aiida.fdf").read_geometry()
                 # isc_list = [geometry.o2isc(io) for io in range(cols)]
                 # for col in range(h_pred.shape[1]):
@@ -156,9 +163,9 @@ def main():
                 # for j, nnz_element in enumerate(h_pred.data):
 
                 # Predicted labels
-                for k in range(len(h_pred.data)):
-                    row = h_pred.row[k]
-                    col = h_pred.col[k]
+                for j in range(len(h_pred.data)):
+                    row = h_pred.row[j]
+                    col = h_pred.col[j]
                     orb_in = orbitals[col % n_orbs]
                     orb_out = orbitals[row % n_orbs]
                     isc = str(geometry.o2isc(col))
@@ -168,6 +175,8 @@ def main():
 
                     # Store the labels 
                     split_labels[k].append(label)
+
+            break
             
 
         print(f"Saving the results in {calculations_path}...")
@@ -196,7 +205,7 @@ def main():
         del train_dataset, val_dataset, processor, model, basis, table
 
     # Load the results
-    print("Loading the results...")
+    print(f"Loading data from {calculations_path}")
     try:
         data = load(calculations_path)
         print("Results loaded!")
@@ -217,58 +226,12 @@ def main():
     n_train_samples = len(train_data[0])
     n_val_samples = len(val_data[0])
 
-    # # Means
-    # train_means = (
-    #     np.array([m.mean() for m in train_true]),
-    #     np.array([m.mean() for m in train_pred])
-    # )
-    # val_means = (
-    #     np.array([m.mean() for m in val_true]),
-    #     np.array([m.mean() for m in val_pred])
-    # )
+    # ---------------------------------- #
+    # -                                - #
+    # ---------------------------------- #
 
-    # # Standard deviations (ddof=1)
-    # train_stds = (
-    #     np.array([np.std(m.toarray(), ddof=0) for m in train_true]),
-    #     np.array([np.std(m.toarray(), ddof=0) for m in train_pred])
-    # )
-    # val_stds = (
-    #     np.array([np.std(m.toarray(), ddof=0) for m in val_true]),
-    #     np.array([np.std(m.toarray(), ddof=0) for m in val_pred])
-    # )
 
     print("Generating results...")
-    
-    # filepath= savedir / "alldataset_matrix_elements.html"
-    # title = f"Dataset analysis. Used model {model_dir.parts[-1]}"
-    # plot_dataset_results(
-    #     train_data=train_data, val_data=val_data,
-    #     colors=colors, title=title,
-    #     train_labels=train_labels, val_labels=val_labels,
-    #     train_means=train_means, val_means=val_means,
-    #     train_stds=train_stds, val_stds=val_stds,
-    #     maxaes=maxaes, maxaes_labels=maxaes_labels,
-    #     filepath=filepath
-    # )
-
-    # plot_pred_vs_true_matrix_elements(
-    #     train_data=train_data, val_data=val_data,
-    #     colors=colors, title=title,
-    #     train_labels=train_labels, val_labels=val_labels,
-    #     filepath=filepath
-    # )
-    # print(f"Results of matrix elements saved at {filepath}!")
-
-    # filepath= savedir / "alldataset_mean.html"
-    # title = f"Mean Dataset analysis. Used model {model_dir.parts[-1]}"
-    # plot_pred_vs_true_mean(
-    #     colors=colors, title=title,
-    #     train_means=train_means, val_means=val_means,
-    #     train_stds=train_stds, val_stds=val_stds,
-    #     labels=maxaes_labels,
-    #     n_train_samples=n_train_samples, n_val_samples=n_val_samples,
-    #     filepath=filepath
-    # )
 
     # Compute the labels of the scalar values plots.
     labels_train = [path.parts[-2][14:] +"/"+ path.parts[-1] for path in train_paths]
@@ -277,19 +240,20 @@ def main():
     # Mean of the absolute error
     diff_train = [t - p for t, p in zip(train_true, train_pred)]
     diff_val = [t - p for t, p in zip(val_true, val_pred)]
-    values_train = [np.mean(diff_train[i].data) for i in range(len(diff_train))]
-    values_val = [np.mean(diff_val[i].data) for i in range(len(diff_val))]
 
-    filepath= savedir / "alldataset_mean.html"
-    title = f"Mean(T-P) of non-zero elements. Used model {model_dir.parts[-1]}"
-    title_x="Mean(True-Pred) (eV)"
-    plot_alldataset_struct_vs_scalar(
-        title, title_x,
-        values_train, labels_train, n_train_samples,
-        values_val=values_val, labels_val=labels_val, n_val_samples=n_val_samples,
-        filepath=filepath
-    )
-    print(f"Mean results saved at {filepath}")
+    # values_train = [np.mean(diff_train[i].data) for i in range(len(diff_train))]
+    # values_val = [np.mean(diff_val[i].data) for i in range(len(diff_val))]
+
+    # filepath= savedir / "alldataset_mean.html"
+    # title = f"Mean(T-P) of non-zero elements. Used model {model_dir.parts[-1]}"
+    # title_x="Mean(True-Pred) (eV)"
+    # plot_alldataset_struct_vs_scalar(
+    #     title, title_x,
+    #     values_train, labels_train, n_train_samples,
+    #     values_val=values_val, labels_val=labels_val, n_val_samples=n_val_samples,
+    #     filepath=filepath
+    # )
+    # print(f"Mean results saved at {filepath}")
 
     # Mean of the absolute value of the absolute error
     values_train = [np.mean(np.abs(diff_train[i].data)) for i in range(len(diff_train))]
@@ -342,87 +306,207 @@ def main():
     # -                                - #
     # ---------------------------------- #
 
-    # Separate on-sites from hoppings:
+    if plot_onsites_hops:
 
-    # Mean of only the on-sites
+        # Separate on-sites from hoppings:
+
+        # Mean of only the on-sites
+        splits = [train_data, val_data]
+        split_paths = (train_paths, val_paths)
+
+
+        splits_absmean_onsites = ([], [])
+        splits_absmean_hops = ([], [])
+        splits_absstd_onsites = ([], [])
+        splits_absstd_hops = ([], [])
+        # For each split (train, val)
+        for k in range(len(splits)):
+
+            true_matrices = splits[k][0]
+            pred_matrices = splits[k][1]
+            n_matrices = len(true_matrices)
+
+            # For each matrix
+            onsite_values = []
+            hopping_values = []
+            for i in tqdm(range(n_matrices)):
+
+                diff_matrix = (true_matrices[i] - pred_matrices[i]).tocoo()
+
+                # Compute labels for each nnz element
+                path = Path("./") / split_paths[k][i]
+                geometry = sisl.get_sile(path / "aiida.fdf").read_geometry()
+                for j in range(len(diff_matrix.data)):
+                    row = diff_matrix.row[j]
+                    col = diff_matrix.col[j]
+                    orb_in = orbitals[col % n_orbs]
+                    orb_out = orbitals[row % n_orbs]
+                    isc = str(geometry.o2isc(col))
+
+                    # Join altogether
+                    label = ''.join([orb_in, " -> ", orb_out, " ", isc])
+
+                    # Store
+                    if isc == '[0 0 0]' and row == col:
+                        onsite_values.append(diff_matrix.data[j])
+                    else:
+                        hopping_values.append(diff_matrix.data[j])
+
+                # Store the result for each matrix
+                splits_absmean_onsites[k].append(np.mean(np.abs(onsite_values)))
+                splits_absmean_hops[k].append(np.mean(np.abs(hopping_values)))
+                splits_absstd_onsites[k].append(np.std(np.abs(onsite_values)))
+                splits_absstd_hops[k].append(np.std(np.abs(hopping_values)))
+                
+
+        # Plot the results
+        values_train_onsites = splits_absmean_onsites[0]
+        values_val_onsites = splits_absmean_onsites[1]
+        values_train_hops = splits_absmean_hops[0]
+        values_val_hops = splits_absmean_hops[1]
+        filepath= savedir / "alldataset_onsiteshoppings_absmean.html"
+        title = f"Mean(Abs(T-P)). Used model {model_dir.parts[-1]}"
+        title_x="Mean(Abs(T-P)) (eV)"
+        plot_alldataset_struct_vs_scalar_onsites_hoppings(
+            title, title_x,
+            values_train_onsite=values_train_onsites, values_train_hop=values_train_hops, labels_train=labels_train, n_train_samples=len(values_train_onsites),
+            values_val_onsite=values_val_onsites, values_val_hop=values_val_hops, labels_val=labels_val, n_val_samples=len(values_val_onsites),
+            filepath=filepath
+        )
+        print(f"AbsMean Separated onsites and hoppings results saved at {filepath}")
+
+        values_train_onsites = splits_absstd_onsites[0]
+        values_val_onsites = splits_absstd_onsites[1]
+        values_train_hops = splits_absstd_hops[0]
+        values_val_hops = splits_absstd_hops[1]
+        filepath= savedir / "alldataset_onsiteshoppings_absstd.html"
+        title = f"Std(Abs(T-P)). Used model {model_dir.parts[-1]}"
+        title_x="Std(Abs(T-P)) (eV)"
+        plot_alldataset_struct_vs_scalar_onsites_hoppings(
+            title, title_x,
+            values_train_onsite=values_train_onsites, values_train_hop=values_train_hops, labels_train=labels_train, n_train_samples=len(values_train_onsites),
+            values_val_onsite=values_val_onsites, values_val_hop=values_val_hops, labels_val=labels_val, n_val_samples=len(values_val_onsites),
+            filepath=filepath
+        )
+        print(f"AbsStd Separated onsites and hoppings results saved at {filepath}")
+
+
+    # Energy bands (diagonal plot)
+
+    energybands_dir = savedir / "energybands_data"
+    energybands_dir.mkdir(exist_ok=True, parents=True)
+    
     splits = [train_data, val_data]
-    split_paths = (train_paths, val_paths)
+    splits_paths = (train_paths, val_paths)
+    splits_str = ("train", "val")
 
+    if compute_eigenvalues_calculations:
+        print("=== COMPUTING ENERGY BANDS ===")
 
-    splits_absmean_onsites = ([], [])
-    splits_absmean_hops = ([], [])
-    splits_absstd_onsites = ([], [])
-    splits_absstd_hops = ([], [])
-    # For each split (train, val)
-    for k in range(len(splits)):
+        # For each split
+        for k, split in enumerate(splits):
+            true_data = split[0]
+            pred_data = split[1]
+            n_samples = len(pred_data)
 
-        true_matrices = splits[k][0]
-        pred_matrices = splits[k][1]
-        n_matrices = len(true_matrices)
+            # For each true/pred matrix
+            for j in tqdm(range(n_samples)):
+                # if debug_mode and i==5:
+                #     break
+                # Get the matrices
+                h_true = true_data[j]
+                h_pred = pred_data[j]
 
-        # For each matrix
-        onsite_values = []
-        hopping_values = []
-        for i in tqdm(range(n_matrices)):
+                file = sisl.get_sile(splits_paths[k][j] / "aiida.fdf")
+                geometry = file.read_geometry()
+                cell = geometry.cell
 
-            diff_matrix = (true_matrices[i] - pred_matrices[i]).tocoo()
+                # Define a path in k-space
+                kxs = np.linspace(0,1, num=40)
+                kys = np.linspace(0,1, num=40)
+                kzs = np.linspace(0,1, num=40) # * Change the resolution here
+                k_dir_x = geometry.rcell[:,0]
+                k_dir_y = geometry.rcell[:,1]
+                k_dir_z = geometry.rcell[:,2]
+                k_path_x=np.array([kx*k_dir_x for kx in kxs])
+                k_path_y=np.array([ky*k_dir_y for ky in kys])
+                k_path_z=np.array([kz*k_dir_z for kz in kzs])
+                k_path=np.concatenate([k_path_x, k_path_y, k_path_z])
 
-            # Compute labels for each nnz element
-            path = Path("./") / split_paths[k][i]
-            geometry = sisl.get_sile(path / "aiida.fdf").read_geometry()
-            for j in range(len(diff_matrix.data)):
-                row = diff_matrix.row[j]
-                col = diff_matrix.col[j]
-                orb_in = orbitals[col % n_orbs]
-                orb_out = orbitals[row % n_orbs]
-                isc = str(geometry.o2isc(col))
+                # k_path = np.array([[0, 0, 0], [0, 0, 1]]) if debug_mode else k_path
 
-                # Join altogether
-                label = ''.join([orb_in, " -> ", orb_out, " ", isc])
+                # TIM reconstruction
+                h_uc = file.read_hamiltonian()
+                s_uc = file.read_overlap()
 
-                # Store
-                if isc == '[0 0 0]' and row == col:
-                    onsite_values.append(diff_matrix.data[j])
-                else:
-                    hopping_values.append(diff_matrix.data[j])
+                energy_bands_pred = []
+                energy_bands_true = []
+                for k_point in tqdm(k_path):
+                    # Ground truth:
+                    Hk_true = h_uc.Hk(reduced_coord(k_point, cell), gauge='cell').toarray()
+                    Sk_true = s_uc.Sk(reduced_coord(k_point, cell), gauge='cell').toarray()
 
-            # Store the result for each matrix
-            splits_absmean_onsites[k].append(np.mean(np.abs(onsite_values)))
-            splits_absmean_hops[k].append(np.mean(np.abs(hopping_values)))
-            splits_absstd_onsites[k].append(np.std(np.abs(onsite_values)))
-            splits_absstd_hops[k].append(np.std(np.abs(hopping_values)))
-            
+                    Ek_true = scipy.linalg.eigh(Hk_true, Sk_true, eigvals_only=True)
+                    energy_bands_true.append(Ek_true)
 
-    # Plot the results
-    values_train_onsites = splits_absmean_onsites[0]
-    values_val_onsites = splits_absmean_onsites[1]
-    values_train_hops = splits_absmean_hops[0]
-    values_val_hops = splits_absmean_hops[1]
-    filepath= savedir / "alldataset_onsiteshoppings_absmean.html"
-    title = f"Mean(Abs(T-P)). Used model {model_dir.parts[-1]}"
-    title_x="Mean(Abs(T-P)) (eV)"
-    plot_alldataset_struct_vs_scalar_onsites_hoppings(
-        title, title_x,
-        values_train_onsite=values_train_onsites, values_train_hop=values_train_hops, labels_train=labels_train, n_train_samples=len(values_train_onsites),
-        values_val_onsite=values_val_onsites, values_val_hop=values_val_hops, labels_val=labels_val, n_val_samples=len(values_val_onsites),
-        filepath=filepath
-    )
-    print(f"AbsMean Separated onsites and hoppings results saved at {filepath}")
+                    # Prediction:
+                    Hk_pred = reconstruct_tim_from_coo(k_point, h_pred.tocsr().tocoo(), geometry, cell)
+                    # Sk = reconstruct_tim(k_point, s_pred, orb_i, orb_j, isc, cell)
 
-    values_train_onsites = splits_absstd_onsites[0]
-    values_val_onsites = splits_absstd_onsites[1]
-    values_train_hops = splits_absstd_hops[0]
-    values_val_hops = splits_absstd_hops[1]
-    filepath= savedir / "alldataset_onsiteshoppings_absstd.html"
-    title = f"Std(Abs(T-P)). Used model {model_dir.parts[-1]}"
-    title_x="Std(Abs(T-P)) (eV)"
-    plot_alldataset_struct_vs_scalar_onsites_hoppings(
-        title, title_x,
-        values_train_onsite=values_train_onsites, values_train_hop=values_train_hops, labels_train=labels_train, n_train_samples=len(values_train_onsites),
-        values_val_onsite=values_val_onsites, values_val_hop=values_val_hops, labels_val=labels_val, n_val_samples=len(values_val_onsites),
-        filepath=filepath
-    )
-    print(f"AbsStd Separated onsites and hoppings results saved at {filepath}")
+                    Ek = scipy.linalg.eigh(Hk_pred, Sk_true, eigvals_only=True)
+
+                    energy_bands_pred.append(Ek)
+
+                # Save results
+                energy_bands_true_array = np.stack(energy_bands_true, axis=0)
+                energy_bands_pred_array = np.stack(energy_bands_pred, axis=0)
+
+                filepath = energybands_dir / f"energybands_{splits_str[k]}_{splits_paths[k][j].parts[-1]}.npz"
+                np.savez(filepath, energy_bands_true_array=energy_bands_true_array, energy_bands_pred_array=energy_bands_pred_array, k_path=k_path, path=str(splits_paths[k][j]))
+
+    # Load data and plot.
+
+    if plot_eigenvalues:
+
+        print("Plotting eigenvalues!")
+
+        # Read all files in data directory.
+        print(energybands_dir)
+        energybands_paths = list(energybands_dir.glob('*.npz'))
+        print(energybands_paths)
+
+        # For each file
+        for energybands_path in tqdm(energybands_paths):
+            energybands_path = Path(energybands_path)
+
+            # Read it
+            energyband_data = np.load(energybands_path)
+
+            # Plot it
+            k_path = energyband_data['k_path']
+            energy_bands_true = energyband_data['energy_bands_true_array']
+            energy_bands_pred = energyband_data['energy_bands_pred_array']
+            path = Path(str(energyband_data['path']))
+
+            titles_series = [f"k=({"{:.2f}".format(k_point[0]) if k_point[0] != 0 else 0}, {"{:.2f}".format(k_point[1]) if k_point[1] != 0 else 0}, {"{:.2f}".format(k_point[2]) if k_point[2] != 0 else 0})" for k_point in k_path]
+            filepath= savedir / f"nnz_elements_{energybands_path.parts[-1].split('_')[1]}_{path.parts[-2].split('_')[2]}_ATOMS_{path.parts[-1]}_eigenvalues.html"
+            title = f"Eigenvalues comparison (eV). Used model {model_dir.parts[-1]}"
+            plot_predictions_vs_truths(
+                predictions=energy_bands_pred,
+                truths=energy_bands_true,
+                series_names=titles_series,
+                title=title,
+                xaxis_title='True energy',
+                yaxis_title='Predicted energy',
+                legend_title='k points',
+                show_diagonal=True,
+                show_points_by_default=True,
+                showlegend=True,
+                filepath=filepath
+            )
+        print("Finished plotting eigenvalues!")
+        
+
             
 
     # ! COSTY:
@@ -477,8 +561,77 @@ def main():
     #         )
     # print(f"Matrix elements results saved at {savedir}")
 
+    print(f"All results saved at {savedir}")
 
 
+
+
+
+def plot_predictions_vs_truths(predictions, truths, series_names=None, 
+                               title='True vs Predicted Values', 
+                               xaxis_title='True Values', 
+                               yaxis_title='Predicted Values', 
+                               legend_title='Series',
+                               show_diagonal=True, 
+                               show_points_by_default=True,
+                               showlegend=True,
+                               filepath=None):
+
+    # Validate input shapes
+    if predictions.shape != truths.shape:
+        raise ValueError("predictions and truths must have the same shape")
+    
+    n_series = predictions.shape[0]
+    colors = sample_colorscale('Bluered', [i/(n_series-1) for i in range(n_series)][::-1])
+    
+    # Generate default series names if not provided
+    if series_names is None:
+        series_names = [f'Series {i+1}' for i in range(n_series)]
+    elif len(series_names) != n_series:
+        raise ValueError("series_names length must match number of series")
+    
+    # Create traces for each series
+    traces = []
+    for i in range(n_series):
+        trace = go.Scatter(
+            x=truths[i],
+            y=predictions[i],
+            mode='markers',
+            marker=dict(color=colors[i]),
+            name=series_names[i],
+            visible=None if show_points_by_default else 'legendonly',
+        )
+        traces.append(trace)
+    
+    # Create diagonal line trace if enabled
+    if show_diagonal:
+        all_values = np.concatenate([truths.flatten(), predictions.flatten()])
+        min_val, max_val = min(all_values), max(all_values)
+        diagonal_trace = go.Scatter(
+            x=[min_val, max_val],
+            y=[min_val, max_val],
+            mode='lines',
+            line=dict(dash='dash', color='gray'),
+            name='Perfect Prediction'
+        )
+        traces.append(diagonal_trace)
+    
+    # Create figure and update layout
+    fig = go.Figure(data=traces)
+    fig.update_layout(
+        title=title,
+        xaxis_title=xaxis_title,
+        yaxis_title=yaxis_title,
+        legend_title=legend_title,
+        showlegend=showlegend
+    )
+    
+    # Save to HTML if path is provided
+    if filepath:
+        print(filepath)
+        fig.write_html(filepath)
+    
+    return fig
 
 
     

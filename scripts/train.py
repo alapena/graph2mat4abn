@@ -190,22 +190,22 @@ def main():
             # print(f"The proportions are \n{[x_atoms_list_train.count(x)/len(train_paths) for x in unique_x]} versus \n{[x_atoms_list_val.count(x)/len(val_paths) for x in unique_x]}.")
 
         # Set extra validation curve
-            val_paths_extra = []
-            if extra_custom_validation:
-                use_only = ["64_ATOMS"]
-                x_atoms_paths = [pointers_folder / f"SHARE_OUTPUTS_{n}" for n in use_only]
-                filepath = "structures.txt"
-                structures_paths = [[] for _ in x_atoms_paths]
-                for i, x_atoms_path in enumerate(x_atoms_paths):
-                    structures = read_structures_paths(str(x_atoms_path / filepath))
-                    for structure in structures:
-                        structures_paths[i].append(x_atoms_path.parts[-1] +"/"+ structure)
+        val_paths_extra = []
+        if extra_custom_validation:
+            use_only = ["64_ATOMS"]
+            x_atoms_paths = [pointers_folder / f"SHARE_OUTPUTS_{n}" for n in use_only]
+            filepath = "structures.txt"
+            structures_paths = [[] for _ in x_atoms_paths]
+            for i, x_atoms_path in enumerate(x_atoms_paths):
+                structures = read_structures_paths(str(x_atoms_path / filepath))
+                for structure in structures:
+                    structures_paths[i].append(x_atoms_path.parts[-1] +"/"+ structure)
 
-                # Now we join them with the true parent folder
-                for structures in structures_paths:
-                    for structure in structures:
-                        true_path = true_dataset_folder / structure
-                        val_paths_extra.append(true_path)
+            # Now we join them with the true parent folder
+            for structures in structures_paths:
+                for structure in structures:
+                    true_path = true_dataset_folder / structure
+                    val_paths_extra.append(true_path)
 
     # Use previous dataset
     else:
@@ -317,7 +317,8 @@ def main():
     scheduler_config = config["scheduler"]
 
     # len_train_dataloader = int(len(paths) * dataset_config.get("train_split_ratio"))
-    scheduler_args, scheduler_kwargs = get_scheduler_args_and_kwargs(config, verbose=True)#, len_train_dataloader=len_train_dataloader)
+    if scheduler_config.get("type", None) is not None:
+        scheduler_args, scheduler_kwargs = get_scheduler_args_and_kwargs(config, verbose=True)#, len_train_dataloader=len_train_dataloader)
 
     scheduler = scheduler_config.get("type", None)
     if scheduler is not None:
