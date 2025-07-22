@@ -26,17 +26,18 @@ from graph2mat import (
 )
 
 def main():
-    debug_mode = True
+    debug_mode = False
     # *********************************** #
     # * VARIABLES TO CHANGE BY THE USER * #
     # *********************************** #
     model_dir = Path("results/h_crystalls_1") # Results directory
     filename = "train_best_model.tar" # Model name (or relative path to the results directory)
     compute_matrices_calculations = False # Save or Load calculations.
-    compute_eigenvalues_calculations = True
+    compute_eigenvalues_calculations = False
 
-    plot_onsites_hops = False
-    plot_eigenvalues = True
+    plot_nnzvalues_onsites_hops = False
+    plot_eigenvalues_and_energybands = True
+    plot_energybands = True
 
     # *********************************** #
 
@@ -306,7 +307,7 @@ def main():
     # -                                - #
     # ---------------------------------- #
 
-    if plot_onsites_hops:
+    if plot_nnzvalues_onsites_hops:
 
         # Separate on-sites from hoppings:
 
@@ -422,9 +423,9 @@ def main():
                 cell = geometry.cell
 
                 # Define a path in k-space
-                kxs = np.linspace(0,1, num=40)
-                kys = np.linspace(0,1, num=40)
-                kzs = np.linspace(0,1, num=40) # * Change the resolution here
+                kxs = np.linspace(0,1, num=80)
+                kys = np.linspace(0,1, num=80)
+                kzs = np.linspace(0,1, num=80) # * Change the resolution here
                 k_dir_x = geometry.rcell[:,0]
                 k_dir_y = geometry.rcell[:,1]
                 k_dir_z = geometry.rcell[:,2]
@@ -466,14 +467,12 @@ def main():
 
     # Load data and plot.
 
-    if plot_eigenvalues:
+    if plot_eigenvalues_and_energybands:
 
-        print("Plotting eigenvalues!")
+        print("Plotting eigenvalues and energy bands!")
 
         # Read all files in data directory.
-        print(energybands_dir)
         energybands_paths = list(energybands_dir.glob('*.npz'))
-        print(energybands_paths)
 
         # For each file
         for energybands_path in tqdm(energybands_paths):
@@ -491,10 +490,12 @@ def main():
             titles_series = [f"k=({"{:.2f}".format(k_point[0]) if k_point[0] != 0 else 0}, {"{:.2f}".format(k_point[1]) if k_point[1] != 0 else 0}, {"{:.2f}".format(k_point[2]) if k_point[2] != 0 else 0})" for k_point in k_path]
             filepath= savedir / f"nnz_elements_{energybands_path.parts[-1].split('_')[1]}_{path.parts[-2].split('_')[2]}_ATOMS_{path.parts[-1]}_eigenvalues.html"
             title = f"Eigenvalues comparison (eV). Used model {model_dir.parts[-1]}"
-            plot_predictions_vs_truths(
+            plot_diagonal_rows(
                 predictions=energy_bands_pred,
                 truths=energy_bands_true,
                 series_names=titles_series,
+                x_error_perc=None,
+                y_error_perc=5,
                 title=title,
                 xaxis_title='True energy',
                 yaxis_title='Predicted energy',
@@ -504,7 +505,27 @@ def main():
                 showlegend=True,
                 filepath=filepath
             )
-        print("Finished plotting eigenvalues!")
+
+
+            if plot_energybands:
+                title = f"Energy bands {energybands_path.parts[-1].split('_')[1]} dataset, structure {path.parts[-2].split('_')[2]}ATOMS/{path.parts[-1]}. Using SIESTA overlap matrix."
+                filepath = savedir / f"nnz_elements_{energybands_path.parts[-1].split('_')[1]}_{path.parts[-2].split('_')[2]}_ATOMS_{path.parts[-1]}_energybands.html"
+                x_axis = [k_path]*energy_bands_pred.shape[1]
+                n_series = energy_bands_pred.shape[0]
+                titles_pred = [f"Predicted band {i}" for i in range(n_series)]
+                titles_true = [f"True band {i}" for i in range(n_series)]
+                plot_rows_of_2darray(
+                    array_pred = energy_bands_pred,
+                    array_true = energy_bands_true,
+                    x = x_axis,
+                    xlabel = "k",
+                    ylabel = "Energy (eV)",
+                    title = title,
+                    titles_pred=titles_pred,
+                    titles_true=titles_true,
+                    filepath = filepath
+                )
+        print("Finished plotting eigenvalues and/or energybands!")
         
 
             
@@ -566,8 +587,99 @@ def main():
 
 
 
+def plot_rows_of_2darray(array_pred, array_true=None, x=None, titles_pred=None, titles_true=None, xlabel=None, ylabel=None, title=None, filepath=None):
 
-def plot_predictions_vs_truths(predictions, truths, series_names=None, 
+    if array_pred.ndim != 2:
+        raise ValueError("Input array must be 2-dimensional")
+
+    num_rows = array_pred.shape[0]
+    num_cols = array_pred.shape[1]
+
+    # Default color sequence (you can customize this)
+    colors = [
+        '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+        '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
+    ]
+
+    if titles_pred is None:
+        titles_pred = [f'Pred Row {i+1}' for i in range(num_rows)]
+    elif len(titles_pred) != num_rows:
+        raise ValueError("Number of titles_pred must match number of rows")
+
+    if titles_true is None:
+        titles_true = [f'True Row {i+1}' for i in range(num_rows)]
+    elif len(titles_true) != num_rows:
+        raise ValueError("Number of titles_true must match number of rows")
+
+    if x is None:
+        x = np.arange(num_cols)
+    elif len(x) != num_cols:
+        raise ValueError("Length of x must match number of columns in array")
+
+    fig = go.Figure()
+
+    for row in range(num_rows):
+        color = colors[row % len(colors)]
+
+        # Add predicted values as dashed line 
+        fig.add_trace(go.Scatter(
+            x=x,
+            y=array_pred[row, :],
+            mode='lines',
+            name=titles_pred[row],
+            line=dict(color=color, dash='dash'),
+            opacity=0.8,
+            legendgroup=f'group{row}',
+            showlegend=True
+        ))
+
+        if array_true is not None:
+            # Add true values as solid line with same color 
+            fig.add_trace(go.Scatter(
+                x=x,
+                y=array_true[row, :],
+                mode='lines',
+                name=titles_true[row],
+                line=dict(color=color),
+                opacity=0.8,
+                legendgroup=f'group{row}',
+                showlegend=True
+            ))
+
+    fig.update_layout(
+        title=title,
+        xaxis_title=xlabel,
+        yaxis_title=ylabel,
+        hovermode='x unified',
+        height=800,
+        xaxis_title_standoff=15,
+    )
+
+    fig.update_xaxes(
+        showticklabels=False,
+    )
+
+    # === Output ===
+    if filepath:
+        filepath = Path(filepath)
+        if filepath.suffix.lower() == ".html":
+            fig.write_html(str(filepath))
+        elif filepath.suffix.lower() == ".png":
+            fig.write_image(str(filepath))
+        else:
+            raise ValueError(f"Unsupported file extension: {filepath.suffix}")
+    else:
+        fig.show()
+
+    return fig
+
+
+
+
+
+def plot_diagonal_rows(predictions, truths, series_names=None, 
+                               x_error_perc = None,
+                               y_error_perc = None,
                                title='True vs Predicted Values', 
                                xaxis_title='True Values', 
                                yaxis_title='Predicted Values', 
@@ -600,6 +712,16 @@ def plot_predictions_vs_truths(predictions, truths, series_names=None,
             marker=dict(color=colors[i]),
             name=series_names[i],
             visible=None if show_points_by_default else 'legendonly',
+            error_x=dict(
+                type='percent',
+                value=x_error_perc,
+                visible=True
+            ) if x_error_perc is not None else None,
+            error_y=dict(
+                type='percent',
+                value=y_error_perc,
+                visible=True
+            ) if y_error_perc is not None else None,
         )
         traces.append(trace)
     
@@ -628,7 +750,6 @@ def plot_predictions_vs_truths(predictions, truths, series_names=None,
     
     # Save to HTML if path is provided
     if filepath:
-        print(filepath)
         fig.write_html(filepath)
     
     return fig
