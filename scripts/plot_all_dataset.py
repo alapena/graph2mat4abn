@@ -30,12 +30,12 @@ def main():
     # *********************************** #
     # * VARIABLES TO CHANGE BY THE USER * #
     # *********************************** #
-    model_dir = Path("results/h_crystalls_1") # Results directory
+    model_dir = Path("results/h_noc_2") # Results directory
     filename = "train_best_model.tar" # Model name (or relative path to the results directory)
-    compute_matrices_calculations = False # Save or Load calculations.
-    compute_eigenvalues_calculations = False
+    compute_matrices_calculations = True # Save or Load calculations.
+    compute_eigenvalues_calculations = True
 
-    plot_nnzvalues_onsites_hops = False
+    plot_nnzvalues_onsites_hops = True
     plot_eigenvalues_and_energybands = True
     plot_energybands = True
 
