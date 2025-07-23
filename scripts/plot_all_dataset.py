@@ -531,311 +531,68 @@ def main():
             
 
     # ! COSTY:
-    # # Diagonal plot for each structure
-    # split_paths = (train_paths, val_paths)
+    # Diagonal plot for each structure
+    split_paths = (train_paths, val_paths)
 
-    # structures_train = [path.parts[-2][14:] +"/"+ path.parts[-1] for path in train_paths]
-    # structures_val = [path.parts[-2][14:] +"/"+ path.parts[-1] for path in val_paths]
-    # splits_structures = (structures_train, structures_val)
+    structures_train = [path.parts[-2][14:] +"/"+ path.parts[-1] for path in train_paths]
+    structures_val = [path.parts[-2][14:] +"/"+ path.parts[-1] for path in val_paths]
+    splits_structures = (structures_train, structures_val)
 
-    # title_x="True matrix elements (eV)"
-    # title_y="Predicted matrix elements (eV)"
+    title_x="True matrix elements (eV)"
+    title_y="Predicted matrix elements (eV)"
 
-    # splits = [train_data, val_data]
-    # splits_str = ["train", "val"]
+    splits = [train_data, val_data]
+    splits_str = ["train", "val"]
 
-    # # For each split (train, val)
-    # for j in range(len(splits)):
-    #     print(f"Plotting split {j}...")
-    #     true_matrices = splits[j][0]
-    #     pred_matrices = splits[j][1]
-    #     n_matrices = len(true_matrices)
+    # For each split (train, val)
+    for j in range(len(splits)):
+        print(f"Plotting split {j}...")
+        true_matrices = splits[j][0]
+        pred_matrices = splits[j][1]
+        n_matrices = len(true_matrices)
 
-    #     # For each matrix
-    #     for i in tqdm(range(n_matrices)):
+        # For each matrix
+        for i in tqdm(range(n_matrices)):
 
-    #         # Compute labels
-    #         path = Path("./") / split_paths[j][i]
-    #         geometry = sisl.get_sile(path / "aiida.fdf").read_geometry()
-    #         matrix_labels = []
-    #         for k in range(len(true_matrices[i].data)):
-    #             row = true_matrices[i].row[k]
-    #             col = true_matrices[i].col[k]
-    #             orb_in = orbitals[col % n_orbs]
-    #             orb_out = orbitals[row % n_orbs]
-    #             isc = str(geometry.o2isc(col))
+            # Compute labels
+            path = Path("./") / split_paths[j][i]
+            geometry = sisl.get_sile(path / "aiida.fdf").read_geometry()
+            matrix_labels = []
+            for k in range(len(true_matrices[i].data)):
+                row = true_matrices[i].row[k]
+                col = true_matrices[i].col[k]
+                orb_in = orbitals[col % n_orbs]
+                orb_out = orbitals[row % n_orbs]
+                isc = str(geometry.o2isc(col))
 
-    #             # Join altogether
-    #             label = ''.join([orb_in, " -> ", orb_out, " ", isc])
+                # Join altogether
+                label = ''.join([orb_in, " -> ", orb_out, " ", isc])
 
-    #             # Store the labels 
-    #             matrix_labels.append(label)
+                # Store the labels 
+                matrix_labels.append(label)
 
-    #         filepath= savedir / f"nnz_elements_{splits_str[j]}_{Path(splits_structures[j][i]).parts[-2]}_{Path(splits_structures[j][i]).parts[-1]}.html"
-    #         title = f"Matrix elements of structure {splits_structures[j][i]}.<br>{splits_str[j]} dataset.<br>Used model {model_dir.parts[-1]}"
-    #         true_values = true_matrices[i].data
-    #         pred_values = pred_matrices[i].data
-    #         plot_diagonal(
-    #             true_values, pred_values, matrix_labels, # 1D array of elements.
-    #             title=title, title_x=title_x, title_y=title_y, colors=None,
-    #             filepath=filepath
-    #         )
-    # print(f"Matrix elements results saved at {savedir}")
+            filepath= savedir / f"nnz_elements_{splits_str[j]}_{Path(splits_structures[j][i]).parts[-2]}_{Path(splits_structures[j][i]).parts[-1]}.html"
+            title = f"Matrix elements of structure {splits_structures[j][i]}.<br>{splits_str[j]} dataset.<br>Used model {model_dir.parts[-1]}"
+            true_values = true_matrices[i].data
+            pred_values = pred_matrices[i].data
+            plot_diagonal(
+                true_values, pred_values, matrix_labels, # 1D array of elements.
+                title=title, title_x=title_x, title_y=title_y, colors=None,
+                filepath=filepath
+            )
+    print(f"Matrix elements results saved at {savedir}")
 
     print(f"All results saved at {savedir}")
 
 
 
 
-def plot_rows_of_2darray(array_pred, array_true=None, x=None, titles_pred=None, titles_true=None, xlabel=None, ylabel=None, title=None, filepath=None):
-
-    if array_pred.ndim != 2:
-        raise ValueError("Input array must be 2-dimensional")
-
-    num_rows = array_pred.shape[0]
-    num_cols = array_pred.shape[1]
-
-    # Default color sequence (you can customize this)
-    colors = [
-        '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
-        '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
-    ]
-
-    if titles_pred is None:
-        titles_pred = [f'Pred Row {i+1}' for i in range(num_rows)]
-    elif len(titles_pred) != num_rows:
-        raise ValueError("Number of titles_pred must match number of rows")
-
-    if titles_true is None:
-        titles_true = [f'True Row {i+1}' for i in range(num_rows)]
-    elif len(titles_true) != num_rows:
-        raise ValueError("Number of titles_true must match number of rows")
-
-    if x is None:
-        x = np.arange(num_cols)
-    elif len(x) != num_cols:
-        raise ValueError("Length of x must match number of columns in array")
-
-    fig = go.Figure()
-
-    for row in range(num_rows):
-        color = colors[row % len(colors)]
-
-        # Add predicted values as dashed line 
-        fig.add_trace(go.Scatter(
-            x=x,
-            y=array_pred[row, :],
-            mode='lines',
-            name=titles_pred[row],
-            line=dict(color=color, dash='dash'),
-            opacity=0.8,
-            legendgroup=f'group{row}',
-            showlegend=True
-        ))
-
-        if array_true is not None:
-            # Add true values as solid line with same color 
-            fig.add_trace(go.Scatter(
-                x=x,
-                y=array_true[row, :],
-                mode='lines',
-                name=titles_true[row],
-                line=dict(color=color),
-                opacity=0.8,
-                legendgroup=f'group{row}',
-                showlegend=True
-            ))
-
-    fig.update_layout(
-        title=title,
-        xaxis_title=xlabel,
-        yaxis_title=ylabel,
-        hovermode='x unified',
-        height=800,
-        xaxis_title_standoff=15,
-    )
-
-    fig.update_xaxes(
-        showticklabels=False,
-    )
-
-    # === Output ===
-    if filepath:
-        filepath = Path(filepath)
-        if filepath.suffix.lower() == ".html":
-            fig.write_html(str(filepath))
-        elif filepath.suffix.lower() == ".png":
-            fig.write_image(str(filepath))
-        else:
-            raise ValueError(f"Unsupported file extension: {filepath.suffix}")
-    else:
-        fig.show()
-
-    return fig
 
 
 
 
 
-def plot_diagonal_rows(predictions, truths, series_names=None, 
-                               x_error_perc = None,
-                               y_error_perc = None,
-                               title='True vs Predicted Values', 
-                               xaxis_title='True Values', 
-                               yaxis_title='Predicted Values', 
-                               legend_title='Series',
-                               show_diagonal=True, 
-                               show_points_by_default=True,
-                               showlegend=True,
-                               filepath=None):
 
-    # Validate input shapes
-    if predictions.shape != truths.shape:
-        raise ValueError("predictions and truths must have the same shape")
-    
-    n_series = predictions.shape[0]
-    colors = sample_colorscale('Bluered', [i/(n_series-1) for i in range(n_series)][::-1])
-    
-    # Generate default series names if not provided
-    if series_names is None:
-        series_names = [f'Series {i+1}' for i in range(n_series)]
-    elif len(series_names) != n_series:
-        raise ValueError("series_names length must match number of series")
-    
-    # Create traces for each series
-    traces = []
-    for i in range(n_series):
-        trace = go.Scatter(
-            x=truths[i],
-            y=predictions[i],
-            mode='markers',
-            marker=dict(color=colors[i]),
-            name=series_names[i],
-            visible=None if show_points_by_default else 'legendonly',
-            error_x=dict(
-                type='percent',
-                value=x_error_perc,
-                visible=True
-            ) if x_error_perc is not None else None,
-            error_y=dict(
-                type='percent',
-                value=y_error_perc,
-                visible=True
-            ) if y_error_perc is not None else None,
-        )
-        traces.append(trace)
-    
-    # Create diagonal line trace if enabled
-    if show_diagonal:
-        all_values = np.concatenate([truths.flatten(), predictions.flatten()])
-        min_val, max_val = min(all_values), max(all_values)
-        diagonal_trace = go.Scatter(
-            x=[min_val, max_val],
-            y=[min_val, max_val],
-            mode='lines',
-            line=dict(dash='dash', color='gray'),
-            name='Perfect Prediction'
-        )
-        traces.append(diagonal_trace)
-    
-    # Create figure and update layout
-    fig = go.Figure(data=traces)
-    fig.update_layout(
-        title=title,
-        xaxis_title=xaxis_title,
-        yaxis_title=yaxis_title,
-        legend_title=legend_title,
-        showlegend=showlegend
-    )
-    
-    # Save to HTML if path is provided
-    if filepath:
-        fig.write_html(filepath)
-    
-    return fig
-
-
-    
-def plot_diagonal(
-    true_values, pred_values, labels, # 1D array of elements.
-    title="Default title", title_x="X axis", title_y="Y axis", colors=None,
-    filepath=None
-):
-
-    fig = go.Figure()
-    
-    # ====== TRAINING DATA ======
-    traces = []
-    # Training matrix elements
-    trace = go.Scattergl(
-        x=true_values,
-        y=pred_values,
-        mode='markers',
-        marker=dict(
-            # symbol='dash',
-            size=5,
-            # color=colors[i % len(colors)],
-            line=dict(width=0)
-        ),
-        name=f'Matrix elements',
-        text=labels,
-        # hovertemplate='True: %{x:.2f}<br>Pred: %{y:.2f}<br>%{text}',
-        # legendgroup='training',
-        # legendgrouptitle="Training samples",
-        # showlegend=True
-    )
-    traces.append(trace)
-        
-
-    # Add identity line
-    all_data = np.concatenate([true_values, pred_values])
-    vmin, vmax = np.min(all_data), np.max(all_data)
-    diagonal_trace = go.Scatter(
-        x=[vmin, vmax],
-        y=[vmin, vmax],
-        mode='lines',
-        line=dict(color='black', dash='dash'),
-        name='Ideal'
-    )
-    traces.append(diagonal_trace)
-
-
-    # Create figure and update layout
-    fig = go.Figure(data=traces)
-    fig.update_layout(
-        width=900,
-        height=900,
-        title=title,
-        # xaxis_title=title_x,
-        # yaxis_title=title_y,
-        # legend_title='Legend',
-        # hovermode='closest',
-        # template='plotly_white',
-        xaxis=dict(
-            title=title_x,
-            tickformat=".2f"
-        ),
-        yaxis=dict(
-            title=title_y,
-            tickformat=".2f"
-        )
-    )
-
-    # Save to HTML if path is provided
-    if filepath:
-        f = open(filepath, "w")
-        f.close()
-        with open(filepath, 'a') as f:
-            f.write(fig.to_html(full_html=False, include_plotlyjs='cdn'))
-        f.close()
-        
-        # with open(f"{str(filepath)[:-4]}.json", "w") as f:
-        #     f.write(fig.to_json())
-
-    else:
-        fig.show()
-
-    return fig
 
 
 

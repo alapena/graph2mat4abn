@@ -1,8 +1,6 @@
 # === Simulate a proper Python package (temporal, I did not want to waste time on installing things) ===
 import sys
 from pathlib import Path
-
-from tools.plot import plot_error_matrices_big
 # Add the root directory to Python path
 root_dir = Path(__file__).parent.parent  # Assuming train.py is in scripts/
 sys.path.append(str(root_dir))
@@ -22,6 +20,8 @@ import plotly.graph_objects as go
 from plotly.colors import sample_colorscale
 from plotly.subplots import make_subplots
 import scipy
+from plot_utilities.plot_for_scripts import plot_diagonal, plot_hamiltonian, plot_diagonal_rows, plot_energy_bands
+from tools.plot import plot_error_matrices_big
 
 from graph2mat import (
     BasisTableWithEdges,
@@ -33,21 +33,19 @@ def main():
     # *********************************** #
     # * VARIABLES TO CHANGE BY THE USER * #
     # *********************************** #
+    compute_eigenvalues_calculations = True
+    plot_eigenvalues = True
+    plot_energybands = True
     paths = [
         # "./dataset/SHARE_OUTPUTS_2_ATOMS/c924-ac64-4837-a960-ff786d6c6836",
         # "./dataset/SHARE_OUTPUTS_8_ATOMS/bca3-f473-4c5e-8407-cbdc2d7c68a1",
         # "./dataset/SHARE_OUTPUTS_64_ATOMS/dcd8-ab99-4e8b-81ba-401f6739412e",
 
-        # "dataset/SHARE_OUTPUTS_8_ATOMS/88bd-ed8a-4749-bad7-033e9549713c",
-        # "dataset/SHARE_OUTPUTS_2_ATOMS/45fa-290d-448f-aab5-51f41046d60d",
-        # "dataset/SHARE_OUTPUTS_2_ATOMS/c185-8b61-445e-8068-be370e3617c6",
-        # "dataset/SHARE_OUTPUTS_2_ATOMS/4130-44f6-445e-8a26-4f6afcdd73ea",
-        # "dataset/SHARE_OUTPUTS_2_ATOMS/db65-6186-4188-b955-0dca4cd7daa1",
         "dataset/SHARE_OUTPUTS_2_ATOMS/0a4c-6759-46e6-bf5e-6439eefcaad2",
 
     ]
     model_dir = Path("results/h_crystalls_1") # Results directory
-    savedir = model_dir / "results" / "val_64atm"
+    savedir = model_dir / "results" / "test"
     filename = "train_best_model.tar" # Model name (or relative path to the results directory)
 
     # compute_matrices_calculations = True # Save or Load calculations.
@@ -57,6 +55,24 @@ def main():
     # plot_energybands = True
 
     # *********************************** #
+
+    # Define orbital labels (for now we will assume that all atoms have the same orbitals). Use the same order as appearance in the hamiltonian.
+    orbitals = {
+        0: "s1",
+        1: "s2",
+        2: "py1",
+        3: "pz1",
+        4: "px1",
+        5: "py2",
+        6: "pz2",
+        7: "px2",
+        8: "Pdxy",
+        9: "Pdyz",
+        10: "Pdz2",
+        11: "Pdxz",
+        12: "Pdx2-y2",
+    }
+    n_orbs = len(orbitals)
 
     # Hide some warnings
     warnings.filterwarnings("ignore", message="The TorchScript type system doesn't support")
@@ -73,31 +89,38 @@ def main():
     device = torch.device("cpu")
 
     # Results directory
+    # if not debug_mode:
     paths = [Path(path) for path in paths]
+    # else:
+    #     paths = [Path(paths[0])]
 
     # Generate the G2M basis
     basis = get_basis_from_structures_paths(paths, verbose=True, num_unique_z=config["dataset"].get("num_unique_z", None))
     table = BasisTableWithEdges(basis)
 
-    # Init the model, optimizer and others
-    print("Initializing model...")
-    model, optimizer, lr_scheduler, loss_fn = init_mace_g2m_model(config, table)
-    
-    # Load the model
-    print("Loading model...")
-    model_path = model_dir / filename
-    initial_lr = float(config["optimizer"].get("initial_lr", None))
-
-    model, checkpoint, optimizer, lr_scheduler = load_model(model, optimizer, model_path, lr_scheduler=lr_scheduler, initial_lr=initial_lr, device=device)
-    print(f"Loaded model in epoch {checkpoint["epoch"]} with training loss {checkpoint["train_loss"]} and validation loss {checkpoint["val_loss"]}.")
-
+    # Generate dataset
     dataset, processor = generate_g2m_dataset_from_paths(config, basis, table, paths, device=device, verbose=True)
 
-    print("Starting loop.")
+    # Init the model, optimizer and others
+    print("Initializing model...")
+    if not debug_mode:
+        model, optimizer, lr_scheduler, loss_fn = init_mace_g2m_model(config, table)
+    else:
+        model = create_sparse_matrix
+
+    # Load the model
+    if not debug_mode:
+        print("Loading model...")
+        model_path = model_dir / filename
+        initial_lr = float(config["optimizer"].get("initial_lr", None))
+
+        model, checkpoint, optimizer, lr_scheduler = load_model(model, optimizer, model_path, lr_scheduler=lr_scheduler, initial_lr=initial_lr, device=device)
+        print(f"Loaded model in epoch {checkpoint["epoch"]} with training loss {checkpoint["train_loss"]} and validation loss {checkpoint["val_loss"]}.")
+
     for i, data in enumerate(dataset):
 
         path = Path(data.metadata["path"])
-        n_atoms = path.parts[-2].split('_')[2]
+        n_atoms = int(path.parts[-2].split('_')[2])
         structure = path.parts[-1]
 
         # Create a different saving dir for each structure
@@ -109,11 +132,15 @@ def main():
         data = DataLoader([data], 1)
         data = next(iter(data))
 
-        model_predictions = model(data=data)
+        if not debug_mode:
+            model_predictions = model(data=data)
 
-        # Reconstruct matrices
-        h_pred = processor.matrix_from_data(data, predictions={"node_labels": model_predictions["node_labels"], "edge_labels": model_predictions["edge_labels"]})[0]
-        h_true = processor.matrix_from_data(data)[0]
+            # Reconstruct matrices
+            h_pred = processor.matrix_from_data(data, predictions={"node_labels": model_predictions["node_labels"], "edge_labels": model_predictions["edge_labels"]})[0].tocsr().tocoo()
+            h_true = processor.matrix_from_data(data)[0].tocsr().tocoo()
+        else:
+            h_pred = model(n_atoms=2, n_orbs=13, n_shifts=10, size=100).tocsr().tocoo()
+            h_true = model(n_atoms=2, n_orbs=13, n_shifts=10, size=100).tocsr().tocoo()
 
         # 1. Plot structure
         print("Plotting structure...")
@@ -146,7 +173,181 @@ def main():
             )
         print("Saved hamiltonian plot at", filepath)
 
-        # 3. Plot
+        # 3. Plot nnz diagonal plot
+        geometry = sisl.get_sile(path / "aiida.fdf").read_geometry()
+        nnz_el = len(h_pred.data)
+        matrix_labels = []
+        info = []
+        for k in range(nnz_el):
+            row = h_pred.row[k]
+            col = h_pred.col[k]
+            orb_in = orbitals[col % n_orbs]
+            orb_out = orbitals[row % n_orbs]
+            isc = str(geometry.o2isc(col))
+            atom_in = (col // n_orbs) % n_atoms + 1
+            atom_out = (row // n_orbs) % n_atoms + 1
+
+            # Join altogether
+            label = f"{str(orb_in)} -> {str(orb_out)} {str(isc)} {str(atom_in)} -> {str(atom_out)}"
+
+
+            # Store the labels 
+            matrix_labels.append(label)
+            info.append((orb_in, orb_out, isc, atom_in, atom_out))
+
+        filepath= savedir / f"{n_atoms}atm_{structure}_nnzelements_shifts.html"
+        title = f"Non-zero elements of structure {n_atoms}_ATOMS/{structure}.<br>Used model {model_dir.parts[-1]}"
+        title_x = "True matrix elements (eV)"
+        title_y = "Predicted matrix elements (eV)"
+        true_values = h_true.data
+        pred_values = h_pred.data
+        orb_in_list, orb_out_list, iscs, atom_in_list, atom_out_list = map(list, zip(*info))
+        plot_diagonal(
+            true_values, pred_values, orb_in_list, orb_out_list, iscs, atom_in_list, atom_out_list,# 1D array of elements.
+            title=title, title_x=title_x, title_y=title_y, colors=None, filepath=filepath,
+            group_by="shift", legendtitle="Shift indices", #SEGUIR CON ESTO
+        )
+
+        filepath= savedir / f"{n_atoms}atm_{structure}_nnzelements_orbs.html"
+        
+        plot_diagonal(
+            true_values, pred_values, orb_in_list, orb_out_list, iscs, atom_in_list, atom_out_list, # 1D array of elements.
+            title=title, title_x=title_x, title_y=title_y, colors=None, filepath=filepath,
+            group_by="orbs", legendtitle="Orbitals", #SEGUIR CON ESTO
+        )
+
+        print("Nnz elements plotted!")
+
+
+        # Energy bands
+        if compute_eigenvalues_calculations:
+            print("=== COMPUTING EIGENVALUES ===")
+            file = sisl.get_sile(path / "aiida.fdf")
+            geometry = file.read_geometry()
+            cell = geometry.cell
+
+            # Define a path in k-space
+            if not debug_mode:
+                ks = 80
+                kxs = np.linspace(0,1, num=ks)
+                kys = np.linspace(0,1, num=ks)
+                kzs = np.linspace(0,1, num=ks) # * Change the resolution here
+                k_dir_x = geometry.rcell[:,0]
+                k_dir_y = geometry.rcell[:,1]
+                k_dir_z = geometry.rcell[:,2]
+                k_path_x=np.array([kx*k_dir_x for kx in kxs])
+                k_path_y=np.array([ky*k_dir_y for ky in kys])
+                k_path_z=np.array([kz*k_dir_z for kz in kzs])
+                k_path=np.concatenate([k_path_x, k_path_y, k_path_z])
+            else:
+                k_path = np.array([[0, 0, 0], [0, 0, 0.5], [0, 0, 1]]) 
+
+            # TIM reconstruction
+            h_uc = file.read_hamiltonian()
+            s_uc = file.read_overlap()
+
+            energy_bands_pred = []
+            energy_bands_true = []
+            for k_point in tqdm(k_path):
+                # Ground truth:
+                Hk_true = h_uc.Hk(reduced_coord(k_point, cell), gauge='cell').toarray()
+                Sk_true = s_uc.Sk(reduced_coord(k_point, cell), gauge='cell').toarray()
+
+                Ek_true = scipy.linalg.eigh(Hk_true, Sk_true, eigvals_only=True)
+                energy_bands_true.append(Ek_true)
+
+                # Prediction:
+                Hk_pred = reconstruct_tim_from_coo(k_point, h_pred.tocsr().tocoo(), geometry, cell)
+                # Sk = reconstruct_tim(k_point, s_pred, orb_i, orb_j, isc, cell)
+
+                Ek = scipy.linalg.eigh(Hk_pred, Sk_true, eigvals_only=True)
+
+                energy_bands_pred.append(Ek)
+
+            # Save results
+            energy_bands_true_array = np.stack(energy_bands_true, axis=0).T
+            energy_bands_pred_array = np.stack(energy_bands_pred, axis=0).T
+
+            filepath = savedir / f"{n_atoms}atm_{structure}_eigenvals.npz"
+            np.savez(filepath, energy_bands_true_array=energy_bands_true_array, energy_bands_pred_array=energy_bands_pred_array, k_path=k_path, path=str(path))
+
+
+    # Load data and plot.
+    
+    if plot_eigenvalues:
+        energybands_paths = list(savedir.glob('*eigenvals.npz'))
+
+        print("Plotting eigenvalues and energy bands.")
+
+        # Read all files in data directory.    
+
+        # For each file
+        for energybands_path in tqdm(energybands_paths):
+            energybands_path = Path(energybands_path)
+
+            # Read it
+            energyband_data = np.load(energybands_path)
+
+            # Plot it
+            k_path = energyband_data['k_path']
+            energy_bands_true = energyband_data['energy_bands_true_array']
+            energy_bands_pred = energyband_data['energy_bands_pred_array']
+            path = Path(str(energyband_data['path']))
+
+            titles_series = [f"k=({"{:.2f}".format(k_point[0]) if k_point[0] != 0 else 0}, {"{:.2f}".format(k_point[1]) if k_point[1] != 0 else 0}, {"{:.2f}".format(k_point[2]) if k_point[2] != 0 else 0})" for k_point in k_path]
+            filepath = savedir / f"{n_atoms}atm_{structure}_eigenvals.html"
+            title = f"Eigenvalues comparison (eV).<br>Used model {model_dir.parts[-1]}. Using SIESTA overlap matrix."
+            plot_diagonal_rows(
+                predictions=energy_bands_pred.T,
+                truths=energy_bands_true.T,
+                series_names=titles_series,
+                # x_error_perc=None,
+                # y_error_perc=5,
+                title=title,
+                xaxis_title='True energy',
+                yaxis_title='Predicted energy',
+                legend_title='k points',
+                show_diagonal=True,
+                show_points_by_default=True,
+                showlegend=True,
+                filepath=filepath
+            )
+            print("Finished plotting eigenvalues!")
+
+
+    if plot_energybands:
+        energybands_paths = list(savedir.glob('*eigenvals.npz'))
+        # For each file
+        for energybands_path in tqdm(energybands_paths):
+            energybands_path = Path(energybands_path)
+
+            # Read it
+            energyband_data = np.load(energybands_path)
+
+            # Plot it
+            k_path = energyband_data['k_path']
+            energy_bands_true = energyband_data['energy_bands_true_array']
+            energy_bands_pred = energyband_data['energy_bands_pred_array']
+            path = Path(str(energyband_data['path']))
+
+            title = f"Energy bands of structure {n_atoms}_ATOMS/{structure}.<br>Used model {model_dir.parts[-1]}. Using SIESTA overlap matrix."
+            filepath = savedir / f"{n_atoms}atm_{structure}_energybands.html"
+            # x_axis = [k_path]*energy_bands_pred.shape[1]
+            n_series = energy_bands_pred.shape[0]
+            titles_pred = [f"Predicted band {i}" for i in range(n_series)]
+            titles_true = [f"True band {i}" for i in range(n_series)]
+            plot_energy_bands(
+                list(range(len(k_path))),
+                energy_bands_true,
+                energy_bands_pred,
+                xlabel = "k_path index",
+                ylabel = "Energy (eV)",
+                title = title,
+                titles_pred=titles_pred,
+                titles_true=titles_true,
+                filepath = filepath
+            )
+        print("Finished plotting energybands!")
 
     print(f"Finished! Results saved at {savedir_struct}")
 
@@ -251,144 +452,6 @@ def plot_hamiltonian_matplotlib(true_matrix, predicted_matrix, matrix_label=None
         plt.close(fig)
 
 
-
-def plot_hamiltonian(true_matrix, predicted_matrix, matrix_label=None, figure_title=None, predicted_matrix_text=None, filepath=None, force_max_colorbar_abs_error=None):
-    """Interactive Plotly visualization of error matrices."""
-
-    # === Error matrices computation ===
-    absolute_error_matrix = true_matrix - predicted_matrix
-
-    threshold = 0.001
-    mask = true_matrix >= threshold
-    relative_error_matrix = np.where(mask, absolute_error_matrix / (true_matrix + threshold) * 100, 0)
-
-    # === Colorbar limits ===
-    vmin = np.min([np.min(true_matrix), np.min(predicted_matrix)])
-    vmax = np.max([np.max(true_matrix), np.max(predicted_matrix)])
-    lim_data = max(np.abs(vmin), np.abs(vmax))
-
-    if force_max_colorbar_abs_error is None:
-        lim_abs = np.max(np.abs(absolute_error_matrix))
-    else:
-        lim_abs = force_max_colorbar_abs_error
-
-    lim_rel = 100.0  # %
-
-    cbar_limits = [lim_data, lim_data, lim_abs, lim_rel]
-
-    # === Titles ===
-    if matrix_label is None:
-        matrix_label = ''
-    titles = [
-        "True " + matrix_label,
-        "Predicted " + matrix_label,
-        "Absolute error (T-P)",
-        f"Relative error (T-P)/(T) (masked where T is above {threshold})"
-    ]
-    cbar_titles = ["eV", "eV", "eV", "%"]
-
-    # === Figure ===
-    matrices = [true_matrix, predicted_matrix, absolute_error_matrix, relative_error_matrix]
-
-    fig = make_subplots(
-        rows=4, cols=1,
-        vertical_spacing=0.1
-    )
-
-    for i, matrix in enumerate(matrices):
-        row = i + 1
-        col = 1
-
-        heatmap = go.Heatmap(
-            z=matrix,
-            colorscale='RdBu',
-            zmin=-cbar_limits[i],
-            zmax=cbar_limits[i],
-            
-            colorbar=dict(title=cbar_titles[i], len=0.21, y=(0.92-0.275*i), ),
-        )
-        fig.add_trace(heatmap, row=row, col=col)
-
-    # === Text annotations ===
-
-    # Text under predicted matrix
-    if predicted_matrix_text is not None:
-        fig.add_annotation(
-            text=predicted_matrix_text,
-            xref='x2 domain', yref='y2 domain',
-            x=1, y=-0.15,
-            showarrow=False,
-            font=dict(size=12),
-            align='right'
-        )
-
-    # Absolute error stats
-    abs = np.abs(absolute_error_matrix)
-    mean = np.mean(abs[absolute_error_matrix != 0])
-    std = np.std(abs[absolute_error_matrix != 0])
-
-    max_absolute_error = np.max(absolute_error_matrix)
-    min_absolute_error = np.min(absolute_error_matrix)
-    max_abs = np.max(np.abs([max_absolute_error, min_absolute_error]))
-
-    fig.add_annotation(
-        text=f"mean_nnz(|T-P|) = {mean:.3f} eV, std_nnz(|T-P|) = {std:.3f} eV, |max| = {max_abs:.3f} eV",
-        xref='x3 domain', yref='y3 domain',
-        x=0.5, y=-0.12,
-        showarrow=False,
-        font=dict(size=12, weight=400),
-        align='center'
-    )
-
-    # Relative error stats
-    abs = np.abs(relative_error_matrix)
-    mean = np.mean(abs[relative_error_matrix != 0])
-    std = np.std(abs[relative_error_matrix != 0])
-
-    max_relative_error = np.max(relative_error_matrix)
-    min_relative_error = np.min(relative_error_matrix)
-    max_abs = np.max(np.abs([max_relative_error, min_relative_error]))
-
-    fig.add_annotation(
-        text=f"mean_nnz(|T-P|) = {mean:.3f} %, std_nnz(|T-P|) = {std:.3f} %, |max| = {max_abs:.3f} %",
-        xref='x4 domain', yref='y4 domain',
-        x=0.5, y=-0.12,
-        showarrow=False,
-        font=dict(size=12, weight=400),
-        align='center'
-    )
-
-    # === Layout of the whole figure ===
-    fig.update_layout(
-        height=1200,
-        width=900,
-        title_text=figure_title if figure_title else "Matrix Comparison and Errors",
-        title_x=0.46,
-        title_y=0.99,
-        margin=dict(t=100, b=20, l=30),
-
-        # Subplot titles
-        xaxis1=dict(side="top", title_text=titles[0]), yaxis1=dict(autorange="reversed"),
-        xaxis2=dict(side="top", title_text=titles[1]), yaxis2=dict(autorange="reversed"),
-        xaxis3=dict(side="top", title_text=titles[2]), yaxis3=dict(autorange="reversed"),
-        xaxis4=dict(side="top", title_text=titles[3]), yaxis4=dict(autorange="reversed"),
-        font=dict(size=12),
-    )
-
-    # === Output ===
-    if filepath:
-        filepath = Path(filepath)
-        if filepath.suffix.lower() == ".html":
-            fig.write_html(str(filepath))
-        elif filepath.suffix.lower() == ".png":
-            fig.write_image(str(filepath), height=1200, width=900,)
-        else:
-            raise ValueError(f"Unsupported file extension: {filepath.suffix}")
-        
-    else:
-        fig.show()
-
-    del fig
 
 
 if __name__ == "__main__":
