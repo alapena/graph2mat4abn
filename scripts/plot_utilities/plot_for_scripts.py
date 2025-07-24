@@ -234,6 +234,7 @@ def plot_diagonal(
                 ),
                 name=name_grouped[isc][0],
                 text=labels_grouped[isc],
+                visible='legendonly',
             )
             traces.append(trace)
 

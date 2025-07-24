@@ -33,9 +33,8 @@ def main():
     # *********************************** #
     # * VARIABLES TO CHANGE BY THE USER * #
     # *********************************** #
-    compute_eigenvalues_calculations = False
-    plot_eigenvalues = False
-    plot_energybands = False
+    plot_eigenvalues = True
+    plot_energybands = True
     paths = [
         # "./dataset/SHARE_OUTPUTS_2_ATOMS/c924-ac64-4837-a960-ff786d6c6836",
         # "./dataset/SHARE_OUTPUTS_8_ATOMS/bca3-f473-4c5e-8407-cbdc2d7c68a1",
@@ -96,183 +95,6 @@ def main():
     # else:
     #     paths = [Path(paths[0])]
 
-    # Generate the G2M basis
-    basis = get_basis_from_structures_paths(paths, verbose=True, num_unique_z=config["dataset"].get("num_unique_z", None))
-    table = BasisTableWithEdges(basis)
-
-    # Generate dataset
-    dataset, processor = generate_g2m_dataset_from_paths(config, basis, table, paths, device=device, verbose=True)
-
-    # Init the model, optimizer and others
-    print("Initializing model...")
-    if not debug_mode:
-        model, optimizer, lr_scheduler, loss_fn = init_mace_g2m_model(config, table)
-    else:
-        model = create_sparse_matrix
-
-    # Load the model
-    if not debug_mode:
-        print("Loading model...")
-        model_path = model_dir / filename
-        initial_lr = float(config["optimizer"].get("initial_lr", None))
-
-        model, checkpoint, optimizer, lr_scheduler = load_model(model, optimizer, model_path, lr_scheduler=lr_scheduler, initial_lr=initial_lr, device=device)
-        print(f"Loaded model in epoch {checkpoint["epoch"]} with training loss {checkpoint["train_loss"]} and validation loss {checkpoint["val_loss"]}.")
-
-    for i, data in enumerate(dataset):
-
-        path = Path(data.metadata["path"])
-        n_atoms = int(path.parts[-2].split('_')[2])
-        structure = path.parts[-1]
-
-        # Create a different saving dir for each structure
-        savedir_struct = savedir / f"stats_{n_atoms}_ATOMS_{structure}"
-        print("Computing", savedir_struct.parts[-1])
-        savedir_struct.mkdir(exist_ok=True, parents=True)
-
-        # Generate prediction. Create dataloaders (needed to generate a prediction)
-        data = DataLoader([data], 1)
-        data = next(iter(data))
-
-        if not debug_mode:
-            model_predictions = model(data=data)
-
-            # Reconstruct matrices
-            h_pred = processor.matrix_from_data(data, predictions={"node_labels": model_predictions["node_labels"], "edge_labels": model_predictions["edge_labels"]})[0].tocsr().tocoo()
-            h_true = processor.matrix_from_data(data)[0].tocsr().tocoo()
-        else:
-            h_pred = model(n_atoms=2, n_orbs=13, n_shifts=10, size=100).tocsr().tocoo()
-            h_true = model(n_atoms=2, n_orbs=13, n_shifts=10, size=100).tocsr().tocoo()
-
-        # 1. Plot structure
-        print("Plotting structure...")
-        file = sisl.get_sile(path / "aiida.fdf")
-        fig = file.plot.geometry(axes="xyz")
-        filepath = savedir_struct / f"{n_atoms}atm_{structure}.png"
-        fig.write_image(str(filepath))
-        print("Saved structure plot at", filepath)
-
-        # 2. Plot hamiltonian
-        print("Plotting hamiltonian...")
-        title = f"Hamiltonian of structure {n_atoms}_ATOMS/{structure}"
-        if int(n_atoms) <= 32:
-            filepath = savedir_struct / f"{n_atoms}atm_{structure}_hamiltonian.html"
-            plot_hamiltonian(
-                h_true.todense(), h_pred.todense(),
-                matrix_label="Hamiltonian",
-                figure_title=title,
-                predicted_matrix_text=None,
-                filepath=filepath
-            )
-        else:
-            filepath = savedir_struct / f"{n_atoms}atm_{structure}_hamiltonian.png"
-            plot_hamiltonian_matplotlib(
-                h_true.todense(), h_pred.todense(),
-                matrix_label="Hamiltonian",
-                figure_title=title,
-                predicted_matrix_text=None,
-                filepath=filepath
-            )
-        print("Saved hamiltonian plot at", filepath)
-
-        # 3. Plot nnz diagonal plot
-        geometry = sisl.get_sile(path / "aiida.fdf").read_geometry()
-        nnz_el = len(h_pred.data)
-        matrix_labels = []
-        info = []
-        for k in range(nnz_el):
-            row = h_pred.row[k]
-            col = h_pred.col[k]
-            orb_in = orbitals[col % n_orbs]
-            orb_out = orbitals[row % n_orbs]
-            isc = str(geometry.o2isc(col))
-            atom_in = (col // n_orbs) % n_atoms + 1
-            atom_out = (row // n_orbs) % n_atoms + 1
-
-            # Join altogether
-            label = f"{str(orb_in)} -> {str(orb_out)} {str(isc)} {str(atom_in)} -> {str(atom_out)}"
-
-
-            # Store the labels 
-            matrix_labels.append(label)
-            info.append((orb_in, orb_out, isc, atom_in, atom_out))
-
-        filepath= savedir_struct / f"{n_atoms}atm_{structure}_nnzelements_shifts.html"
-        title = f"Non-zero elements of structure {n_atoms}_ATOMS/{structure}.<br>Used model {model_dir.parts[-1]}"
-        title_x = "True matrix elements (eV)"
-        title_y = "Predicted matrix elements (eV)"
-        true_values = h_true.data
-        pred_values = h_pred.data
-        orb_in_list, orb_out_list, iscs, atom_in_list, atom_out_list = map(list, zip(*info))
-        plot_diagonal(
-            true_values, pred_values, orb_in_list, orb_out_list, iscs, atom_in_list, atom_out_list,# 1D array of elements.
-            title=title, title_x=title_x, title_y=title_y, colors=None, filepath=filepath,
-            group_by="shift", legendtitle="Shift indices", #SEGUIR CON ESTO
-        )
-
-        filepath= savedir_struct / f"{n_atoms}atm_{structure}_nnzelements_orbs.html"
-        
-        plot_diagonal(
-            true_values, pred_values, orb_in_list, orb_out_list, iscs, atom_in_list, atom_out_list, # 1D array of elements.
-            title=title, title_x=title_x, title_y=title_y, colors=None, filepath=filepath,
-            group_by="orbs", legendtitle="Orbitals", #SEGUIR CON ESTO
-        )
-
-        print("Nnz elements plotted!")
-
-
-        # Energy bands
-        if compute_eigenvalues_calculations:
-            print("=== COMPUTING EIGENVALUES ===")
-            file = sisl.get_sile(path / "aiida.fdf")
-            geometry = file.read_geometry()
-            cell = geometry.cell
-
-            # Define a path in k-space
-            if not debug_mode:
-                ks = 80
-                kxs = np.linspace(0,1, num=ks)
-                kys = np.linspace(0,1, num=ks)
-                kzs = np.linspace(0,1, num=ks) # * Change the resolution here
-                k_dir_x = geometry.rcell[:,0]
-                k_dir_y = geometry.rcell[:,1]
-                k_dir_z = geometry.rcell[:,2]
-                k_path_x=np.array([kx*k_dir_x for kx in kxs])
-                k_path_y=np.array([ky*k_dir_y for ky in kys])
-                k_path_z=np.array([kz*k_dir_z for kz in kzs])
-                k_path=np.concatenate([k_path_x, k_path_y, k_path_z])
-            else:
-                k_path = np.array([[0, 0, 0], [0, 0, 0.5], [0, 0, 1]]) 
-
-            # TIM reconstruction
-            h_uc = file.read_hamiltonian()
-            s_uc = file.read_overlap()
-
-            energy_bands_pred = []
-            energy_bands_true = []
-            for k_point in tqdm(k_path):
-                # Ground truth:
-                Hk_true = h_uc.Hk(reduced_coord(k_point, cell), gauge='cell').toarray()
-                Sk_true = s_uc.Sk(reduced_coord(k_point, cell), gauge='cell').toarray()
-
-                Ek_true = scipy.linalg.eigh(Hk_true, Sk_true, eigvals_only=True)
-                energy_bands_true.append(Ek_true)
-
-                # Prediction:
-                Hk_pred = reconstruct_tim_from_coo(k_point, h_pred.tocsr().tocoo(), geometry, cell)
-                # Sk = reconstruct_tim(k_point, s_pred, orb_i, orb_j, isc, cell)
-
-                Ek = scipy.linalg.eigh(Hk_pred, Sk_true, eigvals_only=True)
-
-                energy_bands_pred.append(Ek)
-
-            # Save results
-            energy_bands_true_array = np.stack(energy_bands_true, axis=0).T
-            energy_bands_pred_array = np.stack(energy_bands_pred, axis=0).T
-
-            filepath = savedir / f"{n_atoms}atm_{structure}_eigenvals.npz"
-            np.savez(filepath, energy_bands_true_array=energy_bands_true_array, energy_bands_pred_array=energy_bands_pred_array, k_path=k_path, path=str(path))
-
 
     # Load data and plot.
     
@@ -325,6 +147,9 @@ def main():
         # For each file
         for energybands_path in tqdm(energybands_paths):
             energybands_path = Path(energybands_path)
+            n_atoms = energybands_path.parts[-1][0]
+            structure = energybands_path.stem.split("_")[1]
+            savedir_struct = savedir / f"stats_{n_atoms}_ATOMS_{structure}"
 
             # Read it
             energyband_data = np.load(energybands_path)

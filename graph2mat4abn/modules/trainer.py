@@ -357,7 +357,8 @@ class Trainer:
             if self.lr_scheduler is not None and self.config["scheduler"]["type"] == "CosineAnnealingWarmRestarts":
                 self.lr_scheduler.step()
             elif self.lr_scheduler is not None and self.config["scheduler"]["type"] == "ReduceLROnPlateau":
-                self.lr_scheduler.step(float(self.history["val_loss"][-1]))
+                step = self.config["scheduler"].get("step")
+                self.lr_scheduler.step(float(self.history[step][-1]))
             elif self.lr_scheduler is None:
                 # Do sth here manually.
                 pass

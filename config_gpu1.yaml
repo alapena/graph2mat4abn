@@ -1,6 +1,6 @@
 debug_mode: false
 device: "cuda:1"
-results_dir: "./results/h_crystalls_3"
+results_dir: "./results/h_crystalls_5"
 trained_model_path: null
 dataset:
   train_split_ratio: 0.80
@@ -56,18 +56,19 @@ model:
 optimizer:
   lr: 0.001 # Useless when loading a model.
   # weight_decay: 1e-4
-  initial_lr: 0.005 # Force an initial lr in the scheduler when loading a model.
+  initial_lr: 0.001 # Force an initial lr in the scheduler when loading a model.
 
 scheduler:
-  type: null
-  # args:
-  # kwargs:
-  #   mode: 'min'
-  #   factor: 1
-  #   patience: 100
-  #   cooldown: 0
-  #   min_lr: 0.000000000000001
-  #   eps: 0
+  type: ReduceLROnPlateau
+  step: train_loss # train_loss or val_loss, or None depending on the scheduler
+  args:
+  kwargs:
+    mode: 'min'
+    factor: 0.5
+    patience: 200
+    cooldown: 0
+    min_lr: 0.000001
+    eps: 0
 
 
   # CosineAnnealingWarmRestarts:

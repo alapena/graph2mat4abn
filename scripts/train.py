@@ -345,7 +345,7 @@ def main():
     trained_model_path = config.get("trained_model_path", None)
     if trained_model_path is not None:
         initial_lr = float(optimizer_config.get("initial_lr", None))
-        model, checkpoint, optimizer, scheduler = load_model(model, optimizer, trained_model_path, lr_scheduler=scheduler, initial_lr=initial_lr, device=device)
+        model, checkpoint, optimizer, _ = load_model(model, optimizer, trained_model_path, lr_scheduler=None, initial_lr=None, device=device)
         print(f"Loaded model in epoch {checkpoint["epoch"]} with training loss {checkpoint["train_loss"]} and validation loss {checkpoint["val_loss"]}.")
     else:
         checkpoint = None

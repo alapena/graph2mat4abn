@@ -33,11 +33,11 @@ def main():
     model_dir = Path("results/h_noc_2") # Results directory
     filename = "train_best_model.tar" # Model name (or relative path to the results directory)
     compute_matrices_calculations = True # Save or Load calculations.
-    compute_eigenvalues_calculations = True
+    compute_eigenvalues_calculations = False
 
     plot_nnzvalues_onsites_hops = True
-    plot_eigenvalues_and_energybands = True
-    plot_energybands = True
+    plot_eigenvalues_and_energybands = False
+    plot_energybands = False
 
     # *********************************** #
 
@@ -392,195 +392,195 @@ def main():
         print(f"AbsStd Separated onsites and hoppings results saved at {filepath}")
 
 
-    # Energy bands (diagonal plot)
+    # # Energy bands (diagonal plot)
 
-    energybands_dir = savedir / "energybands_data"
-    energybands_dir.mkdir(exist_ok=True, parents=True)
+    # energybands_dir = savedir / "energybands_data"
+    # energybands_dir.mkdir(exist_ok=True, parents=True)
     
-    splits = [train_data, val_data]
-    splits_paths = (train_paths, val_paths)
-    splits_str = ("train", "val")
+    # splits = [train_data, val_data]
+    # splits_paths = (train_paths, val_paths)
+    # splits_str = ("train", "val")
 
-    if compute_eigenvalues_calculations:
-        print("=== COMPUTING ENERGY BANDS ===")
+    # if compute_eigenvalues_calculations:
+    #     print("=== COMPUTING ENERGY BANDS ===")
 
-        # For each split
-        for k, split in enumerate(splits):
-            true_data = split[0]
-            pred_data = split[1]
-            n_samples = len(pred_data)
+    #     # For each split
+    #     for k, split in enumerate(splits):
+    #         true_data = split[0]
+    #         pred_data = split[1]
+    #         n_samples = len(pred_data)
 
-            # For each true/pred matrix
-            for j in tqdm(range(n_samples)):
-                # if debug_mode and i==5:
-                #     break
-                # Get the matrices
-                h_true = true_data[j]
-                h_pred = pred_data[j]
+    #         # For each true/pred matrix
+    #         for j in tqdm(range(n_samples)):
+    #             # if debug_mode and i==5:
+    #             #     break
+    #             # Get the matrices
+    #             h_true = true_data[j]
+    #             h_pred = pred_data[j]
 
-                file = sisl.get_sile(splits_paths[k][j] / "aiida.fdf")
-                geometry = file.read_geometry()
-                cell = geometry.cell
+    #             file = sisl.get_sile(splits_paths[k][j] / "aiida.fdf")
+    #             geometry = file.read_geometry()
+    #             cell = geometry.cell
 
-                # Define a path in k-space
-                kxs = np.linspace(0,1, num=80)
-                kys = np.linspace(0,1, num=80)
-                kzs = np.linspace(0,1, num=80) # * Change the resolution here
-                k_dir_x = geometry.rcell[:,0]
-                k_dir_y = geometry.rcell[:,1]
-                k_dir_z = geometry.rcell[:,2]
-                k_path_x=np.array([kx*k_dir_x for kx in kxs])
-                k_path_y=np.array([ky*k_dir_y for ky in kys])
-                k_path_z=np.array([kz*k_dir_z for kz in kzs])
-                k_path=np.concatenate([k_path_x, k_path_y, k_path_z])
+    #             # Define a path in k-space
+    #             kxs = np.linspace(0,1, num=80)
+    #             kys = np.linspace(0,1, num=80)
+    #             kzs = np.linspace(0,1, num=80) # * Change the resolution here
+    #             k_dir_x = geometry.rcell[:,0]
+    #             k_dir_y = geometry.rcell[:,1]
+    #             k_dir_z = geometry.rcell[:,2]
+    #             k_path_x=np.array([kx*k_dir_x for kx in kxs])
+    #             k_path_y=np.array([ky*k_dir_y for ky in kys])
+    #             k_path_z=np.array([kz*k_dir_z for kz in kzs])
+    #             k_path=np.concatenate([k_path_x, k_path_y, k_path_z])
 
-                # k_path = np.array([[0, 0, 0], [0, 0, 1]]) if debug_mode else k_path
+    #             # k_path = np.array([[0, 0, 0], [0, 0, 1]]) if debug_mode else k_path
 
-                # TIM reconstruction
-                h_uc = file.read_hamiltonian()
-                s_uc = file.read_overlap()
+    #             # TIM reconstruction
+    #             h_uc = file.read_hamiltonian()
+    #             s_uc = file.read_overlap()
 
-                energy_bands_pred = []
-                energy_bands_true = []
-                for k_point in tqdm(k_path):
-                    # Ground truth:
-                    Hk_true = h_uc.Hk(reduced_coord(k_point, cell), gauge='cell').toarray()
-                    Sk_true = s_uc.Sk(reduced_coord(k_point, cell), gauge='cell').toarray()
+    #             energy_bands_pred = []
+    #             energy_bands_true = []
+    #             for k_point in tqdm(k_path):
+    #                 # Ground truth:
+    #                 Hk_true = h_uc.Hk(reduced_coord(k_point, cell), gauge='cell').toarray()
+    #                 Sk_true = s_uc.Sk(reduced_coord(k_point, cell), gauge='cell').toarray()
 
-                    Ek_true = scipy.linalg.eigh(Hk_true, Sk_true, eigvals_only=True)
-                    energy_bands_true.append(Ek_true)
+    #                 Ek_true = scipy.linalg.eigh(Hk_true, Sk_true, eigvals_only=True)
+    #                 energy_bands_true.append(Ek_true)
 
-                    # Prediction:
-                    Hk_pred = reconstruct_tim_from_coo(k_point, h_pred.tocsr().tocoo(), geometry, cell)
-                    # Sk = reconstruct_tim(k_point, s_pred, orb_i, orb_j, isc, cell)
+    #                 # Prediction:
+    #                 Hk_pred = reconstruct_tim_from_coo(k_point, h_pred.tocsr().tocoo(), geometry, cell)
+    #                 # Sk = reconstruct_tim(k_point, s_pred, orb_i, orb_j, isc, cell)
 
-                    Ek = scipy.linalg.eigh(Hk_pred, Sk_true, eigvals_only=True)
+    #                 Ek = scipy.linalg.eigh(Hk_pred, Sk_true, eigvals_only=True)
 
-                    energy_bands_pred.append(Ek)
+    #                 energy_bands_pred.append(Ek)
 
-                # Save results
-                energy_bands_true_array = np.stack(energy_bands_true, axis=0)
-                energy_bands_pred_array = np.stack(energy_bands_pred, axis=0)
+    #             # Save results
+    #             energy_bands_true_array = np.stack(energy_bands_true, axis=0)
+    #             energy_bands_pred_array = np.stack(energy_bands_pred, axis=0)
 
-                filepath = energybands_dir / f"energybands_{splits_str[k]}_{splits_paths[k][j].parts[-1]}.npz"
-                np.savez(filepath, energy_bands_true_array=energy_bands_true_array, energy_bands_pred_array=energy_bands_pred_array, k_path=k_path, path=str(splits_paths[k][j]))
+    #             filepath = energybands_dir / f"energybands_{splits_str[k]}_{splits_paths[k][j].parts[-1]}.npz"
+    #             np.savez(filepath, energy_bands_true_array=energy_bands_true_array, energy_bands_pred_array=energy_bands_pred_array, k_path=k_path, path=str(splits_paths[k][j]))
 
-    # Load data and plot.
+    # # Load data and plot.
 
-    if plot_eigenvalues_and_energybands:
+    # if plot_eigenvalues_and_energybands:
 
-        print("Plotting eigenvalues and energy bands!")
+    #     print("Plotting eigenvalues and energy bands!")
 
-        # Read all files in data directory.
-        energybands_paths = list(energybands_dir.glob('*.npz'))
+    #     # Read all files in data directory.
+    #     energybands_paths = list(energybands_dir.glob('*.npz'))
 
-        # For each file
-        for energybands_path in tqdm(energybands_paths):
-            energybands_path = Path(energybands_path)
+    #     # For each file
+    #     for energybands_path in tqdm(energybands_paths):
+    #         energybands_path = Path(energybands_path)
 
-            # Read it
-            energyband_data = np.load(energybands_path)
+    #         # Read it
+    #         energyband_data = np.load(energybands_path)
 
-            # Plot it
-            k_path = energyband_data['k_path']
-            energy_bands_true = energyband_data['energy_bands_true_array']
-            energy_bands_pred = energyband_data['energy_bands_pred_array']
-            path = Path(str(energyband_data['path']))
+    #         # Plot it
+    #         k_path = energyband_data['k_path']
+    #         energy_bands_true = energyband_data['energy_bands_true_array']
+    #         energy_bands_pred = energyband_data['energy_bands_pred_array']
+    #         path = Path(str(energyband_data['path']))
 
-            titles_series = [f"k=({"{:.2f}".format(k_point[0]) if k_point[0] != 0 else 0}, {"{:.2f}".format(k_point[1]) if k_point[1] != 0 else 0}, {"{:.2f}".format(k_point[2]) if k_point[2] != 0 else 0})" for k_point in k_path]
-            filepath= savedir / f"nnz_elements_{energybands_path.parts[-1].split('_')[1]}_{path.parts[-2].split('_')[2]}_ATOMS_{path.parts[-1]}_eigenvalues.html"
-            title = f"Eigenvalues comparison (eV). Used model {model_dir.parts[-1]}"
-            plot_diagonal_rows(
-                predictions=energy_bands_pred,
-                truths=energy_bands_true,
-                series_names=titles_series,
-                x_error_perc=None,
-                y_error_perc=5,
-                title=title,
-                xaxis_title='True energy',
-                yaxis_title='Predicted energy',
-                legend_title='k points',
-                show_diagonal=True,
-                show_points_by_default=True,
-                showlegend=True,
-                filepath=filepath
-            )
+    #         titles_series = [f"k=({"{:.2f}".format(k_point[0]) if k_point[0] != 0 else 0}, {"{:.2f}".format(k_point[1]) if k_point[1] != 0 else 0}, {"{:.2f}".format(k_point[2]) if k_point[2] != 0 else 0})" for k_point in k_path]
+    #         filepath= savedir / f"nnz_elements_{energybands_path.parts[-1].split('_')[1]}_{path.parts[-2].split('_')[2]}_ATOMS_{path.parts[-1]}_eigenvalues.html"
+    #         title = f"Eigenvalues comparison (eV). Used model {model_dir.parts[-1]}"
+    #         plot_diagonal_rows(
+    #             predictions=energy_bands_pred,
+    #             truths=energy_bands_true,
+    #             series_names=titles_series,
+    #             x_error_perc=None,
+    #             y_error_perc=5,
+    #             title=title,
+    #             xaxis_title='True energy',
+    #             yaxis_title='Predicted energy',
+    #             legend_title='k points',
+    #             show_diagonal=True,
+    #             show_points_by_default=True,
+    #             showlegend=True,
+    #             filepath=filepath
+    #         )
 
 
-            if plot_energybands:
-                title = f"Energy bands {energybands_path.parts[-1].split('_')[1]} dataset, structure {path.parts[-2].split('_')[2]}ATOMS/{path.parts[-1]}. Using SIESTA overlap matrix."
-                filepath = savedir / f"nnz_elements_{energybands_path.parts[-1].split('_')[1]}_{path.parts[-2].split('_')[2]}_ATOMS_{path.parts[-1]}_energybands.html"
-                x_axis = [k_path]*energy_bands_pred.shape[1]
-                n_series = energy_bands_pred.shape[0]
-                titles_pred = [f"Predicted band {i}" for i in range(n_series)]
-                titles_true = [f"True band {i}" for i in range(n_series)]
-                plot_rows_of_2darray(
-                    array_pred = energy_bands_pred,
-                    array_true = energy_bands_true,
-                    x = x_axis,
-                    xlabel = "k",
-                    ylabel = "Energy (eV)",
-                    title = title,
-                    titles_pred=titles_pred,
-                    titles_true=titles_true,
-                    filepath = filepath
-                )
-        print("Finished plotting eigenvalues and/or energybands!")
+    #         if plot_energybands:
+    #             title = f"Energy bands {energybands_path.parts[-1].split('_')[1]} dataset, structure {path.parts[-2].split('_')[2]}ATOMS/{path.parts[-1]}. Using SIESTA overlap matrix."
+    #             filepath = savedir / f"nnz_elements_{energybands_path.parts[-1].split('_')[1]}_{path.parts[-2].split('_')[2]}_ATOMS_{path.parts[-1]}_energybands.html"
+    #             x_axis = [k_path]*energy_bands_pred.shape[1]
+    #             n_series = energy_bands_pred.shape[0]
+    #             titles_pred = [f"Predicted band {i}" for i in range(n_series)]
+    #             titles_true = [f"True band {i}" for i in range(n_series)]
+    #             plot_rows_of_2darray(
+    #                 array_pred = energy_bands_pred,
+    #                 array_true = energy_bands_true,
+    #                 x = x_axis,
+    #                 xlabel = "k",
+    #                 ylabel = "Energy (eV)",
+    #                 title = title,
+    #                 titles_pred=titles_pred,
+    #                 titles_true=titles_true,
+    #                 filepath = filepath
+    #             )
+    #     print("Finished plotting eigenvalues and/or energybands!")
         
 
             
 
-    # ! COSTY:
-    # Diagonal plot for each structure
-    split_paths = (train_paths, val_paths)
+    # # ! COSTY:
+    # # Diagonal plot for each structure
+    # split_paths = (train_paths, val_paths)
 
-    structures_train = [path.parts[-2][14:] +"/"+ path.parts[-1] for path in train_paths]
-    structures_val = [path.parts[-2][14:] +"/"+ path.parts[-1] for path in val_paths]
-    splits_structures = (structures_train, structures_val)
+    # structures_train = [path.parts[-2][14:] +"/"+ path.parts[-1] for path in train_paths]
+    # structures_val = [path.parts[-2][14:] +"/"+ path.parts[-1] for path in val_paths]
+    # splits_structures = (structures_train, structures_val)
 
-    title_x="True matrix elements (eV)"
-    title_y="Predicted matrix elements (eV)"
+    # title_x="True matrix elements (eV)"
+    # title_y="Predicted matrix elements (eV)"
 
-    splits = [train_data, val_data]
-    splits_str = ["train", "val"]
+    # splits = [train_data, val_data]
+    # splits_str = ["train", "val"]
 
-    # For each split (train, val)
-    for j in range(len(splits)):
-        print(f"Plotting split {j}...")
-        true_matrices = splits[j][0]
-        pred_matrices = splits[j][1]
-        n_matrices = len(true_matrices)
+    # # For each split (train, val)
+    # for j in range(len(splits)):
+    #     print(f"Plotting split {j}...")
+    #     true_matrices = splits[j][0]
+    #     pred_matrices = splits[j][1]
+    #     n_matrices = len(true_matrices)
 
-        # For each matrix
-        for i in tqdm(range(n_matrices)):
+    #     # For each matrix
+    #     for i in tqdm(range(n_matrices)):
 
-            # Compute labels
-            path = Path("./") / split_paths[j][i]
-            geometry = sisl.get_sile(path / "aiida.fdf").read_geometry()
-            matrix_labels = []
-            for k in range(len(true_matrices[i].data)):
-                row = true_matrices[i].row[k]
-                col = true_matrices[i].col[k]
-                orb_in = orbitals[col % n_orbs]
-                orb_out = orbitals[row % n_orbs]
-                isc = str(geometry.o2isc(col))
+    #         # Compute labels
+    #         path = Path("./") / split_paths[j][i]
+    #         geometry = sisl.get_sile(path / "aiida.fdf").read_geometry()
+    #         matrix_labels = []
+    #         for k in range(len(true_matrices[i].data)):
+    #             row = true_matrices[i].row[k]
+    #             col = true_matrices[i].col[k]
+    #             orb_in = orbitals[col % n_orbs]
+    #             orb_out = orbitals[row % n_orbs]
+    #             isc = str(geometry.o2isc(col))
 
-                # Join altogether
-                label = ''.join([orb_in, " -> ", orb_out, " ", isc])
+    #             # Join altogether
+    #             label = ''.join([orb_in, " -> ", orb_out, " ", isc])
 
-                # Store the labels 
-                matrix_labels.append(label)
+    #             # Store the labels 
+    #             matrix_labels.append(label)
 
-            filepath= savedir / f"nnz_elements_{splits_str[j]}_{Path(splits_structures[j][i]).parts[-2]}_{Path(splits_structures[j][i]).parts[-1]}.html"
-            title = f"Matrix elements of structure {splits_structures[j][i]}.<br>{splits_str[j]} dataset.<br>Used model {model_dir.parts[-1]}"
-            true_values = true_matrices[i].data
-            pred_values = pred_matrices[i].data
-            plot_diagonal(
-                true_values, pred_values, matrix_labels, # 1D array of elements.
-                title=title, title_x=title_x, title_y=title_y, colors=None,
-                filepath=filepath
-            )
-    print(f"Matrix elements results saved at {savedir}")
+    #         filepath= savedir / f"nnz_elements_{splits_str[j]}_{Path(splits_structures[j][i]).parts[-2]}_{Path(splits_structures[j][i]).parts[-1]}.html"
+    #         title = f"Matrix elements of structure {splits_structures[j][i]}.<br>{splits_str[j]} dataset.<br>Used model {model_dir.parts[-1]}"
+    #         true_values = true_matrices[i].data
+    #         pred_values = pred_matrices[i].data
+    #         plot_diagonal(
+    #             true_values, pred_values, matrix_labels, # 1D array of elements.
+    #             title=title, title_x=title_x, title_y=title_y, colors=None,
+    #             filepath=filepath
+    #         )
+    # print(f"Matrix elements results saved at {savedir}")
 
     print(f"All results saved at {savedir}")
 
