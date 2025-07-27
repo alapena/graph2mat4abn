@@ -30,7 +30,7 @@ def main():
     # *********************************** #
     # * VARIABLES TO CHANGE BY THE USER * #
     # *********************************** #
-    model_dir = Path("results/h_noc_2") # Results directory
+    model_dir = Path("results/h_crystalls_6") # Results directory
     filename = "train_best_model.tar" # Model name (or relative path to the results directory)
     compute_matrices_calculations = True # Save or Load calculations.
     compute_eigenvalues_calculations = False
@@ -241,20 +241,6 @@ def main():
     # Mean of the absolute error
     diff_train = [t - p for t, p in zip(train_true, train_pred)]
     diff_val = [t - p for t, p in zip(val_true, val_pred)]
-
-    # values_train = [np.mean(diff_train[i].data) for i in range(len(diff_train))]
-    # values_val = [np.mean(diff_val[i].data) for i in range(len(diff_val))]
-
-    # filepath= savedir / "alldataset_mean.html"
-    # title = f"Mean(T-P) of non-zero elements. Used model {model_dir.parts[-1]}"
-    # title_x="Mean(True-Pred) (eV)"
-    # plot_alldataset_struct_vs_scalar(
-    #     title, title_x,
-    #     values_train, labels_train, n_train_samples,
-    #     values_val=values_val, labels_val=labels_val, n_val_samples=n_val_samples,
-    #     filepath=filepath
-    # )
-    # print(f"Mean results saved at {filepath}")
 
     # Mean of the absolute value of the absolute error
     values_train = [np.mean(np.abs(diff_train[i].data)) for i in range(len(diff_train))]

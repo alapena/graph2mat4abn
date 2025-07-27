@@ -1,0 +1,86 @@
+prefix sample
+
+begin k_grid_size 3 1
+  -1
+  -1
+  -1
+end k_grid_size
+
+convention 1
+
+dimension 3
+
+num_occ -1
+
+num_spin 1
+
+spin_major 1
+
+e_min -11.9938003743512
+
+e_max 27.661316358398665
+
+e_step 0.05
+
+sigma 0.05
+
+smear_func Gaussian
+
+ldos 0
+
+begin ldos_orbital_indices 1 1
+  0
+end ldos_orbital_indices
+
+kc 0.0
+
+begin bz_size 3 1
+  1
+  1
+  1
+end bz_size
+
+begin bz_shift 3 1
+  0.0
+  0.0
+  0.0
+end bz_shift
+
+ham_deriv_analytical 0
+
+ham_deriv_delta 1e-06
+
+delta 0.005
+
+mu 0.0
+
+temperature 300.0
+
+back_epsilon 1.0
+
+begin q_points 1 3
+  1.0  0.0  0.0
+end q_points
+
+ac_cond_component 1
+
+diag_algo eigen
+
+pp_algo cpu
+
+feast_num_states 0
+
+feast_e_min -5.0
+
+feast_e_max 5.0
+
+feast_eps 1e-05
+
+feast_m0_ratio 1.0
+
+feast_reuse_results 0
+
+begin feast_fpm 1 2
+  0  0
+end feast_fpm
+

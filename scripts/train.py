@@ -35,7 +35,7 @@ from graph2mat4abn.modules.trainer import Trainer
 
 def main():
     # === Configuration load ===
-    config = load_config("./config_gpu0.yaml")
+    config = load_config("./config_gpu1.yaml")
     debug_mode = config.get("debug_mode", False)
     trainer_config = config["trainer"]
     dataset_config = config["dataset"]
