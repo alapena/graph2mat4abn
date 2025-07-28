@@ -446,3 +446,183 @@ def plot_energy_bands(k_path, array_true, array_pred=None, titles_true=None, tit
         fig.show()
 
     return fig
+
+
+
+def plot_bands(k_len, bands, k_idx, k_label, predicted_bands=None, filepath=None):
+    """
+    Plot band structure using Plotly.
+
+    Parameters:
+    - k_len: array-like, k-point distances
+    - bands: 2D array, shape (n_kpoints, n_bands), true bands
+    - k_idx: list of indices where vertical lines are drawn
+    - k_label: list of labels for xticks
+    - predicted_bands: optional 2D array, same shape as `bands`
+    """
+    fig = go.Figure()
+    num_bands = bands.shape[1]
+
+    # True bands: solid black
+    for i in range(num_bands):
+        fig.add_trace(go.Scatter(
+            x=k_len,
+            y=bands[:, i],
+            mode='lines',
+            name=f'True Band {i+1}',
+            line=dict(color='black', width=1, dash='solid'),
+            legendgroup=f'Band {i+1}',
+            showlegend=True if predicted_bands is None else False
+        ))
+
+    # Predicted bands: dashed black
+    if predicted_bands is not None:
+        for i in range(num_bands):
+            fig.add_trace(go.Scatter(
+                x=k_len,
+                y=predicted_bands[:, i],
+                mode='lines',
+                name=f'Predicted Band {i+1}',
+                line=dict(color='black', width=1, dash='dash'),
+                legendgroup=f'Band {i+1}',
+                showlegend=True
+            ))
+
+    # Vertical lines
+    for idx in k_idx:
+        fig.add_shape(type="line",
+                      x0=k_len[idx], y0=bands.min(), x1=k_len[idx], y1=bands.max(),
+                      line=dict(color="black", width=1))
+
+    # Layout
+    fig.update_layout(
+        xaxis=dict(
+            title="k (1/nm)",
+            tickmode='array',
+            tickvals=[k_len[i] for i in k_idx],
+            ticktext=k_label,
+            ticks='',  # Hide tick marks
+            showticklabels=True,
+            range=[0, k_len.max()]
+        ),
+        yaxis=dict(title="Energy (eV)"),
+        margin=dict(l=50, r=20, t=20, b=50),
+        showlegend=True
+    )
+
+    # === Output ===
+    if filepath is not None:
+        if filepath.suffix.lower() == ".html":
+            fig.write_html(str(filepath))
+        elif filepath.suffix.lower() == ".png":
+            fig.write_image(str(filepath), height=1200, width=900,)
+        else:
+            raise ValueError(f"Unsupported file extension: {filepath.suffix}")
+        
+    else:
+        fig.show()
+
+    return fig
+
+
+
+def plot_dos(energies, dos, predicted_dos=None, filepath=None):
+    """
+    Plot Density of States (DOS) vertically with Energy on y-axis.
+
+    Parameters:
+    - energies: array-like, energy values (eV)
+    - dos: array-like, true DOS values
+    - predicted_dos: optional array-like, predicted DOS values (same shape as dos)
+    """
+    fig = go.Figure()
+
+    # True DOS
+    fig.add_trace(go.Scatter(
+        x=dos,
+        y=energies,
+        mode='lines',
+        name='True',
+        line=dict(color='black', width=1, dash='solid')
+    ))
+
+    # Predicted DOS
+    if predicted_dos is not None:
+        fig.add_trace(go.Scatter(
+            x=predicted_dos,
+            y=energies,
+            mode='lines',
+            name='Pred',
+            line=dict(color='black', width=1, dash='dash')
+        ))
+
+    # Layout
+    fig.update_layout(
+        xaxis=dict(title='DOS (1/eV)'),
+        yaxis=dict(title='Energy (eV)'),
+        margin=dict(l=50, r=50, t=20, b=20),
+        showlegend=True
+    )
+
+    # === Output ===
+    if filepath is not None:
+        if filepath.suffix.lower() == ".html":
+            fig.write_html(str(filepath))
+        elif filepath.suffix.lower() == ".png":
+            fig.write_image(str(filepath), height=1200, width=900,)
+        else:
+            raise ValueError(f"Unsupported file extension: {filepath.suffix}")
+        
+    else:
+        fig.show()
+
+    return fig
+
+
+def combine_band_and_dos(fig_band, fig_dos, filepath=None):
+    """
+    Combine band structure and DOS plots side by side into a single figure.
+
+    Parameters:
+    - fig_band: Plotly figure from plot_bands()
+    - fig_dos: Plotly figure from plot_dos()
+
+    Returns:
+    - Combined Plotly figure
+    """
+    # Create 1-row, 2-column subplot
+    fig = make_subplots(rows=1, cols=2, shared_yaxes=True,
+                        column_widths=[0.75, 0.25],
+                        horizontal_spacing=0.02,
+                        specs=[[{"type": "xy"}, {"type": "xy"}]])
+
+    # Add band traces to subplot (1,1)
+    for trace in fig_band.data:
+        fig.add_trace(trace, row=1, col=1)
+
+    # Add DOS traces to subplot (1,2)
+    for trace in fig_dos.data:
+        fig.add_trace(trace, row=1, col=2)
+
+    # Update layout
+    fig.update_layout(
+        xaxis=dict(title='k (1/nm)'),  # subplot (1,1)
+        xaxis2=dict(title='DOS (1/eV)'),  # subplot (1,2)
+        yaxis=dict(title='Energy (eV)'),  # shared y-axis
+        showlegend=True,
+        margin=dict(l=50, r=20, t=20, b=40)
+    )
+
+    # === Output ===
+    if filepath is not None:
+        if filepath.suffix.lower() == ".html":
+            fig.write_html(str(filepath))
+        elif filepath.suffix.lower() == ".png":
+            fig.write_image(str(filepath), height=1200, width=900,)
+        else:
+            raise ValueError(f"Unsupported file extension: {filepath.suffix}")
+        
+    else:
+        fig.show()
+
+    return fig

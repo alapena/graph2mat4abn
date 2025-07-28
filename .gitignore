@@ -25,3 +25,5 @@ current ids.txt
 .vscode
 *.png
 *.html
+*.dat
+*.pkl

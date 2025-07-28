@@ -1,9 +1,9 @@
 # === Simulate a proper Python package (temporal, I did not want to waste time on installing things) ===
 import sys
 from pathlib import Path
-# Add the root directory to Python path
-root_dir = Path(__file__).parent.parent  # Assuming train.py is in scripts/
-sys.path.append(str(root_dir))
+# # Add the root directory to Python path
+# root_dir = Path(__file__).parent.parent  # Assuming train.py is in scripts/
+# sys.path.append(str(root_dir))
 
 import numpy as np
 import torch
@@ -22,6 +22,8 @@ from plotly.subplots import make_subplots
 import scipy
 from plot_utilities.plot_for_scripts import plot_diagonal, plot_hamiltonian, plot_diagonal_rows, plot_energy_bands
 from tools.plot import plot_error_matrices_big
+import tbplas as tb
+from plot_utilities.tbplas_tools import add_hopping_terms, add_orbitals, get_hoppings, get_onsites
 
 from graph2mat import (
     BasisTableWithEdges,
@@ -33,7 +35,8 @@ def main():
     # *********************************** #
     # * VARIABLES TO CHANGE BY THE USER * #
     # *********************************** #
-    compute_eigenvalues_calculations = False
+    compute_eigenvals_scipy = False
+    compute_bands_and_dos_tbplas = True
     plot_eigenvalues = False
     plot_energybands = False
     paths = [
@@ -41,12 +44,11 @@ def main():
         # "./dataset/SHARE_OUTPUTS_8_ATOMS/bca3-f473-4c5e-8407-cbdc2d7c68a1",
         # "./dataset/SHARE_OUTPUTS_64_ATOMS/dcd8-ab99-4e8b-81ba-401f6739412e",
 
-        "dataset/SHARE_OUTPUTS_8_ATOMS/9ce2-0e9f-4d90-a296-7cc042624675",
-        "dataset/SHARE_OUTPUTS_2_ATOMS/41f7-3b57-4367-959e-f7b2cc71bc23",
-        "dataset/SHARE_OUTPUTS_64_ATOMS/dcd8-ab99-4e8b-81ba-401f6739412e",
+        "dataset/SHARE_OUTPUTS_8_ATOMS/39cf-a27b-42dd-a62e-62556132a798",
+        "dataset/SHARE_OUTPUTS_2_ATOMS/c8ce-475a-431c-b659-39b166ea3959",
 
     ]
-    model_dir = Path("results/h_crystalls_1") # Results directory
+    model_dir = Path("results/h_crystalls_6") # Results directory
     savedir = model_dir / "results" / "train"
     filename = "train_best_model.tar" # Model name (or relative path to the results directory)
 
@@ -221,8 +223,8 @@ def main():
         print("Nnz elements plotted!")
 
 
-        # Energy bands
-        if compute_eigenvalues_calculations:
+        # 4. Energy bands
+        if compute_eigenvals_scipy:
             print("=== COMPUTING EIGENVALUES ===")
             file = sisl.get_sile(path / "aiida.fdf")
             geometry = file.read_geometry()
@@ -272,6 +274,88 @@ def main():
 
             filepath = savedir / f"{n_atoms}atm_{structure}_eigenvals.npz"
             np.savez(filepath, energy_bands_true_array=energy_bands_true_array, energy_bands_pred_array=energy_bands_pred_array, k_path=k_path, path=str(path))
+
+
+
+        # 4. Energy bands using TBPLaS 
+        if compute_bands_and_dos_tbplas:    
+            print("Computing bands and DOS with TBPLaS...")
+            file = sisl.get_sile(path / "aiida.HSX")
+            geometry = file.read_geometry()
+
+            # Feed TBPLaS with our data
+
+            # Empty cell
+            vectors = geometry.cell
+            cell_true = tb.PrimitiveCell(vectors, unit=tb.ANG)
+            cell_pred = tb.PrimitiveCell(vectors, unit=tb.ANG)
+
+            # Add orbitals
+            positions = geometry.xyz
+            labels = [[orb.name() for orb in atom] for atom in geometry.atoms]
+            onsites_true = get_onsites(h_true.tocsr().tocoo())
+            onsites_pred = get_onsites(h_pred.tocsr().tocoo())
+
+            add_orbitals(cell_true, positions, onsites_true, labels)
+            add_orbitals(cell_pred, positions, onsites_pred, labels)
+
+            # Add hoppings
+            iscs_true, orbs_in_true, orbs_out_true, hoppings_true = get_hoppings(h_true.tocsr().tocoo(), n_atoms, geometry)
+            iscs_pred, orbs_in_pred, orbs_out_pred, hoppings_pred = get_hoppings(h_pred.tocsr().tocoo(), n_atoms, geometry)
+
+            add_hopping_terms(cell_true, iscs_true, orbs_in_true, orbs_out_true, hoppings_true)
+            add_hopping_terms(cell_pred, iscs_pred, orbs_in_pred, orbs_out_pred, hoppings_pred)
+
+            # Magnitudes computation
+
+            # Define a path in k-space
+            k_dir_x = geometry.rcell[:,0]
+            k_dir_y = geometry.rcell[:,1]
+            k_dir_z = geometry.rcell[:,2]
+            k_points = np.array([
+                [0.0, 0.0, 0.0],
+                k_dir_x,
+                k_dir_x + k_dir_y,
+                k_dir_x + k_dir_y + k_dir_z
+            ])
+            k_points = np.array([[0, 0, 0], [0, 0, 1]]) if debug_mode else k_points
+            k_label = ["G", "X", "Y", "Z-G"] if not debug_mode else ["G", "X-G"]
+            n_ks = 40 if not debug_mode else 2
+            k_path, k_idx = tb.gen_kpath(k_points, [n_ks, n_ks, n_ks])
+
+            # Bands
+            solver = tb.DiagSolver(cell_true)
+            solver.config.k_points = k_path
+            k_len, bands_true = solver.calc_bands()
+
+            solver = tb.DiagSolver(cell_pred)
+            solver.config.k_points = k_path
+            k_len, bands_pred = solver.calc_bands()
+
+            filepath = savedir / f"{n_atoms}atm_{structure}_tbplasbands.npz"
+            np.savez(filepath, path=str(path), k_len=k_len, k_idx=k_idx, k_label=k_label, bands_true=bands_true, bands_pred=bands_pred)
+
+
+            # 5. DOS
+            # DOS
+            k_mesh = tb.gen_kmesh((3*n_ks, 3*n_ks, 3*n_ks))  # Uniform meshgrid
+            e_min = float(np.min(h_true.data))
+            e_max = float(np.max(h_true.data))
+
+            solver = tb.DiagSolver(cell_true)
+            solver.config.k_points = k_mesh
+            solver.config.e_min = e_min
+            solver.config.e_max = e_max
+            energies, dos_true = solver.calc_dos()
+
+            solver = tb.DiagSolver(cell_pred)
+            solver.config.k_points = k_mesh
+            solver.config.e_min = e_min
+            solver.config.e_max = e_max
+            _, dos_pred = solver.calc_dos()
+
+            filepath = savedir / f"{n_atoms}atm_{structure}_tbplasdos.npz"
+            np.savez(filepath, path=str(path), energies=energies, dos_true=dos_true, dos_pred=dos_pred)
 
 
     # Load data and plot.

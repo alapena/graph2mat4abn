@@ -1,6 +1,6 @@
 debug_mode: false
 device: "cuda:1"
-results_dir: "./results/h_crystalls_7"
+results_dir: "./results/h_crystalls_8"
 trained_model_path: "./results/h_crystalls_6/train_best_model.tar"
 dataset:
   train_split_ratio: 0.80
@@ -65,7 +65,7 @@ scheduler:
   kwargs:
     mode: 'min'
     factor: 0.9 
-    patience: 50
+    patience: 100
     cooldown: 0
     min_lr: 1e-9
     eps: 0

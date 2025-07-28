@@ -1,9 +1,9 @@
 # === Simulate a proper Python package (temporal, I did not want to waste time on installing things) ===
 import sys
 from pathlib import Path
-# Add the root directory to Python path
-root_dir = Path(__file__).parent.parent  # Assuming train.py is in scripts/
-sys.path.append(str(root_dir))
+# # Add the root directory to Python path
+# root_dir = Path(__file__).parent.parent  # Assuming train.py is in scripts/
+# sys.path.append(str(root_dir))
 
 import numpy as np
 import torch
@@ -20,7 +20,7 @@ import plotly.graph_objects as go
 from plotly.colors import sample_colorscale
 from plotly.subplots import make_subplots
 import scipy
-from plot_utilities.plot_for_scripts import plot_diagonal, plot_hamiltonian, plot_diagonal_rows, plot_energy_bands
+from plot_utilities.plot_for_scripts import combine_band_and_dos, plot_bands, plot_dos, plot_diagonal, plot_hamiltonian, plot_diagonal_rows, plot_energy_bands
 from tools.plot import plot_error_matrices_big
 
 from graph2mat import (
@@ -35,17 +35,17 @@ def main():
     # *********************************** #
     plot_eigenvalues = True
     plot_energybands = True
+    plot_bands_and_dos = True
     paths = [
         # "./dataset/SHARE_OUTPUTS_2_ATOMS/c924-ac64-4837-a960-ff786d6c6836",
         # "./dataset/SHARE_OUTPUTS_8_ATOMS/bca3-f473-4c5e-8407-cbdc2d7c68a1",
         # "./dataset/SHARE_OUTPUTS_64_ATOMS/dcd8-ab99-4e8b-81ba-401f6739412e",
 
-        "dataset/SHARE_OUTPUTS_8_ATOMS/9ce2-0e9f-4d90-a296-7cc042624675",
-        "dataset/SHARE_OUTPUTS_2_ATOMS/41f7-3b57-4367-959e-f7b2cc71bc23",
-        "dataset/SHARE_OUTPUTS_64_ATOMS/dcd8-ab99-4e8b-81ba-401f6739412e",
+        "dataset/SHARE_OUTPUTS_8_ATOMS/39cf-a27b-42dd-a62e-62556132a798",
+        "dataset/SHARE_OUTPUTS_2_ATOMS/c8ce-475a-431c-b659-39b166ea3959",
 
     ]
-    model_dir = Path("results/h_crystalls_1") # Results directory
+    model_dir = Path("results/h_crystalls_6") # Results directory
     savedir = model_dir / "results" / "train"
     filename = "train_best_model.tar" # Model name (or relative path to the results directory)
 
@@ -178,6 +178,44 @@ def main():
                 filepath = filepath
             )
         print("Finished plotting energybands!")
+
+
+        if plot_bands_and_dos:
+            bands_paths = list(savedir.glob('*bands.npz'))
+            dos_paths = list(savedir.glob('*dos.npz'))
+            print(bands_paths, dos_paths)
+            # For each file
+            for k, bands_path in tqdm(enumerate(bands_paths)):
+                bands_path = Path(bands_path)
+                dos_path = Path(dos_paths[k])
+                n_atoms = bands_path.parts[-1][0]
+                structure = bands_path.stem.split("_")[1]
+                savedir_struct = savedir / f"stats_{n_atoms}_ATOMS_{structure}"
+
+                # Read it
+                bands_data = np.load(bands_path)
+                dos_data = np.load(dos_path)  # Assuming dos_paths has at least one file
+
+                # Plot it
+                k_len = bands_data['k_len']
+                k_idx = bands_data['k_idx']
+                k_label = bands_data['k_label']
+                bands_true = bands_data['bands_true']
+                bands_pred = bands_data['bands_pred']
+
+                energies = dos_data['energies']
+                dos_true = dos_data['dos_true']
+                dos_pred = dos_data['dos_pred']
+
+                path = Path(str(bands_data['path']))
+
+                filepath = savedir_struct / f"{n_atoms}atm_{structure}_bands.html"
+                fig_bands = plot_bands(k_len, bands_true, k_idx, k_label, predicted_bands=bands_pred, filepath=filepath)
+                filepath = savedir_struct / f"{n_atoms}atm_{structure}_dos.html"
+                fig_dos = plot_dos(energies, dos_true, predicted_dos=dos_pred, filepath=filepath)
+                filepath = savedir_struct / f"{n_atoms}atm_{structure}_bandsdos.html"
+                combine_band_and_dos(fig_bands, fig_dos, filepath=filepath)
+
 
     print(f"Finished! Results saved at {savedir_struct}")
 
