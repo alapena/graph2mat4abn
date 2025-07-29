@@ -16,9 +16,9 @@ num_spin 1
 
 spin_major 1
 
-e_min -10
+e_min -5.0
 
-e_max 10
+e_max 5.0
 
 e_step 0.05
 

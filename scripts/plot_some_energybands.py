@@ -33,8 +33,8 @@ def main():
     # *********************************** #
     # * VARIABLES TO CHANGE BY THE USER * #
     # *********************************** #
-    plot_eigenvalues = True
-    plot_energybands = True
+    plot_eigenvalues = False
+    plot_energybands = False
     plot_bands_and_dos = True
     paths = [
         # "./dataset/SHARE_OUTPUTS_2_ATOMS/c924-ac64-4837-a960-ff786d6c6836",
@@ -45,9 +45,8 @@ def main():
         "dataset/SHARE_OUTPUTS_2_ATOMS/c8ce-475a-431c-b659-39b166ea3959",
 
     ]
-    model_dir = Path("results/h_crystalls_6") # Results directory
-    savedir = model_dir / "results" / "train"
-    filename = "train_best_model.tar" # Model name (or relative path to the results directory)
+    model_dir = Path("results/h_crystalls_6") # Model directory
+    savedir = model_dir / "results" / "train" # Results directory
 
     # compute_matrices_calculations = True # Save or Load calculations.
     # compute_eigenvalues_calculations = True
@@ -98,123 +97,123 @@ def main():
 
     # Load data and plot.
     
-    if plot_eigenvalues:
-        energybands_paths = list(savedir.glob('*eigenvals.npz'))
+    # if plot_eigenvalues:
+    #     energybands_paths = list(savedir.glob('*eigenvals.npz'))
 
-        print("Plotting eigenvalues and energy bands.")
+    #     print("Plotting eigenvalues and energy bands.")
 
-        # Read all files in data directory.    
+    #     # Read all files in data directory.    
 
+    #     # For each file
+    #     for energybands_path in tqdm(energybands_paths):
+    #         energybands_path = Path(energybands_path)
+    #         n_atoms = energybands_path.parts[-1][0]
+    #         structure = energybands_path.stem.split("_")[1]
+    #         savedir_struct = savedir / f"stats_{n_atoms}_ATOMS_{structure}"
+
+    #         # Read it
+    #         energyband_data = np.load(energybands_path)
+
+    #         # Plot it
+    #         k_path = energyband_data['k_path']
+    #         energy_bands_true = energyband_data['energy_bands_true_array']
+    #         energy_bands_pred = energyband_data['energy_bands_pred_array']
+    #         path = Path(str(energyband_data['path']))
+
+    #         titles_series = [f"k=({"{:.2f}".format(k_point[0]) if k_point[0] != 0 else 0}, {"{:.2f}".format(k_point[1]) if k_point[1] != 0 else 0}, {"{:.2f}".format(k_point[2]) if k_point[2] != 0 else 0})" for k_point in k_path]
+    #         filepath = savedir_struct / f"{n_atoms}atm_{structure}_eigenvals.html"
+    #         title = f"Eigenvalues comparison (eV).<br>Used model {model_dir.parts[-1]}. Using SIESTA overlap matrix."
+    #         plot_diagonal_rows(
+    #             predictions=energy_bands_pred.T,
+    #             truths=energy_bands_true.T,
+    #             series_names=titles_series,
+    #             # x_error_perc=None,
+    #             # y_error_perc=5,
+    #             title=title,
+    #             xaxis_title='True energy',
+    #             yaxis_title='Predicted energy',
+    #             legend_title='k points',
+    #             show_diagonal=True,
+    #             show_points_by_default=True,
+    #             showlegend=True,
+    #             filepath=filepath
+    #         )
+    #         print("Finished plotting eigenvalues!")
+
+
+    # if plot_energybands:
+    #     energybands_paths = list(savedir.glob('*eigenvals.npz'))
+    #     # For each file
+    #     for energybands_path in tqdm(energybands_paths):
+    #         energybands_path = Path(energybands_path)
+    #         n_atoms = energybands_path.parts[-1][0]
+    #         structure = energybands_path.stem.split("_")[1]
+    #         savedir_struct = savedir / f"stats_{n_atoms}_ATOMS_{structure}"
+
+    #         # Read it
+    #         energyband_data = np.load(energybands_path)
+
+    #         # Plot it
+    #         k_path = energyband_data['k_path']
+    #         energy_bands_true = energyband_data['energy_bands_true_array']
+    #         energy_bands_pred = energyband_data['energy_bands_pred_array']
+    #         path = Path(str(energyband_data['path']))
+
+    #         title = f"Energy bands of structure {n_atoms}_ATOMS/{structure}.<br>Used model {model_dir.parts[-1]}. Using SIESTA overlap matrix."
+    #         filepath = savedir_struct / f"{n_atoms}atm_{structure}_energybands.html"
+    #         # x_axis = [k_path]*energy_bands_pred.shape[1]
+    #         n_series = energy_bands_pred.shape[0]
+    #         titles_pred = [f"Predicted band {i}" for i in range(n_series)]
+    #         titles_true = [f"True band {i}" for i in range(n_series)]
+    #         plot_energy_bands(
+    #             list(range(len(k_path))),
+    #             energy_bands_true,
+    #             energy_bands_pred,
+    #             xlabel = "k_path index",
+    #             ylabel = "Energy (eV)",
+    #             title = title,
+    #             titles_pred=titles_pred,
+    #             titles_true=titles_true,
+    #             filepath = filepath
+    #         )
+    #     print("Finished plotting energybands!")
+
+
+    if plot_bands_and_dos:
+        bands_paths = list(savedir.glob('*bands.npz'))
+        dos_paths = list(savedir.glob('*dos.npz'))
+        print(bands_paths, dos_paths)
         # For each file
-        for energybands_path in tqdm(energybands_paths):
-            energybands_path = Path(energybands_path)
-            n_atoms = energybands_path.parts[-1][0]
-            structure = energybands_path.stem.split("_")[1]
+        for k, bands_path in tqdm(enumerate(bands_paths)):
+            bands_path = Path(bands_path)
+            dos_path = Path(dos_paths[k])
+            n_atoms = bands_path.parts[-1][0]
+            structure = bands_path.stem.split("_")[1]
             savedir_struct = savedir / f"stats_{n_atoms}_ATOMS_{structure}"
 
             # Read it
-            energyband_data = np.load(energybands_path)
+            bands_data = np.load(bands_path)
+            dos_data = np.load(dos_path)  # Assuming dos_paths has at least one file
 
             # Plot it
-            k_path = energyband_data['k_path']
-            energy_bands_true = energyband_data['energy_bands_true_array']
-            energy_bands_pred = energyband_data['energy_bands_pred_array']
-            path = Path(str(energyband_data['path']))
+            k_len = bands_data['k_len']
+            k_idx = bands_data['k_idx']
+            k_label = bands_data['k_label']
+            bands_true = bands_data['bands_true']
+            bands_pred = bands_data['bands_pred']
 
-            titles_series = [f"k=({"{:.2f}".format(k_point[0]) if k_point[0] != 0 else 0}, {"{:.2f}".format(k_point[1]) if k_point[1] != 0 else 0}, {"{:.2f}".format(k_point[2]) if k_point[2] != 0 else 0})" for k_point in k_path]
-            filepath = savedir_struct / f"{n_atoms}atm_{structure}_eigenvals.html"
-            title = f"Eigenvalues comparison (eV).<br>Used model {model_dir.parts[-1]}. Using SIESTA overlap matrix."
-            plot_diagonal_rows(
-                predictions=energy_bands_pred.T,
-                truths=energy_bands_true.T,
-                series_names=titles_series,
-                # x_error_perc=None,
-                # y_error_perc=5,
-                title=title,
-                xaxis_title='True energy',
-                yaxis_title='Predicted energy',
-                legend_title='k points',
-                show_diagonal=True,
-                show_points_by_default=True,
-                showlegend=True,
-                filepath=filepath
-            )
-            print("Finished plotting eigenvalues!")
+            energies = dos_data['energies']
+            dos_true = dos_data['dos_true']
+            dos_pred = dos_data['dos_pred']
 
+            path = Path(str(bands_data['path']))
 
-    if plot_energybands:
-        energybands_paths = list(savedir.glob('*eigenvals.npz'))
-        # For each file
-        for energybands_path in tqdm(energybands_paths):
-            energybands_path = Path(energybands_path)
-            n_atoms = energybands_path.parts[-1][0]
-            structure = energybands_path.stem.split("_")[1]
-            savedir_struct = savedir / f"stats_{n_atoms}_ATOMS_{structure}"
-
-            # Read it
-            energyband_data = np.load(energybands_path)
-
-            # Plot it
-            k_path = energyband_data['k_path']
-            energy_bands_true = energyband_data['energy_bands_true_array']
-            energy_bands_pred = energyband_data['energy_bands_pred_array']
-            path = Path(str(energyband_data['path']))
-
-            title = f"Energy bands of structure {n_atoms}_ATOMS/{structure}.<br>Used model {model_dir.parts[-1]}. Using SIESTA overlap matrix."
-            filepath = savedir_struct / f"{n_atoms}atm_{structure}_energybands.html"
-            # x_axis = [k_path]*energy_bands_pred.shape[1]
-            n_series = energy_bands_pred.shape[0]
-            titles_pred = [f"Predicted band {i}" for i in range(n_series)]
-            titles_true = [f"True band {i}" for i in range(n_series)]
-            plot_energy_bands(
-                list(range(len(k_path))),
-                energy_bands_true,
-                energy_bands_pred,
-                xlabel = "k_path index",
-                ylabel = "Energy (eV)",
-                title = title,
-                titles_pred=titles_pred,
-                titles_true=titles_true,
-                filepath = filepath
-            )
-        print("Finished plotting energybands!")
-
-
-        if plot_bands_and_dos:
-            bands_paths = list(savedir.glob('*bands.npz'))
-            dos_paths = list(savedir.glob('*dos.npz'))
-            print(bands_paths, dos_paths)
-            # For each file
-            for k, bands_path in tqdm(enumerate(bands_paths)):
-                bands_path = Path(bands_path)
-                dos_path = Path(dos_paths[k])
-                n_atoms = bands_path.parts[-1][0]
-                structure = bands_path.stem.split("_")[1]
-                savedir_struct = savedir / f"stats_{n_atoms}_ATOMS_{structure}"
-
-                # Read it
-                bands_data = np.load(bands_path)
-                dos_data = np.load(dos_path)  # Assuming dos_paths has at least one file
-
-                # Plot it
-                k_len = bands_data['k_len']
-                k_idx = bands_data['k_idx']
-                k_label = bands_data['k_label']
-                bands_true = bands_data['bands_true']
-                bands_pred = bands_data['bands_pred']
-
-                energies = dos_data['energies']
-                dos_true = dos_data['dos_true']
-                dos_pred = dos_data['dos_pred']
-
-                path = Path(str(bands_data['path']))
-
-                filepath = savedir_struct / f"{n_atoms}atm_{structure}_bands.html"
-                fig_bands = plot_bands(k_len, bands_true, k_idx, k_label, predicted_bands=bands_pred, filepath=filepath)
-                filepath = savedir_struct / f"{n_atoms}atm_{structure}_dos.html"
-                fig_dos = plot_dos(energies, dos_true, predicted_dos=dos_pred, filepath=filepath)
-                filepath = savedir_struct / f"{n_atoms}atm_{structure}_bandsdos.html"
-                combine_band_and_dos(fig_bands, fig_dos, filepath=filepath)
+            filepath = savedir_struct / f"{n_atoms}atm_{structure}_bands.html"
+            fig_bands = plot_bands(k_len, bands_true, k_idx, k_label, predicted_bands=bands_pred, filepath=filepath)
+            filepath = savedir_struct / f"{n_atoms}atm_{structure}_dos.html"
+            fig_dos = plot_dos(energies, dos_true, predicted_dos=dos_pred, filepath=filepath)
+            filepath = savedir_struct / f"{n_atoms}atm_{structure}_bandsdos.html"
+            combine_band_and_dos(fig_bands, fig_dos, filepath=filepath)
 
 
     print(f"Finished! Results saved at {savedir_struct}")
