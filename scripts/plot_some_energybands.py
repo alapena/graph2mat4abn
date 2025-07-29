@@ -37,16 +37,15 @@ def main():
     plot_energybands = False
     plot_bands_and_dos = True
     paths = [
-        # "./dataset/SHARE_OUTPUTS_2_ATOMS/c924-ac64-4837-a960-ff786d6c6836",
-        # "./dataset/SHARE_OUTPUTS_8_ATOMS/bca3-f473-4c5e-8407-cbdc2d7c68a1",
-        # "./dataset/SHARE_OUTPUTS_64_ATOMS/dcd8-ab99-4e8b-81ba-401f6739412e",
-
-        "dataset/SHARE_OUTPUTS_8_ATOMS/39cf-a27b-42dd-a62e-62556132a798",
-        "dataset/SHARE_OUTPUTS_2_ATOMS/c8ce-475a-431c-b659-39b166ea3959",
+        # Validation:
+        "dataset/SHARE_OUTPUTS_2_ATOMS/7bbb-6d51-41eb-9de4-329298202ebf", # B-B overlapped
+        "dataset/SHARE_OUTPUTS_2_ATOMS/a4e4-2f64-4e68-a37a-9e84eb767a0c", # B-B No overlapped
+        "dataset/SHARE_OUTPUTS_8_ATOMS/173e-fad7-4f78-8350-6759a5471596", # Cubic
+        # "dataset/SHARE_OUTPUTS_8_ATOMS/4b9b-20df-4fe5-a669-88ff91902e97", # Hexagonal
 
     ]
-    model_dir = Path("results/h_crystalls_6") # Model directory
-    savedir = model_dir / "results" / "train" # Results directory
+    results_dir = Path("results/h_crystalls_8/results/val-val_best_model-epoch3500") # Results directory
+    savedir = results_dir # Save Results directory
 
     # compute_matrices_calculations = True # Save or Load calculations.
     # compute_eigenvalues_calculations = True
@@ -85,8 +84,8 @@ def main():
         print("**************************************************")
 
     # Load the config of the model
-    config = load_config(model_dir / "config.yaml")
-    device = torch.device("cpu")
+    # config = load_config(model_dir / "config.yaml")
+    # device = torch.device("cpu")
 
     # Results directory
     # if not debug_mode:
@@ -185,6 +184,9 @@ def main():
         print(bands_paths, dos_paths)
         # For each file
         for k, bands_path in tqdm(enumerate(bands_paths)):
+            print(bands_paths)
+            print(dos_paths)
+            print(k)
             bands_path = Path(bands_path)
             dos_path = Path(dos_paths[k])
             n_atoms = bands_path.parts[-1][0]
@@ -214,6 +216,7 @@ def main():
             fig_dos = plot_dos(energies, dos_true, predicted_dos=dos_pred, filepath=filepath)
             filepath = savedir_struct / f"{n_atoms}atm_{structure}_bandsdos.html"
             combine_band_and_dos(fig_bands, fig_dos, filepath=filepath)
+            print(f"Finished plotting bands and dos for {n_atoms} atoms structure {structure}!")
 
 
     print(f"Finished! Results saved at {savedir_struct}")

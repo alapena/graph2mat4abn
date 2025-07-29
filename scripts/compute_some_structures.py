@@ -356,8 +356,7 @@ def main():
             solver.config.prefix = "bands_true"
             timer = tb.Timer()
             timer.tic("bands_true")
-            k_len, bands_true = solver.calc_bands()
-            timer = tb.Timer()
+            k_len_true, bands_true = solver.calc_bands()
             timer.toc("bands_true")
             timer.report_total_time()
 
@@ -365,19 +364,20 @@ def main():
             solver.config.k_points = k_path
             solver.config.prefix = "bands_pred"
             timer.tic("bands_pred")
-            k_len, bands_pred = solver.calc_bands()
+            k_len_pred, bands_pred = solver.calc_bands()
             timer.toc("bands_pred")
             timer.report_total_time()
 
             filepath = savedir / f"{n_atoms}atm_{structure}_tbplasbands.npz"
-            np.savez(filepath, path=str(path), k_len=k_len, k_idx=k_idx, k_label=k_label, bands_true=bands_true, bands_pred=bands_pred)
+            np.savez(filepath, path=str(path), k_len_true=k_len_true, k_idx=k_idx, k_label=k_label, bands_true=bands_true, k_len_pred=k_len_pred, bands_pred=bands_pred)
+            print("Saved bands data at", filepath)
 
 
             # 5. DOS
             # DOS
             k_mesh = tb.gen_kmesh((3*n_ks, 3*n_ks, 3*n_ks))  # Uniform meshgrid
-            e_min = float(np.min(h_true.data))
-            e_max = float(np.max(h_true.data))
+            e_min = float(np.min(bands_true))
+            e_max = float(np.max(bands_true))
 
             solver = tb.DiagSolver(cell_true, overlap_true)
             solver.config.k_points = k_mesh
@@ -385,22 +385,25 @@ def main():
             solver.config.e_max = e_max
             solver.config.prefix = "dos_true"
             timer.tic("dos_true")
-            energies, dos_true = solver.calc_dos()
+            energies_true, dos_true = solver.calc_dos()
             timer.toc("dos_true")
             timer.report_total_time()
 
+            e_min = float(np.min(bands_pred))
+            e_max = float(np.max(bands_pred))
             solver = tb.DiagSolver(cell_pred, overlap_true)
             solver.config.k_points = k_mesh
             solver.config.e_min = e_min
             solver.config.e_max = e_max
             solver.config.prefix = "dos_pred"
             timer.tic("dos_pred")
-            _, dos_pred = solver.calc_dos()
+            energies_pred, dos_pred = solver.calc_dos()
             timer.toc("dos_pred")
             timer.report_total_time()
 
             filepath = savedir / f"{n_atoms}atm_{structure}_tbplasdos.npz"
-            np.savez(filepath, path=str(path), energies=energies, dos_true=dos_true, dos_pred=dos_pred)
+            np.savez(filepath, path=str(path), energies_true=energies_true, dos_true=dos_true, energies_pred=energies_pred, dos_pred=dos_pred)
+            print("Saved DOS data at", filepath)
 
 
     # Load data and plot.
