@@ -83,18 +83,18 @@ class Trainer:
             # Model forward pass
             # model_predictions = self.model(data=batch, node_feats=enviroment_description["node_feats"])
             model_predictions = self.model(data=batch)
-            # print(model_predictions.keys())
 
             # Compute the loss
             loss, stats = self.loss_fn(
                 nodes_pred=model_predictions["node_labels"],
-                nodes_ref=batch.point_labels,
+                nodes_ref=batch.point_labels / (self.mean_abs_point_nonzero + 1e-10), # Normalize
                 edges_pred=model_predictions["edge_labels"],
-                edges_ref=batch.edge_labels,
+                edges_ref=batch.edge_labels / (self.mean_abs_edge_nonzero + 1e-10), # Normalize
+                threshold=0.0001 # 10 meV
             )
-            total_loss += loss*10**6
-            total_edge_loss += stats["node_rmse"]**2 *10**6 # Squared because it returns the root.
-            total_node_loss += stats["edge_rmse"]**2 *10**6
+            total_loss += loss
+            total_edge_loss += stats["node_rmse"]**2  # Squared because it returns the root.
+            total_node_loss += stats["edge_rmse"]**2 
 
             # Compute gradients
             loss.backward()
@@ -143,13 +143,14 @@ class Trainer:
                 # Compute the loss
                 loss, stats = self.loss_fn(
                     nodes_pred=model_predictions["node_labels"],
-                    nodes_ref=batch.point_labels,
+                    nodes_ref=batch.point_labels / (self.mean_abs_point_nonzero + 1e-10), # Normalize
                     edges_pred=model_predictions["edge_labels"],
-                    edges_ref=batch.edge_labels,
+                    edges_ref=batch.edge_labels / (self.mean_abs_edge_nonzero + 1e-10), # Normalize
+                    threshold=0.0001 # 10 meV
                 )
-                total_loss += loss*10**6
-                total_edge_loss += stats["node_rmse"]**2*10**6
-                total_node_loss += stats["edge_rmse"]**2*10**6
+                total_loss += loss
+                total_edge_loss += stats["node_rmse"]**2
+                total_node_loss += stats["edge_rmse"]**2
 
                 num_batches += 1
 
@@ -323,6 +324,22 @@ class Trainer:
         train_dataloader = DataLoader(self.train_dataset, self.batch_size)
         val_dataloader = DataLoader(self.val_dataset, self.batch_size)
         val_dataloader_extra = DataLoader(self.val_dataset_extra, self.batch_size) if self.val_dataset_extra is not None else None
+
+        # Compute normalization factors if needed
+        all_point_labels = []
+        all_edge_labels = []
+        for batch in train_dataloader:  # Only use training data!
+            point_labels = batch.point_labels
+            edge_labels = batch.edge_labels
+            all_point_labels.append(point_labels.abs().cpu())  # Collect on CPU to avoid memory issues
+            all_edge_labels.append(edge_labels.abs().cpu())
+
+        all_point_labels = torch.cat(all_point_labels)
+        all_edge_labels = torch.cat(all_edge_labels)
+        nonzero_point_labels = all_point_labels[all_point_labels != 0]
+        nonzero_edge_labels = all_edge_labels[all_edge_labels != 0]
+        self.mean_abs_point_nonzero = nonzero_point_labels.mean()
+        self.mean_abs_edge_nonzero = nonzero_edge_labels.mean()
 
 
         # Initialize memory monitor

@@ -1,7 +1,7 @@
 debug_mode: false
-device: "cuda:0"
-results_dir: "./results/h_crystalls_9"
-trained_model_path: null
+device: "cuda:1"
+results_dir: "./results/h_crystalls_8"
+trained_model_path: "./results/h_crystalls_8/train_best_model.tar"
 dataset:
   train_split_ratio: 0.80
   # test_split_ratio: 0.50
@@ -54,9 +54,9 @@ model:
   # hidden_neurons: [64, 64, 64, 64]
 
 optimizer:
-  lr: 1e-3
+  lr: 1e-4
   # weight_decay: 1e-4
-  initial_lr: 1e-3 # Force an initial lr in the scheduler when loading a model.
+  initial_lr: 1e-4 # Force an initial lr in the scheduler when loading a model.
 
 scheduler:
   type: ReduceLROnPlateau
@@ -65,9 +65,9 @@ scheduler:
   kwargs:
     mode: 'min'
     factor: 0.9 
-    patience: 70
+    patience: 100
     cooldown: 0
-    min_lr: 1e-6
+    min_lr: 1e-9
     eps: 0
 
 
@@ -101,7 +101,7 @@ scheduler:
   
 
 trainer:
-  batch_size: 240
+  batch_size: 120
   checkpoint_freq: 500
 
   live_plot: true
@@ -112,7 +112,7 @@ trainer:
   live_plot_matrices_num: 1
 
   num_epochs: 500000
-  # loss_function: block_type_mse # elementwise_mse, block_type_mse, block_type_mse_threshold
+  loss_function: block_type_mse # elementwise_mse, block_type_mse, block_type_mse_threshold
 
   keep_in_memory: true
   rotating_pool: false

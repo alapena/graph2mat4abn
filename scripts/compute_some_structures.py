@@ -37,7 +37,8 @@ def main():
     # *********************************** #
     compute_eigenvals_scipy = False
     compute_bands_and_dos_tbplas = True
-    n_ks = 30 if not debug_mode else 2
+    n_k_bands = 80
+    n_k_dos = 50
     plot_eigenvalues = False
     plot_energybands = False
     paths = [
@@ -46,16 +47,16 @@ def main():
         # "./dataset/SHARE_OUTPUTS_64_ATOMS/dcd8-ab99-4e8b-81ba-401f6739412e",
 
         # Training:
-        # "dataset/SHARE_OUTPUTS_2_ATOMS/2e65-1feb-4df2-8836-e5513b9bade0", # B-B Overlapped
-        # "dataset/SHARE_OUTPUTS_2_ATOMS/7e20-9cdf-4b2c-8134-6cadc8f64c34", # B-B No overlapped
+        "dataset/SHARE_OUTPUTS_2_ATOMS/2e65-1feb-4df2-8836-e5513b9bade0", # B-B Overlapped
+        "dataset/SHARE_OUTPUTS_2_ATOMS/7e20-9cdf-4b2c-8134-6cadc8f64c34", # B-B No overlapped
         # "dataset/SHARE_OUTPUTS_8_ATOMS/39cf-a27b-42dd-a62e-62556132a798", # Hexagonal
         # "dataset/SHARE_OUTPUTS_8_ATOMS/11ad-ba95-4a26-8f92-5267f5787553", # Cubic
 
         # Validation:
-        "dataset/SHARE_OUTPUTS_2_ATOMS/7bbb-6d51-41eb-9de4-329298202ebf", # B-B overlapped
-        "dataset/SHARE_OUTPUTS_2_ATOMS/a4e4-2f64-4e68-a37a-9e84eb767a0c", # B-B No overlapped
-        "dataset/SHARE_OUTPUTS_8_ATOMS/173e-fad7-4f78-8350-6759a5471596", # Cubic
-        "dataset/SHARE_OUTPUTS_8_ATOMS/4b9b-20df-4fe5-a669-88ff91902e97", # Hexagonal
+        # "dataset/SHARE_OUTPUTS_2_ATOMS/7bbb-6d51-41eb-9de4-329298202ebf", # B-B overlapped
+        # "dataset/SHARE_OUTPUTS_2_ATOMS/a4e4-2f64-4e68-a37a-9e84eb767a0c", # B-B No overlapped
+        # "dataset/SHARE_OUTPUTS_8_ATOMS/173e-fad7-4f78-8350-6759a5471596", # Cubic
+        # "dataset/SHARE_OUTPUTS_8_ATOMS/4b9b-20df-4fe5-a669-88ff91902e97", # Hexagonal
 
 
         # "dataset/SHARE_OUTPUTS_2_ATOMS/41f7-3b57-4367-959e-f7b2cc71bc23",
@@ -63,9 +64,9 @@ def main():
         # "dataset/SHARE_OUTPUTS_64_ATOMS/dcd8-ab99-4e8b-81ba-401f6739412e",
 
     ]
-    model_dir = Path("results/h_crystalls_5") # Results directory
-    savedir = Path("results/h_crystalls_8") / "results" / "val-val_best_model-epoch3500"
-    filename = "val_best_model.tar" # Model name (or relative path to the results directory)
+    model_dir = Path("results/h_crystalls_8") # Results directory
+    savedir = Path("results/h_crystalls_8") / "results" / "train"
+    filename = "train_best_model.tar" # Model name (or relative path to the results directory)
 
     # compute_matrices_calculations = True # Save or Load calculations.
     # compute_eigenvalues_calculations = True
@@ -166,6 +167,8 @@ def main():
         file = sisl.get_sile(path / "aiida.fdf")
         fig = file.plot.geometry(axes="xyz")
         filepath = savedir_struct / f"{n_atoms}atm_{structure}.png"
+        fig.write_image(str(filepath))
+        filepath = savedir_struct / f"{n_atoms}atm_{structure}.html"
         fig.write_image(str(filepath))
         print("Saved structure plot at", filepath)
 
@@ -326,9 +329,9 @@ def main():
 
             o_true = file.read_overlap()
             onsites_overlap_true = get_onsites(o_true.tocsr().tocoo())
-            for i in range(cell_true.num_orb):
-                orbital = cell_true.orbitals[i]
-                overlap_true.add_orbital(orbital.position, onsites_overlap_true[i])
+            for k in range(cell_true.num_orb):
+                orbital = cell_true.orbitals[k]
+                overlap_true.add_orbital(orbital.position, onsites_overlap_true[k])
 
             iscs_overlap_true, orbs_in_overlap_true, orbs_out_overlap_true, hoppings_overlap_true = get_hoppings(o_true.tocsr().tocoo(), n_atoms, geometry)
             add_hopping_terms(overlap_true, iscs_overlap_true, orbs_in_overlap_true, orbs_out_overlap_true, hoppings_overlap_true)
@@ -337,18 +340,39 @@ def main():
             # Magnitudes computation
 
             # Define a path in k-space
-            k_dir_x = geometry.rcell[:,0]
-            k_dir_y = geometry.rcell[:,1]
-            k_dir_z = geometry.rcell[:,2]
-            k_points = np.array([
-                [0.0, 0.0, 0.0],
-                k_dir_x,
-                k_dir_x + k_dir_y,
-                k_dir_x + k_dir_y + k_dir_z
-            ])
-            k_points = np.array([[0, 0, 0], [0, 0, 1]]) if debug_mode else k_points
-            k_label = ["G", "X", "Y", "Z-G"] if not debug_mode else ["G", "X-G"]
-            k_path, k_idx = tb.gen_kpath(k_points, [n_ks, n_ks, n_ks])
+
+            # 2 atoms: Molecules. Path along the z axis.
+            if i==0 or i==1:
+                b1, b2, b3 = cell_true.get_reciprocal_vectors()/10 # Each shape (3), Angstrom^-1
+                B = np.vstack([b1, b2, b3])  # shape (3,3)
+                k_cart = np.array([[0.0, 0.0, 0.0], b3])
+                k_label = [r"$\Gamma$", "Z"]
+
+                k_frac = np.array([np.linalg.solve(B.T, k) for k in k_cart])
+                k_path, k_idx = tb.gen_kpath(k_frac, [n_k_bands for _ in range(len(k_frac) -1)])
+            # elif i==2:  # 8 atoms: Cubic.
+            #     # Compute k path
+            #     b1, b2, b3 = cell_true.get_reciprocal_vectors() # Each shape (3)
+            #     B = np.vstack([b1, b2, b3])  # shape (3,3)
+            #     k_cart = np.array([
+            #         b1/2 + b2/2 + b3/2,    # Gamma
+            #         b1 + b2/2 + b3/2,    # X
+            #         b1 + b2 + b3/2,     # M
+            #         b1/2 + b2/2 + b3/2,    # Gamma
+            #         b1 + b2 + b3,   # R
+            #         b1 + b2/2 + b3/2,    # X
+            #     ])
+            #     # Convert each to fractional coordinates
+            #     k_frac = np.array([np.linalg.solve(B.T, k) for k in k_cart])
+            #     k_label = [r"$\Gamma$", "X", "M", r"$\Gamma$", "R", "X"]
+
+            #     n_ks = 25
+            #     k_path, k_idx = tb.gen_kpath(k_frac, [n_ks for _ in range(len(k_frac) -1)])
+
+            elif i == 3:  # 8 atoms: Hexagonal.
+                print("Todavía no tengo este xD")
+
+            
 
             # Bands
             solver = tb.DiagSolver(cell_true, overlap_true)
@@ -374,8 +398,7 @@ def main():
 
 
             # 5. DOS
-            # DOS
-            k_mesh = tb.gen_kmesh((3*n_ks, 3*n_ks, 3*n_ks))  # Uniform meshgrid
+            k_mesh = tb.gen_kmesh((n_k_dos, n_k_dos, n_k_dos))  # Uniform meshgrid
             e_min = float(np.min(bands_true))
             e_max = float(np.max(bands_true))
 
@@ -384,25 +407,30 @@ def main():
             solver.config.e_min = e_min
             solver.config.e_max = e_max
             solver.config.prefix = "dos_true"
+            print("k_mesh.shape=", k_mesh.shape)
+            print("e_min=", e_min, "e_max=", e_max)
             timer.tic("dos_true")
             energies_true, dos_true = solver.calc_dos()
             timer.toc("dos_true")
             timer.report_total_time()
+            filepath = savedir / f"{n_atoms}atm_{structure}_tbplasdostrue.npz"
+            np.savez(filepath, path=str(path), energies=energies_true, dos=dos_true)
 
-            e_min = float(np.min(bands_pred))
-            e_max = float(np.max(bands_pred))
+            # e_min = float(np.min(bands_pred))
+            # e_max = float(np.max(bands_pred))
             solver = tb.DiagSolver(cell_pred, overlap_true)
             solver.config.k_points = k_mesh
             solver.config.e_min = e_min
             solver.config.e_max = e_max
             solver.config.prefix = "dos_pred"
+            print("e_min=", e_min, "e_max=", e_max)
             timer.tic("dos_pred")
             energies_pred, dos_pred = solver.calc_dos()
             timer.toc("dos_pred")
             timer.report_total_time()
 
-            filepath = savedir / f"{n_atoms}atm_{structure}_tbplasdos.npz"
-            np.savez(filepath, path=str(path), energies_true=energies_true, dos_true=dos_true, energies_pred=energies_pred, dos_pred=dos_pred)
+            filepath = savedir / f"{n_atoms}atm_{structure}_tbplasdospred.npz"
+            np.savez(filepath, path=str(path), energies=energies_pred, dos=dos_pred)
             print("Saved DOS data at", filepath)
 
 

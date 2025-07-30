@@ -40,7 +40,7 @@ def main():
         # Validation:
         "dataset/SHARE_OUTPUTS_2_ATOMS/7bbb-6d51-41eb-9de4-329298202ebf", # B-B overlapped
         "dataset/SHARE_OUTPUTS_2_ATOMS/a4e4-2f64-4e68-a37a-9e84eb767a0c", # B-B No overlapped
-        "dataset/SHARE_OUTPUTS_8_ATOMS/173e-fad7-4f78-8350-6759a5471596", # Cubic
+        # "dataset/SHARE_OUTPUTS_8_ATOMS/173e-fad7-4f78-8350-6759a5471596", # Cubic
         # "dataset/SHARE_OUTPUTS_8_ATOMS/4b9b-20df-4fe5-a669-88ff91902e97", # Hexagonal
 
     ]
@@ -180,40 +180,42 @@ def main():
 
     if plot_bands_and_dos:
         bands_paths = list(savedir.glob('*bands.npz'))
-        dos_paths = list(savedir.glob('*dos.npz'))
-        print(bands_paths, dos_paths)
+        dos_true_paths = list(savedir.glob('*dostrue.npz'))
+        dos_pred_paths = list(savedir.glob('*dospred.npz'))
+        print(bands_paths, dos_true_paths, dos_pred_paths)
         # For each file
         for k, bands_path in tqdm(enumerate(bands_paths)):
-            print(bands_paths)
-            print(dos_paths)
-            print(k)
             bands_path = Path(bands_path)
-            dos_path = Path(dos_paths[k])
+            dos_true_path = Path(dos_true_paths[k])
+            dos_pred_path = Path(dos_pred_paths[k])
             n_atoms = bands_path.parts[-1][0]
             structure = bands_path.stem.split("_")[1]
             savedir_struct = savedir / f"stats_{n_atoms}_ATOMS_{structure}"
 
             # Read it
             bands_data = np.load(bands_path)
-            dos_data = np.load(dos_path)  # Assuming dos_paths has at least one file
+            dos_true_data = np.load(dos_true_path)  # Assuming dos_paths has at least one file
+            dos_pred_data = np.load(dos_pred_path) 
 
             # Plot it
-            k_len = bands_data['k_len']
+            k_len_true = bands_data['k_len_true']
             k_idx = bands_data['k_idx']
             k_label = bands_data['k_label']
             bands_true = bands_data['bands_true']
+            k_len_pred = bands_data['k_len_pred']
             bands_pred = bands_data['bands_pred']
 
-            energies = dos_data['energies']
-            dos_true = dos_data['dos_true']
-            dos_pred = dos_data['dos_pred']
+            energies_true = dos_true_data['energies']
+            dos_true = dos_true_data['dos']
+            energies_pred = dos_pred_data['energies'] # Should be equal to energies_true, if chosen the same energy range
+            dos_pred = dos_pred_data['dos']
 
             path = Path(str(bands_data['path']))
 
             filepath = savedir_struct / f"{n_atoms}atm_{structure}_bands.html"
-            fig_bands = plot_bands(k_len, bands_true, k_idx, k_label, predicted_bands=bands_pred, filepath=filepath)
+            fig_bands = plot_bands(k_len_true, bands_true, k_idx, k_label, predicted_bands=bands_pred, filepath=filepath)
             filepath = savedir_struct / f"{n_atoms}atm_{structure}_dos.html"
-            fig_dos = plot_dos(energies, dos_true, predicted_dos=dos_pred, filepath=filepath)
+            fig_dos = plot_dos(energies_true, dos_true, predicted_dos=dos_pred, filepath=filepath)
             filepath = savedir_struct / f"{n_atoms}atm_{structure}_bandsdos.html"
             combine_band_and_dos(fig_bands, fig_dos, filepath=filepath)
             print(f"Finished plotting bands and dos for {n_atoms} atoms structure {structure}!")

@@ -12,6 +12,7 @@ import sisl
 import torch
 import torch.optim as optim
 from e3nn import o3
+import graph2mat
 
 from sklearn.model_selection import train_test_split
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
@@ -35,7 +36,7 @@ from graph2mat4abn.modules.trainer import Trainer
 
 def main():
     # === Configuration load ===
-    config = load_config("./config_gpu1.yaml")
+    config = load_config("./config_gpu0.yaml")
     debug_mode = config.get("debug_mode", False)
     trainer_config = config["trainer"]
     dataset_config = config["dataset"]
@@ -323,18 +324,12 @@ def main():
     scheduler = scheduler_config.get("type", None)
     if scheduler is not None:
         scheduler = get_object_from_module(scheduler_config.get("type", None), "torch.optim.lr_scheduler")(optimizer, *(scheduler_args or ()), **scheduler_kwargs)
-    # scheduler = CosineAnnealingWarmRestarts(
-    #     optimizer,
-    #     T_0=20,
-    #     T_mult=2,
-    #     eta_min=1e-25
-    # )
-    # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=20, cooldown=0, min_lr=0, eps=0)
 
 
     # Loss function
     trainer_config = config["trainer"]
-    loss_fn = get_object_from_module(trainer_config["loss_function"], "graph2mat.core.data.metrics")
+    # loss_fn = get_object_from_module(trainer_config["loss_function"], "graph2mat.core.data.metrics")
+    loss_fn = graph2mat.core.data.metrics.block_type_mse_threshold # CHANGED TO COMPUTE THE MEAN
     print(f"Using Loss function {loss_fn}")
 
 
