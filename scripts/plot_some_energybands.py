@@ -38,13 +38,17 @@ def main():
     plot_bands_and_dos = True
     paths = [
         # Validation:
-        "dataset/SHARE_OUTPUTS_2_ATOMS/7bbb-6d51-41eb-9de4-329298202ebf", # B-B overlapped
-        "dataset/SHARE_OUTPUTS_2_ATOMS/a4e4-2f64-4e68-a37a-9e84eb767a0c", # B-B No overlapped
+        # "dataset/SHARE_OUTPUTS_2_ATOMS/7bbb-6d51-41eb-9de4-329298202ebf", # B-B overlapped
+        # "dataset/SHARE_OUTPUTS_2_ATOMS/a4e4-2f64-4e68-a37a-9e84eb767a0c", # B-B No overlapped
         # "dataset/SHARE_OUTPUTS_8_ATOMS/173e-fad7-4f78-8350-6759a5471596", # Cubic
         # "dataset/SHARE_OUTPUTS_8_ATOMS/4b9b-20df-4fe5-a669-88ff91902e97", # Hexagonal
 
+        "dataset/SHARE_OUTPUTS_2_ATOMS/2e65-1feb-4df2-8836-e5513b9bade0",
+        "dataset/SHARE_OUTPUTS_2_ATOMS/7e20-9cdf-4b2c-8134-6cadc8f64c34",
+
     ]
-    results_dir = Path("results/h_crystalls_8/results/val-val_best_model-epoch3500") # Results directory
+    # results_dir = Path("results/h_crystalls_8/results/val-val_best_model-epoch3500") # Results directory
+    results_dir = Path("results/h_crystalls_8/results/train")
     savedir = results_dir # Save Results directory
 
     # compute_matrices_calculations = True # Save or Load calculations.

@@ -49,7 +49,7 @@ def main():
         # Training:
         "dataset/SHARE_OUTPUTS_2_ATOMS/2e65-1feb-4df2-8836-e5513b9bade0", # B-B Overlapped
         "dataset/SHARE_OUTPUTS_2_ATOMS/7e20-9cdf-4b2c-8134-6cadc8f64c34", # B-B No overlapped
-        # "dataset/SHARE_OUTPUTS_8_ATOMS/39cf-a27b-42dd-a62e-62556132a798", # Hexagonal
+        "dataset/SHARE_OUTPUTS_8_ATOMS/39cf-a27b-42dd-a62e-62556132a798", # Hexagonal
         # "dataset/SHARE_OUTPUTS_8_ATOMS/11ad-ba95-4a26-8f92-5267f5787553", # Cubic
 
         # Validation:
@@ -169,7 +169,7 @@ def main():
         filepath = savedir_struct / f"{n_atoms}atm_{structure}.png"
         fig.write_image(str(filepath))
         filepath = savedir_struct / f"{n_atoms}atm_{structure}.html"
-        fig.write_image(str(filepath))
+        fig.write_html(str(filepath))
         print("Saved structure plot at", filepath)
 
         # 2. Plot hamiltonian
