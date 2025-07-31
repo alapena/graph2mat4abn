@@ -1,7 +1,7 @@
 debug_mode: false
 device: "cuda:1"
-results_dir: "./results/h_crystalls_8"
-trained_model_path: "./results/h_crystalls_8/train_best_model.tar"
+results_dir: "./results/h_crystalls_10"
+trained_model_path: null
 dataset:
   train_split_ratio: 0.80
   # test_split_ratio: 0.50
@@ -11,10 +11,10 @@ dataset:
   num_unique_z: 2 # Fasten the basis calculation
 
   # use_previous_dataset: true # Automatically to true if trained_model_path is not null
-  use_only: ["2_ATOMS", "8_ATOMS"] # Write dataset subfolders suffix. E.g. ["64_ATOMS"]
+  use_only: ["2_ATOMS"] # Write dataset subfolders suffix. E.g. ["64_ATOMS"]
   exclude_carbons: true
   custom_dataset: false
-  extra_custom_validation: true
+  extra_custom_validation: false
 
 orbitals:
   1: 13
@@ -54,7 +54,7 @@ model:
   # hidden_neurons: [64, 64, 64, 64]
 
 optimizer:
-  lr: 1e-4
+  lr: 1e-3
   # weight_decay: 1e-4
   initial_lr: 1e-4 # Force an initial lr in the scheduler when loading a model.
 
@@ -101,8 +101,8 @@ scheduler:
   
 
 trainer:
-  batch_size: 120
-  checkpoint_freq: 500
+  batch_size: 500
+  checkpoint_freq: 1000
 
   live_plot: true
   live_plot_freq: 1
@@ -112,7 +112,7 @@ trainer:
   live_plot_matrices_num: 1
 
   num_epochs: 500000
-  loss_function: block_type_mse # elementwise_mse, block_type_mse, block_type_mse_threshold
+  loss_function: block_type_mse_threshold # elementwise_mse, block_type_mse, block_type_mse_threshold
 
   keep_in_memory: true
   rotating_pool: false

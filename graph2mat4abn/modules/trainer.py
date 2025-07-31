@@ -93,8 +93,8 @@ class Trainer:
                 threshold=0.0001 # 10 meV
             )
             total_loss += loss
-            total_edge_loss += stats["node_rmse"]**2  # Squared because it returns the root.
-            total_node_loss += stats["edge_rmse"]**2 
+            total_edge_loss += stats["edge_above_threshold_mean"]**2  # Squared because it returns the root.
+            total_node_loss += stats["node_above_threshold_mean"]**2 
 
             # Compute gradients
             loss.backward()
@@ -149,8 +149,8 @@ class Trainer:
                     threshold=0.0001 # 10 meV
                 )
                 total_loss += loss
-                total_edge_loss += stats["node_rmse"]**2
-                total_node_loss += stats["edge_rmse"]**2
+                total_edge_loss += stats["edge_above_threshold_mean"]**2  # Squared because it returns the root.
+                total_node_loss += stats["node_above_threshold_mean"]**2 
 
                 num_batches += 1
 
@@ -340,6 +340,9 @@ class Trainer:
         nonzero_edge_labels = all_edge_labels[all_edge_labels != 0]
         self.mean_abs_point_nonzero = nonzero_point_labels.mean()
         self.mean_abs_edge_nonzero = nonzero_edge_labels.mean()
+
+        print("self.mean_abs_point_nonzero", self.mean_abs_point_nonzero)
+        print("self.mean_abs_edge_nonzero", self.mean_abs_edge_nonzero)
 
 
         # Initialize memory monitor
