@@ -293,7 +293,7 @@ def reconstruct_tim_from_coo(k_point, M_coo, geometry, cell):
 
 def reduced_coord(kpt, cell):
     """Convert a k-point to reduced coordinates."""
-    return (cell.T)@kpt/(2*np.pi)
+    return (cell)@kpt/(2*np.pi)
 
 
 def write_structures_paths(structures_paths, filepath):

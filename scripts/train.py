@@ -329,7 +329,7 @@ def main():
     # Loss function
     trainer_config = config["trainer"]
     # loss_fn = get_object_from_module(trainer_config["loss_function"], "graph2mat.core.data.metrics")
-    loss_fn = graph2mat.core.data.metrics.block_type_mse_threshold # CHANGED TO COMPUTE THE MEAN
+    loss_fn = graph2mat.core.data.metrics.block_type_mse_threshold_custom # CHANGED TO COMPUTE THE MEAN
     print(f"Using Loss function {loss_fn}")
 
 
@@ -368,8 +368,14 @@ def main():
             if matrix == "hamiltonian":
                 true_h = file_h.read_hamiltonian()
 
+                #Standarization:
+                x = true_h.tocsr().data
+                mean = x.mean()
+                std = x.std()
+                x_standardized = (true_h - mean) / (std)
+
                 embeddings_config = BasisConfiguration.from_matrix(
-                    matrix = true_h,
+                    matrix = x_standardized,
                     geometry = geometry,
                     labels = True,
                     metadata={
@@ -395,7 +401,7 @@ def main():
                 true_h = file_h.read_overlap()
 
                 embeddings_config = BasisConfiguration.from_matrix(
-                    matrix = true_h,
+                    matrix = true_h, #I can normalize here instead.
                     geometry = geometry,
                     labels = True,
                     metadata={

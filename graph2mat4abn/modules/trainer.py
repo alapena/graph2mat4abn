@@ -1,5 +1,7 @@
 
 import time
+
+import scipy
 from graph2mat4abn.tools.import_utils import save_to_yaml
 from graph2mat4abn.tools.plot import plot_error_matrices_big, plot_error_matrices_small
 import torch
@@ -11,8 +13,9 @@ from pathlib import Path
 from torch_geometric.loader import DataLoader
 from plotly.subplots import make_subplots
 from copy import copy
+import sisl
 
-from graph2mat4abn.tools.tools import optimizer_to, read_structures_paths, write_structures_paths
+from graph2mat4abn.tools.tools import optimizer_to, read_structures_paths, reconstruct_tim_from_coo, reduced_coord, write_structures_paths
 from graph2mat4abn.modules.memory_monitor import MemoryMonitor
 
 class Trainer:
@@ -87,12 +90,65 @@ class Trainer:
             # Compute the loss
             loss, stats = self.loss_fn(
                 nodes_pred=model_predictions["node_labels"],
-                nodes_ref=batch.point_labels / (self.mean_abs_point_nonzero + 1e-10), # Normalize
+                nodes_ref=batch.point_labels, #/ (self.mean_abs_point_nonzero + 1e-10), # Normalize
                 edges_pred=model_predictions["edge_labels"],
-                edges_ref=batch.edge_labels / (self.mean_abs_edge_nonzero + 1e-10), # Normalize
+                edges_ref=batch.edge_labels, #/ (self.mean_abs_edge_nonzero + 1e-10), # Normalize
                 threshold=0.0001 # 10 meV
             )
-            total_loss += loss
+
+            # Reconstruct matrices
+            h_preds = self.processor.matrix_from_data(batch, predictions={"node_labels": model_predictions["node_labels"], "edge_labels": model_predictions["edge_labels"]})
+            h_trues = self.processor.matrix_from_data(batch)
+
+            # Define a path in k-space
+            for i in range(len(batch)):
+                path = Path(batch[i].metadata["path"])
+                file = sisl.get_sile(path / "aiida.fdf")
+                geometry = file.read_geometry()
+                cell = geometry.cell
+
+                ks = 80
+                kxs = np.linspace(0,1, num=ks)
+                kys = np.linspace(0,1, num=ks)
+                kzs = np.linspace(0,1, num=ks) # * Change the resolution here
+                k_dir_x = geometry.rcell[:,0]
+                k_dir_y = geometry.rcell[:,1]
+                k_dir_z = geometry.rcell[:,2]
+                k_path_x=np.array([kx*k_dir_x for kx in kxs])
+                k_path_y=np.array([ky*k_dir_y for ky in kys])
+                k_path_z=np.array([kz*k_dir_z for kz in kzs])
+                k_path=np.concatenate([k_path_x, k_path_y, k_path_z])
+
+                # TIM reconstruction and diagonalize
+                s_uc = file.read_overlap()
+
+                energy_bands_pred = []
+                energy_bands_true = []
+                for k_point in (k_path):
+                    # Ground truth:
+                    Hk_true = torch.tensor(h_trues[i].Hk(reduced_coord(k_point, cell), gauge='cell').toarray(), device=self.device)
+                    # Sk_true = s_uc.Sk(reduced_coord(k_point, cell), gauge='cell').toarray()
+
+                    Ek_true = torch.linalg.eigvalsh(Hk_true) # NO OVERLAP FOR THIS. UNSTABLE. BUT I DONT THINK IT MATTERS
+                    energy_bands_true.append(Ek_true)
+
+                    # Prediction:
+                    Hk_pred = torch.tensor(reconstruct_tim_from_coo(k_point, h_preds[i].tocsr().tocoo(), geometry, cell), device=self.device)
+                    # Sk = reconstruct_tim(k_point, s_pred, orb_i, orb_j, isc, cell)
+
+                    Ek = torch.linalg.eigvalsh(Hk_pred) # SAME HERE
+
+                    energy_bands_pred.append(Ek)
+
+            # Compute loss energy bands informed:
+            energy_true = torch.stack(energy_bands_true)  # shape: (batch_size, n_eigenvalues)
+            energy_pred = torch.stack(energy_bands_pred) # shape: (batch_size, n_eigenvalues)
+
+            squared_error_energy = (energy_true - energy_pred) ** 2
+
+            global_mse_energy = squared_error_energy.mean()
+
+            total_loss += loss + global_mse_energy
             total_edge_loss += stats["edge_above_threshold_mean"]**2  # Squared because it returns the root.
             total_node_loss += stats["node_above_threshold_mean"]**2 
 
