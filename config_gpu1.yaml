@@ -1,6 +1,6 @@
 debug_mode: false
 device: "cuda:1"
-results_dir: "./results/h_crystalls_11"
+results_dir: "./results/h_crystalls_13"
 trained_model_path: null
 dataset:
   train_split_ratio: 0.80
@@ -49,7 +49,7 @@ model:
   readout_per_interaction: false
   preprocessing_nodes: E3nnInteraction
   preprocessing_edges: E3nnEdgeMessageBlock
-  node_operation: E3nnSimpleNodeBlock
+  node_operation: E3nnSeparateTSQNodeBlock
   edge_operation: E3nnSimpleEdgeBlock
   # hidden_neurons: [64, 64, 64, 64]
 
@@ -112,7 +112,7 @@ trainer:
   live_plot_matrices_num: 1
 
   num_epochs: 500000
-  # loss_function: block_type_mse_threshold # elementwise_mse, block_type_mse, block_type_mse_threshold
+  loss_function: custom # elementwise_mse, block_type_mse, block_type_mse_threshold
 
   keep_in_memory: true
   rotating_pool: false

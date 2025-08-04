@@ -1,4 +1,4 @@
-# graph2mat
+# graph2mat # Install it manually from source code
 torch==2.5.0
 torchvision
 torchaudio
@@ -14,3 +14,4 @@ pandas
 tqdm
 pyyaml
 kaleido
+nbformat>=4.2.0

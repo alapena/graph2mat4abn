@@ -235,6 +235,7 @@ def main():
     # == Basis creation === 
     basis = get_basis_from_structures_paths(paths, verbose=True, num_unique_z=config["dataset"].get("num_unique_z", None))
     table = BasisTableWithEdges(basis)
+    
 
 
     # === Enviroment descriptor initialization ===
