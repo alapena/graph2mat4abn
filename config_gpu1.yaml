@@ -1,6 +1,6 @@
 debug_mode: false
 device: "cuda:1"
-results_dir: "./results/h_crystalls_13"
+results_dir: "./results/h_crystalls_15"
 trained_model_path: null
 dataset:
   train_split_ratio: 0.80
@@ -47,9 +47,9 @@ environment_representation:
 
 model:
   readout_per_interaction: false
-  preprocessing_nodes: E3nnInteraction
+  preprocessing_nodes: null #E3nnInteraction
   preprocessing_edges: E3nnEdgeMessageBlock
-  node_operation: E3nnSeparateTSQNodeBlock
+  node_operation: null #E3nnSeparateTSQNodeBlock
   edge_operation: E3nnSimpleEdgeBlock
   # hidden_neurons: [64, 64, 64, 64]
 
@@ -65,7 +65,7 @@ scheduler:
   kwargs:
     mode: 'min'
     factor: 0.9 
-    patience: 100
+    patience: 70
     cooldown: 0
     min_lr: 1e-9
     eps: 0
@@ -107,7 +107,7 @@ trainer:
   live_plot: true
   live_plot_freq: 1
 
-  live_plot_matrix: true
+  live_plot_matrix: false
   live_plot_matrix_freq: 1000
   live_plot_matrices_num: 1
 
