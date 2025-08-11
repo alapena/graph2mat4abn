@@ -90,9 +90,9 @@ class Trainer:
             # Compute the loss
             loss, stats = self.loss_fn(
                 nodes_pred=model_predictions["node_labels"],
-                nodes_ref=batch.point_labels, #/ (self.mean_abs_point_nonzero + 1e-10), # Normalize
+                nodes_ref=batch.point_labels / (self.mean_abs_point_nonzero + 1e-10), # Normalize
                 edges_pred=model_predictions["edge_labels"],
-                edges_ref=batch.edge_labels, #/ (self.mean_abs_edge_nonzero + 1e-10), # Normalize
+                edges_ref=batch.edge_labels / (self.mean_abs_edge_nonzero + 1e-10), # Normalize
                 threshold=0.0001 # 10 meV
             )
 
@@ -156,9 +156,9 @@ class Trainer:
                 # Compute the loss
                 loss, stats = self.loss_fn(
                     nodes_pred=model_predictions["node_labels"],
-                    nodes_ref=batch.point_labels,# / (self.mean_abs_point_nonzero + 1e-10), # Normalize
+                    nodes_ref=batch.point_labels / (self.mean_abs_point_nonzero + 1e-10), # Normalize
                     edges_pred=model_predictions["edge_labels"],
-                    edges_ref=batch.edge_labels,# / (self.mean_abs_edge_nonzero + 1e-10), # Normalize
+                    edges_ref=batch.edge_labels / (self.mean_abs_edge_nonzero + 1e-10), # Normalize
                     threshold=0.0001 # 10 meV
                 )
                 total_loss += loss
@@ -338,24 +338,24 @@ class Trainer:
         val_dataloader = DataLoader(self.val_dataset, self.batch_size)
         val_dataloader_extra = DataLoader(self.val_dataset_extra, self.batch_size) if self.val_dataset_extra is not None else None
 
-        # # Compute normalization factors if needed
-        # all_point_labels = []
-        # all_edge_labels = []
-        # for batch in train_dataloader:  # Only use training data!
-        #     point_labels = batch.point_labels
-        #     edge_labels = batch.edge_labels
-        #     all_point_labels.append(point_labels.abs().cpu())  # Collect on CPU to avoid memory issues
-        #     all_edge_labels.append(edge_labels.abs().cpu())
+        # Compute normalization factors if needed
+        all_point_labels = []
+        all_edge_labels = []
+        for batch in train_dataloader:  # Only use training data!
+            point_labels = batch.point_labels
+            edge_labels = batch.edge_labels
+            all_point_labels.append(point_labels.abs().cpu())  # Collect on CPU to avoid memory issues
+            all_edge_labels.append(edge_labels.abs().cpu())
 
-        # all_point_labels = torch.cat(all_point_labels)
-        # all_edge_labels = torch.cat(all_edge_labels)
-        # nonzero_point_labels = all_point_labels[all_point_labels != 0]
-        # nonzero_edge_labels = all_edge_labels[all_edge_labels != 0]
-        # self.mean_abs_point_nonzero = nonzero_point_labels.mean()
-        # self.mean_abs_edge_nonzero = nonzero_edge_labels.mean()
+        all_point_labels = torch.cat(all_point_labels)
+        all_edge_labels = torch.cat(all_edge_labels)
+        nonzero_point_labels = all_point_labels[all_point_labels != 0]
+        nonzero_edge_labels = all_edge_labels[all_edge_labels != 0]
+        self.mean_abs_point_nonzero = nonzero_point_labels.mean()
+        self.mean_abs_edge_nonzero = nonzero_edge_labels.mean()
 
-        # print("self.mean_abs_point_nonzero", self.mean_abs_point_nonzero)
-        # print("self.mean_abs_edge_nonzero", self.mean_abs_edge_nonzero)
+        print("self.mean_abs_point_nonzero", self.mean_abs_point_nonzero)
+        print("self.mean_abs_edge_nonzero", self.mean_abs_edge_nonzero)
 
 
         # Initialize memory monitor
