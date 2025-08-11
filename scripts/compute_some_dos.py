@@ -25,6 +25,7 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 import sisl
+import tbplas as tb
 
 def main():
     paths = [
@@ -42,8 +43,8 @@ def main():
     config = load_config(model_dir / "config.yaml")
 
     # Basis generation (needed to initialize the model)
-    train_paths, val_paths = get_model_dataset(model_dir, verbose=False)
-    paths = train_paths + val_paths
+    # train_paths, val_paths = get_model_dataset(model_dir, verbose=False)
+    # paths = train_paths + val_paths
     basis = get_basis_from_structures_paths(paths, verbose=True, num_unique_z=config["dataset"].get("num_unique_z", None))
     table = BasisTableWithEdges(basis)
 
@@ -56,7 +57,10 @@ def main():
     history = checkpoint["history"]
     print(f"Loaded model in epoch {checkpoint["epoch"]} with training loss {checkpoint["train_loss"]} and validation loss {checkpoint["val_loss"]}.")
 
+    print(paths)
+
     for i, path in enumerate(paths):
+        print(path)
         # === Inference ===
         dataset, processor = generate_g2m_dataset_from_paths(config, basis, table, [path], verbose=False)
         dataloader = DataLoader(dataset, 1)
@@ -74,6 +78,8 @@ def main():
 
         n_atoms = int(path.parts[-2].split('_')[2])
         structure = path.parts[-1]
+
+        print(f"Computing structure {n_atoms}atm_{structure}...")
         
         # Plot structure
         file = sisl.get_sile(path / "aiida.fdf")
@@ -88,7 +94,6 @@ def main():
         geometry = file.read_geometry()
 
         vectors = geometry.cell
-        cell = tb.PrimitiveCell(vectors, unit=tb.ANG)
 
         # Add orbitals
         positions = geometry.xyz #Angstrom
@@ -97,10 +102,11 @@ def main():
         # To add the orbitals we need the onsite energies.
         h = file.read_hamiltonian()
         for ham_idx in range(2):
+            cell = tb.PrimitiveCell(vectors, unit=tb.ANG)
             if ham_idx == 0:
                 h_mat = h.tocsr().tocoo()
             if ham_idx == 1:
-                h_mat == h_pred.tocsr().tocoo()
+                h_mat = h_pred.tocsr().tocoo()
 
             rows = h_mat.row
             cols = h_mat.col
@@ -111,14 +117,14 @@ def main():
 
             # Loop through all diagonal elements
             onsites = np.zeros(n_diag, dtype=data.dtype)
-            for i in range(n_diag):
+            for j in range(n_diag):
                 # Find where both row and col equal i
-                mask = (rows == i) & (cols == i)
+                mask = (rows == j) & (cols == j)
                 vals = data[mask]
                 if len(vals) > 0:
-                    onsites[i] = vals[0]  # In COO, there could be duplicates, but take the first
+                    onsites[j] = vals[0]  # In COO, there could be duplicates, but take the first
                 else:
-                    onsites[i] = 0  # Or np.nan if you prefer
+                    onsites[j] = 0  # Or np.nan if you prefer
 
             # onsites = 
             add_orbitals(cell, positions, onsites, labels)
@@ -162,20 +168,20 @@ def main():
 
             # Loop through all diagonal elements
             onsites = np.zeros(n_diag, dtype=data.dtype)
-            for i in range(n_diag):
+            for j in range(n_diag):
                 # Find where both row and col equal i
-                mask = (rows == i) & (cols == i)
+                mask = (rows == j) & (cols == j)
                 vals = data[mask]
                 if len(vals) > 0:
-                    onsites[i] = vals[0]  # In COO, there could be duplicates, but take the first
+                    onsites[j] = vals[0]  # In COO, there could be duplicates, but take the first
                 else:
-                    onsites[i] = 0  # Or np.nan if you prefer
+                    onsites[j] = 0  # Or np.nan if you prefer
 
             # Add onsites to overlap
             overlap = tb.PrimitiveCell(cell.lat_vec, cell.origin, 1.0)
-            for i in range(cell.num_orb):
-                orbital = cell.orbitals[i]
-                overlap.add_orbital(orbital.position, onsites[i])
+            for j in range(cell.num_orb):
+                orbital = cell.orbitals[j]
+                overlap.add_orbital(orbital.position, onsites[j])
 
 
             # Add hopping terms to overlap
@@ -204,7 +210,7 @@ def main():
             # Define a path in k-space
 
             b1, b2, b3 = cell.get_reciprocal_vectors()/10 # Angstrom^-1
-            k_pos_frac, k_pos_cart = real_space_to_kspace(positions, b1, b2, b3)
+            # k_pos_frac, k_pos_cart = real_space_to_kspace(positions, b1, b2, b3)
 
             # Compute k path (not definitive to use in the report)
             B = np.vstack([b1, b2, b3])  # shape (3,3)
@@ -219,7 +225,7 @@ def main():
 
             solver = tb.DiagSolver(cell, overlap)
             solver.config.k_points = k_path
-            solver.config.prefix = "Test"
+            solver.config.prefix = "bands"
 
             timer = tb.Timer()
             timer.tic("bands")
@@ -229,9 +235,9 @@ def main():
 
 
             if ham_idx == 0:
-                filepath = savedir / f"{structure}_bands_true.npz"
+                filepath = savedir / f"{n_atoms}atm_{structure}_bands_true.npz"
             if ham_idx == 1:
-                filepath = savedir / f"{structure}_bands_pred.npz"
+                filepath = savedir / f"{n_atoms}atm_{structure}_bands_pred.npz"
             np.savez(filepath, path=str(path), k_idx=k_idx, k_label=k_label, k_len=k_len, bands=bands,)
 
 
@@ -242,7 +248,7 @@ def main():
 
             solver = tb.DiagSolver(cell, overlap)
             solver.config.k_points = k_mesh
-            # solver.config.prefix = "graphene"
+            solver.config.prefix = "dos"
             solver.config.e_min = e_min
             solver.config.e_max = e_max
             timer = tb.Timer()
@@ -252,14 +258,10 @@ def main():
             timer.report_total_time()
 
             if ham_idx == 0:
-                filepath = savedir / f"{structure}_dos_mesh{n_ks}_true.npz"
+                filepath = savedir / f"{n_atoms}atm_{structure}_dos_mesh{n_ks}_true.npz"
             if ham_idx == 1:
-                filepath = savedir / f"{structure}_dos_mesh{n_ks}_pred.npz"
+                filepath = savedir / f"{n_atoms}atm_{structure}_dos_mesh{n_ks}_pred.npz"
             np.savez(filepath, path=str(path), energies=energies, dos=dos)
-
-
-
-
 
 
 
@@ -308,3 +310,7 @@ def real_space_to_kspace(positions, b1, b2, b3):
     # Cartesian k-vectors
     k_cart = k_frac @ B
     return k_frac, k_cart
+
+
+if __name__ == "__main__":
+    main()
