@@ -27,3 +27,7 @@ current ids.txt
 *.html
 *.dat
 *.pkl
+*.npz
+*.1000
+*.dat
+*.pkl

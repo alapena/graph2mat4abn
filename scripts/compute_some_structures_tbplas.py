@@ -37,6 +37,7 @@ def main():
     # * VARIABLES TO CHANGE BY THE USER * #
     # *********************************** #
     compute_bands_and_dos_tbplas = True
+    compute_nnzdiag = False
     n_k_bands = 80
     n_k_dos = 50
     paths = [
@@ -44,7 +45,7 @@ def main():
 
     ]
     model_dir = Path("results/h_crystalls_9") # Results directory
-    savedir = Path("results/h_crystalls_9") / "results"
+    savedir = Path("results/h_crystalls_9/results")
     filename = "train_best_model.tar" # Model name (or relative path to the results directory)
 
     # compute_matrices_calculations = True # Save or Load calculations.
@@ -175,103 +176,11 @@ def main():
         print("Saved hamiltonian plot at", filepath)
 
         # 3. Plot nnz diagonal plot
-        geometry = sisl.get_sile(path / "aiida.fdf").read_geometry()
-        nnz_el = len(h_pred.data)
-        matrix_labels = []
-        info = []
-        for k in range(nnz_el):
-            row = h_pred.row[k]
-            col = h_pred.col[k]
-            orb_in = orbitals[col % n_orbs]
-            orb_out = orbitals[row % n_orbs]
-            isc = str(geometry.o2isc(col))
-            atom_in = (col // n_orbs) % n_atoms + 1
-            atom_out = (row // n_orbs) % n_atoms + 1
-
-            # Join altogether
-            label = f"{str(orb_in)} -> {str(orb_out)} {str(isc)} {str(atom_in)} -> {str(atom_out)}"
-
-
-            # Store the labels 
-            matrix_labels.append(label)
-            info.append((orb_in, orb_out, isc, atom_in, atom_out))
-
-        filepath= savedir_struct / f"{n_atoms}atm_{structure}_nnzelements_shifts.html"
-        title = f"Non-zero elements of structure {n_atoms}_ATOMS/{structure}.<br>Used model {model_dir.parts[-1]}"
-        title_x = "True matrix elements (eV)"
-        title_y = "Predicted matrix elements (eV)"
-        true_values = h_true.data
-        pred_values = h_pred.data
-        orb_in_list, orb_out_list, iscs, atom_in_list, atom_out_list = map(list, zip(*info))
-        plot_diagonal(
-            true_values, pred_values, orb_in_list, orb_out_list, iscs, atom_in_list, atom_out_list,# 1D array of elements.
-            title=title, title_x=title_x, title_y=title_y, colors=None, filepath=filepath,
-            group_by="shift", legendtitle="Shift indices", #SEGUIR CON ESTO
-        )
-
-        filepath= savedir_struct / f"{n_atoms}atm_{structure}_nnzelements_orbs.html"
-        
-        plot_diagonal(
-            true_values, pred_values, orb_in_list, orb_out_list, iscs, atom_in_list, atom_out_list, # 1D array of elements.
-            title=title, title_x=title_x, title_y=title_y, colors=None, filepath=filepath,
-            group_by="orbs", legendtitle="Orbitals", #SEGUIR CON ESTO
-        )
-
-        print("Nnz elements plotted!")
-
-
-        # 4. Energy bands
-        if compute_eigenvals_scipy:
-            print("=== COMPUTING EIGENVALUES ===")
-            file = sisl.get_sile(path / "aiida.fdf")
-            geometry = file.read_geometry()
-            cell = geometry.cell
-
-            # Define a path in k-space
-            if not debug_mode:
-                ks = 80
-                kxs = np.linspace(0,1, num=ks)
-                kys = np.linspace(0,1, num=ks)
-                kzs = np.linspace(0,1, num=ks) # * Change the resolution here
-                k_dir_x = geometry.rcell[:,0]
-                k_dir_y = geometry.rcell[:,1]
-                k_dir_z = geometry.rcell[:,2]
-                k_path_x=np.array([kx*k_dir_x for kx in kxs])
-                k_path_y=np.array([ky*k_dir_y for ky in kys])
-                k_path_z=np.array([kz*k_dir_z for kz in kzs])
-                k_path=np.concatenate([k_path_x, k_path_y, k_path_z])
-            else:
-                k_path = np.array([[0, 0, 0], [0, 0, 0.5], [0, 0, 1]]) 
-
-            # TIM reconstruction
-            h_uc = file.read_hamiltonian()
-            s_uc = file.read_overlap()
-
-            energy_bands_pred = []
-            energy_bands_true = []
-            for k_point in tqdm(k_path):
-                # Ground truth:
-                Hk_true = h_uc.Hk(reduced_coord(k_point, cell), gauge='cell').toarray()
-                Sk_true = s_uc.Sk(reduced_coord(k_point, cell), gauge='cell').toarray()
-
-                Ek_true = scipy.linalg.eigh(Hk_true, Sk_true, eigvals_only=True)
-                energy_bands_true.append(Ek_true)
-
-                # Prediction:
-                Hk_pred = reconstruct_tim_from_coo(k_point, h_pred.tocsr().tocoo(), geometry, cell)
-                # Sk = reconstruct_tim(k_point, s_pred, orb_i, orb_j, isc, cell)
-
-                Ek = scipy.linalg.eigh(Hk_pred, Sk_true, eigvals_only=True)
-
-                energy_bands_pred.append(Ek)
-
-            # Save results
-            energy_bands_true_array = np.stack(energy_bands_true, axis=0).T
-            energy_bands_pred_array = np.stack(energy_bands_pred, axis=0).T
-
-            filepath = savedir / f"{n_atoms}atm_{structure}_eigenvals.npz"
-            np.savez(filepath, energy_bands_true_array=energy_bands_true_array, energy_bands_pred_array=energy_bands_pred_array, k_path=k_path, path=str(path))
-
+        if compute_nnzdiag:
+            plot_nonzero_elements(
+                path, h_pred, h_true, orbitals, n_orbs, n_atoms,
+                structure, model_dir, savedir_struct, plot_diagonal
+            )
 
 
         # 4. Energy bands using TBPLaS 
@@ -279,8 +188,6 @@ def main():
             print("Computing bands and DOS with TBPLaS...")
             file = sisl.get_sile(path / "aiida.HSX")
             geometry = file.read_geometry()
-
-            # Feed TBPLaS with our data
 
             # Empty cell
             vectors = geometry.cell
@@ -596,6 +503,90 @@ def plot_hamiltonian_matplotlib(true_matrix, predicted_matrix, matrix_label=None
         plt.close(fig)
 
 
+def plot_nonzero_elements(
+    path,
+    h_pred,
+    h_true,
+    orbitals,
+    n_orbs,
+    n_atoms,
+    structure,
+    model_dir,
+    savedir_struct,
+    plot_diagonal
+):
+    """
+    Plot non-zero elements for a given structure.
+
+    Parameters
+    ----------
+    path : Path
+        Path to the directory containing `aiida.fdf`.
+    h_pred : object
+        Predicted Hamiltonian object with `data`, `row`, and `col` attributes.
+    h_true : object
+        True Hamiltonian object with `data` attribute.
+    orbitals : list
+        List of orbital identifiers.
+    n_orbs : int
+        Number of orbitals per atom.
+    n_atoms : int
+        Number of atoms in the structure.
+    structure : str
+        Structure name or identifier.
+    model_dir : Path
+        Path to the model directory.
+    savedir_struct : Path
+        Path to save the plots.
+    plot_diagonal : callable
+        Function to create the plots.
+    """
+
+
+    geometry = sisl.get_sile(path / "aiida.fdf").read_geometry()
+    nnz_el = len(h_pred.data)
+    matrix_labels = []
+    info = []
+
+    for k in range(nnz_el):
+        row = h_pred.row[k]
+        col = h_pred.col[k]
+        orb_in = orbitals[col % n_orbs]
+        orb_out = orbitals[row % n_orbs]
+        isc = str(geometry.o2isc(col))
+        atom_in = (col // n_orbs) % n_atoms + 1
+        atom_out = (row // n_orbs) % n_atoms + 1
+
+        # Join altogether
+        label = f"{orb_in} -> {orb_out} {isc} {atom_in} -> {atom_out}"
+
+        # Store the labels
+        matrix_labels.append(label)
+        info.append((orb_in, orb_out, isc, atom_in, atom_out))
+
+    filepath = savedir_struct / f"{n_atoms}atm_{structure}_nnzelements_shifts.html"
+    title = f"Non-zero elements of structure {n_atoms}_ATOMS/{structure}.<br>Used model {model_dir.parts[-1]}"
+    title_x = "True matrix elements (eV)"
+    title_y = "Predicted matrix elements (eV)"
+    true_values = h_true.data
+    pred_values = h_pred.data
+    orb_in_list, orb_out_list, iscs, atom_in_list, atom_out_list = map(list, zip(*info))
+
+    plot_diagonal(
+        true_values, pred_values, orb_in_list, orb_out_list, iscs, atom_in_list, atom_out_list,
+        title=title, title_x=title_x, title_y=title_y, colors=None, filepath=filepath,
+        group_by="shift", legendtitle="Shift indices",
+    )
+
+    filepath = savedir_struct / f"{n_atoms}atm_{structure}_nnzelements_orbs.html"
+
+    plot_diagonal(
+        true_values, pred_values, orb_in_list, orb_out_list, iscs, atom_in_list, atom_out_list,
+        title=title, title_x=title_x, title_y=title_y, colors=None, filepath=filepath,
+        group_by="orbs", legendtitle="Orbitals",
+    )
+
+    print("Nnz elements plotted!")
 
 
 if __name__ == "__main__":

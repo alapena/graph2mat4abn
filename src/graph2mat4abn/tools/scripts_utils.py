@@ -210,3 +210,19 @@ def init_mace_g2m_model(config, table):
     print(f"Using Loss function {loss_fn}")
 
     return model, optimizer, lr_scheduler, loss_fn
+
+import numpy as np
+
+def real_space_to_kspace(positions, b1, b2, b3):
+    """
+    Map real-space positions into reciprocal space (fractional and cartesian).
+    Returns:
+        k_frac: (N, 3) positions in fractional reciprocal coordinates
+        k_cart: (N, 3) positions in cartesian k-space (nm^-1)
+    """
+    B = np.vstack([b1, b2, b3])  # reciprocal lattice vectors (3,3), Ang^-1
+    # Fractional reciprocal coordinates
+    k_frac = np.linalg.solve(B.T, positions.T).T  # shape (N,3)
+    # Cartesian k-vectors
+    k_cart = k_frac @ B
+    return k_frac, k_cart

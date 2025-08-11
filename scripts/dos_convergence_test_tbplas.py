@@ -6,42 +6,22 @@
 # # sys.path.append(str(root_dir))
 
 import numpy as np
-import torch
-from tools.import_utils import load_config
-from tools.scripts_utils import generate_g2m_dataset_from_paths, get_model_dataset, init_mace_g2m_model
-from tools.tools import get_basis_from_structures_paths, load_model, reconstruct_tim_from_coo, reduced_coord
-from torch_geometric.loader import DataLoader
-from tqdm import tqdm
+from tools.scripts_utils import real_space_to_kspace
 import warnings
 import sisl
-from tools.debug import create_sparse_matrix
-from joblib import dump, load
-import plotly.graph_objects as go
-from plotly.colors import sample_colorscale
-from plotly.subplots import make_subplots
-import scipy
-from plot_utilities.plot_for_scripts import plot_diagonal, plot_hamiltonian, plot_diagonal_rows, plot_energy_bands
-from tools.plot import plot_error_matrices_big
 import tbplas as tb
 from plot_utilities.tbplas_tools import add_hopping_terms, add_orbitals, get_hoppings, get_onsites
 from pathlib import Path
 
-from graph2mat import (
-    BasisTableWithEdges,
-)
 
 
 def main():
-    debug_mode = False
     # *********************************** #
     # * VARIABLES TO CHANGE BY THE USER * #
     # *********************************** #
-    compute_bands_and_dos_tbplas = True
-    n_k_bands = 80
-    path = "dataset/SHARE_OUTPUTS_2_ATOMS/2e65-1feb-4df2-8836-e5513b9bade0", # B-B Overlapped
-    model_dir = Path("results/h_crystalls_9") # Results directory
-    savedir = Path("results/h_crystalls_9") / "results"
-    filename = "train_best_model.tar" # Model name (or relative path to the results directory)
+    path = Path("/home/alapena/GitHub/graph2mat4abn/dataset/SHARE_OUTPUTS_8_ATOMS/0888-cde8-4bbf-8840-bbd0accf1d6c")
+    savedir = Path("results_convergence_test")
+    nks_dos = range(46,80)
     # *********************************** #
 
     # Define orbital labels (for now we will assume that all atoms have the same orbitals). Use the same order as appearance in the hamiltonian.
@@ -66,6 +46,7 @@ def main():
     warnings.filterwarnings("ignore", message="The TorchScript type system doesn't support")
     warnings.filterwarnings("ignore", message=".*is not a known matrix type key.*")
 
+    savedir.mkdir(exist_ok=True, parents=True)
 
     n_atoms = int(path.parts[-2].split('_')[2])
     structure = path.parts[-1]
@@ -73,199 +54,187 @@ def main():
     # 1. Plot structure
     file = sisl.get_sile(path / "aiida.fdf")
     fig = file.plot.geometry(axes="xyz")
-    filepath = savedir_struct / f"{n_atoms}atm_{structure}.png"
+    filepath = savedir / f"{n_atoms}atm_{structure}.png"
     fig.write_image(str(filepath))
-    filepath = savedir_struct / f"{n_atoms}atm_{structure}.html"
+    filepath = savedir / f"{n_atoms}atm_{structure}.html"
     fig.write_html(str(filepath))
     print("Saved structure plot at", filepath)
 
-    # 2. Plot hamiltonian
-    print("Saved hamiltonian plot at", filepath)
 
-    # 3. Plot nnz diagonal plot
-    geometry = sisl.get_sile(path / "aiida.fdf").read_geometry()
-    nnz_el = len(h_pred.data)
-    matrix_labels = []
-    info = []
-    for k in range(nnz_el):
-        row = h_pred.row[k]
-        col = h_pred.col[k]
-        orb_in = orbitals[col % n_orbs]
-        orb_out = orbitals[row % n_orbs]
-        isc = str(geometry.o2isc(col))
-        atom_in = (col // n_orbs) % n_atoms + 1
-        atom_out = (row // n_orbs) % n_atoms + 1
+    # 2. TBPLaS
+    file = sisl.get_sile(path / "aiida.HSX")
+    geometry = file.read_geometry()
 
-        # Join altogether
-        label = f"{str(orb_in)} -> {str(orb_out)} {str(isc)} {str(atom_in)} -> {str(atom_out)}"
+    vectors = geometry.cell
+    cell = tb.PrimitiveCell(vectors, unit=tb.ANG)
 
+    # Add orbitals
+    positions = geometry.xyz #Angstrom
+    labels = [[orb.name() for orb in atom] for atom in geometry.atoms]
 
-        # Store the labels 
-        matrix_labels.append(label)
-        info.append((orb_in, orb_out, isc, atom_in, atom_out))
+    # To add the orbitals we need the onsite energies.
+    h = file.read_hamiltonian()
+    h_mat = h.tocsr().tocoo()
 
-    filepath= savedir_struct / f"{n_atoms}atm_{structure}_nnzelements_shifts.html"
-    title = f"Non-zero elements of structure {n_atoms}_ATOMS/{structure}.<br>Used model {model_dir.parts[-1]}"
-    title_x = "True matrix elements (eV)"
-    title_y = "Predicted matrix elements (eV)"
-    true_values = h_true.data
-    pred_values = h_pred.data
-    orb_in_list, orb_out_list, iscs, atom_in_list, atom_out_list = map(list, zip(*info))
-    plot_diagonal(
-        true_values, pred_values, orb_in_list, orb_out_list, iscs, atom_in_list, atom_out_list,# 1D array of elements.
-        title=title, title_x=title_x, title_y=title_y, colors=None, filepath=filepath,
-        group_by="shift", legendtitle="Shift indices", #SEGUIR CON ESTO
-    )
+    rows = h_mat.row
+    cols = h_mat.col
+    data = h_mat.data
 
-    filepath= savedir_struct / f"{n_atoms}atm_{structure}_nnzelements_orbs.html"
-    
-    plot_diagonal(
-        true_values, pred_values, orb_in_list, orb_out_list, iscs, atom_in_list, atom_out_list, # 1D array of elements.
-        title=title, title_x=title_x, title_y=title_y, colors=None, filepath=filepath,
-        group_by="orbs", legendtitle="Orbitals", #SEGUIR CON ESTO
-    )
+    # Main diagonal length:
+    n_diag = min(h_mat.shape[0], h_mat.shape[1])
 
-    print("Nnz elements plotted!")
-
-
-    # 4. Energy bands
-    if compute_eigenvals_scipy:
-        print("=== COMPUTING EIGENVALUES ===")
-        file = sisl.get_sile(path / "aiida.fdf")
-        geometry = file.read_geometry()
-        cell = geometry.cell
-
-        # Define a path in k-space
-        if not debug_mode:
-            ks = 80
-            kxs = np.linspace(0,1, num=ks)
-            kys = np.linspace(0,1, num=ks)
-            kzs = np.linspace(0,1, num=ks) # * Change the resolution here
-            k_dir_x = geometry.rcell[:,0]
-            k_dir_y = geometry.rcell[:,1]
-            k_dir_z = geometry.rcell[:,2]
-            k_path_x=np.array([kx*k_dir_x for kx in kxs])
-            k_path_y=np.array([ky*k_dir_y for ky in kys])
-            k_path_z=np.array([kz*k_dir_z for kz in kzs])
-            k_path=np.concatenate([k_path_x, k_path_y, k_path_z])
+    # Loop through all diagonal elements
+    onsites = np.zeros(n_diag, dtype=data.dtype)
+    for i in range(n_diag):
+        # Find where both row and col equal i
+        mask = (rows == i) & (cols == i)
+        vals = data[mask]
+        if len(vals) > 0:
+            onsites[i] = vals[0]  # In COO, there could be duplicates, but take the first
         else:
-            k_path = np.array([[0, 0, 0], [0, 0, 0.5], [0, 0, 1]]) 
+            onsites[i] = 0  # Or np.nan if you prefer
 
-        # TIM reconstruction
-        h_uc = file.read_hamiltonian()
-        s_uc = file.read_overlap()
+    # onsites = 
+    add_orbitals(cell, positions, onsites, labels)
 
-        energy_bands_pred = []
-        energy_bands_true = []
-        for k_point in tqdm(k_path):
-            # Ground truth:
-            Hk_true = h_uc.Hk(reduced_coord(k_point, cell), gauge='cell').toarray()
-            Sk_true = s_uc.Sk(reduced_coord(k_point, cell), gauge='cell').toarray()
 
-            Ek_true = scipy.linalg.eigh(Hk_true, Sk_true, eigvals_only=True)
-            energy_bands_true.append(Ek_true)
+    # Add hopping terms.
+    # We need to iterate though each nnz element of h and get the isc in a tuple, the orb_in, the orb_out and the hopping value.
+    nnz = len(data)
+    n_orbs = len(labels[0]) # Assuming all atoms have the same nr of orbitals
+    n_atoms = int(path.parts[-2].split("_")[-2])
+    iscs = []
+    orbs_in = []
+    orbs_out = []
+    hoppings = []
+    for k in range(nnz):
+        row = rows[k]
+        col = cols[k]
+        if row != col:  # Only add hopping terms for off-diagonal elements
+            iscs.append(geometry.o2isc(col))
+            orbs_in.append(col % (n_atoms*n_orbs))
+            orbs_out.append(row)
+            hoppings.append(data[k])
+        
 
-            # Prediction:
-            Hk_pred = reconstruct_tim_from_coo(k_point, h_pred.tocsr().tocoo(), geometry, cell)
-            # Sk = reconstruct_tim(k_point, s_pred, orb_i, orb_j, isc, cell)
-
-            Ek = scipy.linalg.eigh(Hk_pred, Sk_true, eigvals_only=True)
-
-            energy_bands_pred.append(Ek)
-
-        # Save results
-        energy_bands_true_array = np.stack(energy_bands_true, axis=0).T
-        energy_bands_pred_array = np.stack(energy_bands_pred, axis=0).T
-
-        filepath = savedir / f"{n_atoms}atm_{structure}_eigenvals.npz"
-        np.savez(filepath, energy_bands_true_array=energy_bands_true_array, energy_bands_pred_array=energy_bands_pred_array, k_path=k_path, path=str(path))
+    add_hopping_terms(cell, iscs, orbs_in, orbs_out, hoppings)
 
 
 
-        # 4. EQOS data at", filepath)
+    # Get overlap
+
+    # To add the orbitals we need the onsite energies.
+    o = file.read_overlap()
+    o_mat = o.tocsr().tocoo()
+
+    rows = o_mat.row
+    cols = o_mat.col
+    data = o_mat.data
+
+    # Main diagonal length:
+    n_diag = min(o_mat.shape[0], o_mat.shape[1])
+
+    # Loop through all diagonal elements
+    onsites = np.zeros(n_diag, dtype=data.dtype)
+    for i in range(n_diag):
+        # Find where both row and col equal i
+        mask = (rows == i) & (cols == i)
+        vals = data[mask]
+        if len(vals) > 0:
+            onsites[i] = vals[0]  # In COO, there could be duplicates, but take the first
+        else:
+            onsites[i] = 0  # Or np.nan if you prefer
+
+    # Add onsites to overlap
+    overlap = tb.PrimitiveCell(cell.lat_vec, cell.origin, 1.0)
+    for i in range(cell.num_orb):
+        orbital = cell.orbitals[i]
+        overlap.add_orbital(orbital.position, onsites[i])
 
 
-    # Load data and plot.
-    
-    if plot_eigenvalues:
-        energybands_paths = list(savedir.glob('*eigenvals.npz'))
+    # Add hopping terms to overlap
 
-        print("Plotting eigenvalues and energy bands.")
+    # We need to iterate though each nnz element of h and get the isc in a tuple, the orb_in, the orb_out and the hopping value.
+    nnz = len(data)
+    n_orbs = len(labels[0]) # Assuming all atoms have the same nr of orbitals
+    n_atoms = int(path.parts[-2].split("_")[-2])
+    iscs = []
+    orbs_in = []
+    orbs_out = []
+    hoppings = []
+    for k in range(nnz):
+        row = rows[k]
+        col = cols[k]
+        if row != col:  # Only add hopping terms for off-diagonal elements
+            iscs.append(geometry.o2isc(col))
+            orbs_in.append(col % (n_atoms*n_orbs))
+            orbs_out.append(row)
+            hoppings.append(data[k])
+            
 
-        # Read all files in data directory.    
-
-        # For each file
-        for energybands_path in tqdm(energybands_paths):
-            energybands_path = Path(energybands_path)
-            n_atoms = energybands_path.parts[-1][0]
-            structure = energybands_path.stem.split("_")[1]
-            savedir_struct = savedir / f"stats_{n_atoms}_ATOMS_{structure}"
-
-            # Read it
-            energyband_data = np.load(energybands_path)
-
-            # Plot it
-            k_path = energyband_data['k_path']
-            energy_bands_true = energyband_data['energy_bands_true_array']
-            energy_bands_pred = energyband_data['energy_bands_pred_array']
-            path = Path(str(energyband_data['path']))
-
-            titles_series = [f"k=({"{:.2f}".format(k_point[0]) if k_point[0] != 0 else 0}, {"{:.2f}".format(k_point[1]) if k_point[1] != 0 else 0}, {"{:.2f}".format(k_point[2]) if k_point[2] != 0 else 0})" for k_point in k_path]
-            filepath = savedir_struct / f"{n_atoms}atm_{structure}_eigenvals.html"
-            title = f"Eigenvalues comparison (eV).<br>Used model {model_dir.parts[-1]}. Using SIESTA overlap matrix."
-            plot_diagonal_rows(
-                predictions=energy_bands_pred.T,
-                truths=energy_bands_true.T,
-                series_names=titles_series,
-                # x_error_perc=None,
-                # y_error_perc=5,
-                title=title,
-                xaxis_title='True energy',
-                yaxis_title='Predicted energy',
-                legend_title='k points',
-                show_diagonal=True,
-                show_points_by_default=True,
-                showlegend=True,
-                filepath=filepath
-            )
-            print("Finished plotting eigenvalues!")
+    add_hopping_terms(overlap, iscs, orbs_in, orbs_out, hoppings)
 
 
-    if plot_energybands:
-        energybands_paths = list(savedir.glob('*eigenvals.npz'))
-        # For each file
-        for energybands_path in tqdm(energybands_paths):
-            energybands_path = Path(energybands_path)
+    # Define a path in k-space
 
-            # Read it
-            energyband_data = np.load(energybands_path)
+    b1, b2, b3 = cell.get_reciprocal_vectors()/10 # Angstrom^-1
+    k_pos_frac, k_pos_cart = real_space_to_kspace(positions, b1, b2, b3)
 
-            # Plot it
-            k_path = energyband_data['k_path']
-            energy_bands_true = energyband_data['energy_bands_true_array']
-            energy_bands_pred = energyband_data['energy_bands_pred_array']
-            path = Path(str(energyband_data['path']))
+    # Compute k path
+    B = np.vstack([b1, b2, b3])  # shape (3,3)
+    k_cart = np.array([
+        [0.0, 0.0, 0.0],          # Γ
+        b1/2,                     # X
+        (b1 + b2)/2,              # M
+        [0.0, 0.0, 0.0],          # Γ
+        (b1 + b2 + b3)/2,         # R
+        b1/2,                     # X
+        (b1 + b2)/2,              # M (optional segment)
+        (b1 + b2 + b3)/2          # R (optional segment end)
+    ])
 
-            title = f"Energy bands of structure {n_atoms}_ATOMS/{structure}.<br>Used model {model_dir.parts[-1]}. Using SIESTA overlap matrix."
-            filepath = savedir_struct / f"{n_atoms}atm_{structure}_energybands.html"
-            # x_axis = [k_path]*energy_bands_pred.shape[1]
-            n_series = energy_bands_pred.shape[0]
-            titles_pred = [f"Predicted band {i}" for i in range(n_series)]
-            titles_true = [f"True band {i}" for i in range(n_series)]
-            plot_energy_bands(
-                list(range(len(k_path))),
-                energy_bands_true,
-                energy_bands_pred,
-                xlabel = "k_path index",
-                ylabel = "Energy (eV)",
-                title = title,
-                titles_pred=titles_pred,
-                titles_true=titles_true,
-                filepath = filepath
-            )
-        print("Finished plotting energybands!")
+    k_label = ['Γ', 'X', 'M', 'Γ', 'R', 'X', 'M', 'R']
 
-    print(f"Finished! Results saved at {savedir_struct}")
+    k_frac = np.array([np.linalg.solve(B.T, k) for k in k_cart])
+
+    n_ks = 200
+    k_path, k_idx = tb.gen_kpath(k_frac, [n_ks for _ in range(len(k_frac) -1)])
+
+
+    # Compute bands
+    solver = tb.DiagSolver(cell, overlap)
+    solver.config.k_points = k_path
+    solver.config.prefix = "Bands"
+
+    timer = tb.Timer()
+    timer.tic("bands")
+    k_len, bands = solver.calc_bands()
+    timer.toc("bands")
+
+    filepath = savedir / f"{structure}_bands.npz"
+    np.savez(filepath, path=str(path), k_idx=k_idx, k_label=k_label, k_len=k_len, bands=bands,)
+
+
+    # Compute dos
+    for nk in nks_dos:
+        print(f"Computing DOS for {nk} mesh...")
+
+        k_mesh = tb.gen_kmesh((nk, nk, nk))  # Uniform meshgrid
+        e_min = float(np.min(bands))
+        e_max = float(np.max(bands))
+
+        solver = tb.DiagSolver(cell, overlap)
+        solver.config.k_points = k_mesh
+        solver.config.prefix = "dos"
+        solver.config.e_min = e_min
+        solver.config.e_max = e_max
+        timer = tb.Timer()
+        timer.tic("dos")
+        energies, dos = solver.calc_dos()
+        timer.toc("dos")
+
+        filepath = savedir / f"{structure}_dos_mesh{nk}.npz"
+        np.savez(filepath, path=str(path), energies=energies, dos=dos)
 
 
 
