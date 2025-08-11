@@ -334,7 +334,8 @@ def main():
     # Loss function
     trainer_config = config["trainer"]
     # loss_fn = get_object_from_module(trainer_config["loss_function"], "graph2mat.core.data.metrics")
-    loss_fn = graph2mat.core.data.metrics.block_type_mse_threshold_custom # CHANGED TO COMPUTE THE MEAN + skip connection
+    # loss_fn = graph2mat.core.data.metrics.block_type_mse_threshold_custom # CHANGED TO COMPUTE THE MEAN + skip connection
+    loss_fn = block_type_mse_threshold_custom # We had to copy it in this script
     print(f"Using Loss function {loss_fn}")
 
 
@@ -489,6 +490,135 @@ def main():
     
     print("\nTraining completed successfully!")
   
+
+# ChatGPT generated alternative to not use torch.quantile().
+import math
+import torch
+
+def block_type_mse_threshold_custom(
+    nodes_pred,
+    nodes_ref,
+    edges_pred,
+    edges_ref,
+    threshold=1e-4,
+    log_verbose=False,
+    **kwargs,
+):
+    def _isnan(values):
+        """NaN checking compatible with both torch and numpy"""
+        return values != values
+
+    def get_predictions_error(
+        nodes_pred, nodes_ref, edges_pred, edges_ref, remove_nan=True
+    ):
+        """Returns errors for both nodes and edges, removing NaN values."""
+        node_error = nodes_pred - nodes_ref
+
+        if remove_nan:
+            notnan = ~_isnan(edges_ref)
+            edge_error = edges_ref[notnan] - edges_pred[notnan]
+        else:
+            edge_error = edges_ref - edges_pred
+
+        return node_error, edge_error
+
+    def _safe_mean(x):
+        """mean that returns 0 on empty tensors."""
+        return x.mean() if x.numel() > 0 else x.new_tensor(0.0)
+
+    def _percentile_linear(x: torch.Tensor, q: float) -> torch.Tensor:
+        """
+        Quantile via kthvalue with linear interpolation (matches torch.quantile default).
+        Works on 1D input. Uses only torch ops for gradient tracking through values.
+        """
+        x = x.reshape(-1)
+        n = x.numel()
+        if n == 0:
+            return x.new_tensor(float("nan"))
+        if n == 1:
+            return x[0]
+
+        # rank in [0, n-1]
+        r = (n - 1) * float(q)
+        k_low = int(math.floor(r)) + 1   # kthvalue is 1-indexed
+        k_high = int(math.ceil(r)) + 1
+
+        v_low, _ = torch.kthvalue(x, k_low)
+        if k_high == k_low:
+            return v_low
+
+        v_high, _ = torch.kthvalue(x, k_high)
+        w = r - (k_low - 1)  # fractional part as Python float
+        w_t = x.new_tensor(w)
+        return v_low + (v_high - v_low) * w_t
+
+    node_error, edge_error = get_predictions_error(
+        nodes_pred, nodes_ref, edges_pred, edges_ref
+    )
+
+    n_node_els = node_error.shape[0]
+    n_edge_els = edge_error.shape[0]
+
+    abs_node_error = abs(node_error)
+    abs_edge_error = abs(edge_error)
+
+    node_error_above_thresh = node_error[abs_node_error > threshold]
+    edge_error_above_thresh = edge_error[abs_edge_error > threshold]
+
+    # Base losses (safe on empties)
+    node_loss = _safe_mean(node_error_above_thresh**2)
+    edge_loss = _safe_mean(edge_error_above_thresh**2)
+
+    # 75th percentiles using manual quantile
+    if node_error_above_thresh.numel() > 0:
+        abs_node_err_above = node_error_above_thresh.abs()
+        percentile_75 = _percentile_linear(abs_node_err_above, 0.75)
+        hard_mask = abs_node_err_above > percentile_75
+        hard_errors = node_error_above_thresh[hard_mask]
+        if hard_errors.numel() > 0:
+            node_loss = node_loss + _safe_mean(hard_errors**2)
+
+    if edge_error_above_thresh.numel() > 0:
+        abs_edge_err_above = edge_error_above_thresh.abs()
+        edge_percentile_75 = _percentile_linear(abs_edge_err_above, 0.75)
+        edge_hard_mask = abs_edge_err_above > edge_percentile_75
+        edge_hard_errors = edge_error_above_thresh[edge_hard_mask]
+        if edge_hard_errors.numel() > 0:
+            edge_loss = edge_loss + _safe_mean(edge_hard_errors**2)
+
+    # Stats (avoid NaNs on empties for the *_above_threshold_mean)
+    stats = {
+        "node_rmse": torch.sqrt(_safe_mean(node_error**2)),
+        "edge_rmse": torch.sqrt(_safe_mean(edge_error**2)),
+        "node_above_threshold_frac": (
+            node_error_above_thresh.shape[0] / max(1, n_node_els)
+        ),
+        "edge_above_threshold_frac": (
+            edge_error_above_thresh.shape[0] / max(1, n_edge_els)
+        ),
+        "node_above_threshold_mean": _safe_mean(
+            abs_node_error[abs_node_error > threshold]
+        ),
+        "edge_above_threshold_mean": _safe_mean(
+            abs_edge_error[abs_edge_error > threshold]
+        ),
+    }
+
+    if log_verbose:
+        stats.update(
+            {
+                "node_mean": abs_node_error.mean(),
+                "edge_mean": abs_edge_error.mean(),
+                "node_std": abs_node_error.std(),
+                "edge_std": abs_edge_error.std(),
+                "node_max": abs_node_error.max(),
+                "edge_max": abs_edge_error.max(),
+            }
+        )
+
+    return node_loss + edge_loss, stats
+
+
 
 if __name__ == "__main__":
     main()
