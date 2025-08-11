@@ -6,7 +6,7 @@
 # # sys.path.append(str(root_dir))
 
 import numpy as np
-from tools.scripts_utils import real_space_to_kspace
+# from tools.scripts_utils import real_space_to_kspace
 import warnings
 import sisl
 import tbplas as tb
@@ -19,9 +19,9 @@ def main():
     # *********************************** #
     # * VARIABLES TO CHANGE BY THE USER * #
     # *********************************** #
-    path = Path("/home/alapena/GitHub/graph2mat4abn/dataset/SHARE_OUTPUTS_8_ATOMS/0888-cde8-4bbf-8840-bbd0accf1d6c")
-    savedir = Path("results_convergence_test")
-    nks_dos = range(46,80)
+    path = Path("/home/alapena/GitHub/graph2mat4abn/dataset/SHARE_OUTPUTS_64_ATOMS/9410-b52a-4124-9c9c-210304f661a1")
+    savedir = Path("results_convergence_test_64atm")
+    nks_dos = range(2,25)
     # *********************************** #
 
     # Define orbital labels (for now we will assume that all atoms have the same orbitals). Use the same order as appearance in the hamiltonian.
@@ -236,6 +236,20 @@ def main():
         filepath = savedir / f"{structure}_dos_mesh{nk}.npz"
         np.savez(filepath, path=str(path), energies=energies, dos=dos)
 
+
+def real_space_to_kspace(positions, b1, b2, b3):
+    """
+    Map real-space positions into reciprocal space (fractional and cartesian).
+    Returns:
+        k_frac: (N, 3) positions in fractional reciprocal coordinates
+        k_cart: (N, 3) positions in cartesian k-space (nm^-1)
+    """
+    B = np.vstack([b1, b2, b3])  # reciprocal lattice vectors (3,3), Ang^-1
+    # Fractional reciprocal coordinates
+    k_frac = np.linalg.solve(B.T, positions.T).T  # shape (N,3)
+    # Cartesian k-vectors
+    k_cart = k_frac @ B
+    return k_frac, k_cart
 
 
 if __name__ == "__main__":
