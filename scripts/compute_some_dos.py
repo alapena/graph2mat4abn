@@ -1,7 +1,7 @@
-import sys
-sys.path.insert(0, '/home/alapena/GitHub/graph2mat4abn')
-import os
-os.chdir('/home/ICN2/alapena/GitHub/graph2mat4abn') # Change to the root directory of the project
+# import sys
+# sys.path.insert(0, '/home/alapena/GitHub/graph2mat4abn')
+# import os
+# os.chdir('/home/ICN2/alapena/GitHub/graph2mat4abn') # Change to the root directory of the project
 
 from graph2mat4abn.tools.import_utils import load_config, get_object_from_module
 from graph2mat4abn.tools.tools import get_basis_from_structures_paths, get_kwargs, load_model
@@ -10,7 +10,6 @@ from graph2mat4abn.tools.script_plots import update_loss_plots, plot_grad_norms
 from torch_geometric.data import DataLoader
 from graph2mat4abn.tools.scripts_utils import generate_g2m_dataset_from_paths
 from pathlib import Path
-from e3nn import o3
 from mace.modules import MACE, RealAgnosticResidualInteractionBlock
 from graph2mat.models import MatrixMACE
 from graph2mat.bindings.e3nn import E3nnGraph2Mat
@@ -29,11 +28,11 @@ import sisl
 
 def main():
     paths = [
-        Path("dataset/SHARE_OUTPUTS_64_ATOMS/9410-b52a-4124-9c9c-210304f661a1"), #64
         Path('dataset/SHARE_OUTPUTS_8_ATOMS/d4f5-6b48-494f-b1de-c7e944c09f38'), #Hexagonal normal
         Path('dataset/SHARE_OUTPUTS_8_ATOMS/11ad-ba95-4a26-8f92-5267f5787553'), # Cubic
         Path('dataset/SHARE_OUTPUTS_2_ATOMS/fc1c-6ab6-4c0e-921e-99710e6fe41b'), # N-N
         Path('dataset/SHARE_OUTPUTS_2_ATOMS/7bbb-6d51-41eb-9de4-329298202ebf'), #B-B
+        Path("dataset/SHARE_OUTPUTS_64_ATOMS/9410-b52a-4124-9c9c-210304f661a1"), #64
     ]
     # The current model:
     model_dir = Path("results/h_noc_2")
