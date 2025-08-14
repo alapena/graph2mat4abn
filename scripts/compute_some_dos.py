@@ -29,32 +29,36 @@ import tbplas as tb
 
 def main():
     paths = [
-        Path("dataset/SHARE_OUTPUTS_2_ATOMS/d249-97ce-4fdf-8948-cfce4078c8ac"), # Training B-N overlap
-        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/0a4c-6759-46e6-bf5e-6439eefcaad2"), # Val B-N no overlap
-        Path("dataset/SHARE_OUTPUTS_2_ATOMS/abf6-ddbd-4c06-b266-c1d188d0f599"), # Training B-B nears
-        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/f7bc-fcea-4f67-9e15-4bd1ef5678df"), # Val B-B overlap --
-        Path("dataset/SHARE_OUTPUTS_2_ATOMS/e486-4f49-4560-a4d2-0363fd9b5157"), # Training N-N overlap
-        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/2aa6-e839-4ca4-9e63-0cc27be5f76f"), # Val N-N Overlap
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/d249-97ce-4fdf-8948-cfce4078c8ac"), # Training B-N overlap
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/9b13-4a57-4de9-b863-1b35209370c4"), # Val B-N touching AMBOS 2-8 Y 2-8-64
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/abf6-ddbd-4c06-b266-c1d188d0f599"), # Training B-B nears
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/18a7-265b-4fbf-aae4-52fb83b4760f"), # Val B-B Overlap AMBOS 2-8 Y 2-8-64
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/e486-4f49-4560-a4d2-0363fd9b5157"), # Training N-N overlap
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/f7bc-fcea-4f67-9e15-4bd1ef5678df"), # Val N-N overlap AMBOS 2-8 Y 2-8-64
+        
+        # Todos están en ambos:
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/e1df-2940-4ada-b9c0-d210a6bb2a19"), # Training cubic BN
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/4ed6-914e-4aa3-923a-53c873f0cc31"), # Val cubic BN
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/2800-0707-4395-86fa-85a2b8ed818b"), # Training non physical hBN
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/33ef-ca33-4bf0-a36e-6e852deab7b5"), # VAl non physical hBN
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/d4f5-6b48-494f-b1de-c7e944c09f38"), # Training physical hBN
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/ff0d-e0ad-4307-b04b-8be91de51543"), # Val physical hBN
 
-        Path("dataset/SHARE_OUTPUTS_8_ATOMS/e1df-2940-4ada-b9c0-d210a6bb2a19"), # Training cubic BN
-        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/4ed6-914e-4aa3-923a-53c873f0cc31"), # Val cubic BN 5e9e-df50-4bd8-861a-b544fa2116fe
-        Path("dataset/SHARE_OUTPUTS_8_ATOMS/2800-0707-4395-86fa-85a2b8ed818b"), # Training non physical hBN
-        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/33ef-ca33-4bf0-a36e-6e852deab7b5"), # VAl non physical hBN --
-        Path("dataset/SHARE_OUTPUTS_8_ATOMS/d4f5-6b48-494f-b1de-c7e944c09f38"), # Training physical hBN
-        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/5721-4d12-41f2-9f31-f7ee4fcf1096"), # Val physical hBN
-
-        Path("dataset/SHARE_OUTPUTS_64_ATOMS/99a9-5416-41e9-940d-70653c6897f9"), # Training 64 of 2-8-64 and 64
-        Path("dataset/SHARE_OUTPUTS_64_ATOMS/787c-11ce-4307-b603-b6c431698245"), # Training 64 of 2-8-64 and 64
+        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/99a9-5416-41e9-940d-70653c6897f9"), # Training 64 of 2-8-64 and 64
+        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/787c-11ce-4307-b603-b6c431698245"), # Training 64 of 2-8-64 and 64
         # Path("dataset/SHARE_OUTPUTS_64_ATOMS/806e-3a78-4e32-9aeb-35dc6e0df137"),  # Val 64 of 2-8-64 and 64
         # Path("dataset/SHARE_OUTPUTS_64_ATOMS/90b9-0d95-49d2-87ed-bd09def740fa"), # Val 64 of 2-8-64
-        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/13df-16c2-48b8-aa26-9b0b4b906db2"), # Val 64 of 64
+        Path("dataset/SHARE_OUTPUTS_64_ATOMS/13df-16c2-48b8-aa26-9b0b4b906db2"), # Val 64 of 64
     ]
     # The current model:
-    model_dir = Path("results/final_2-8_atm")
-    filename = "train_best_model.tar"
-    savedir = Path('results_dos/train')
+    model_dir = Path("results/final_64_atm")
+    filename = "val_best_model.tar"
+    savedir = Path('results_dos/64_atm_val')
+    only_pred = False
+    only_true = True
 
     config = load_config(model_dir / "config.yaml")
+    print(paths)
 
     # Basis generation (needed to initialize the model)
     # train_paths, val_paths = get_model_dataset(model_dir, verbose=False)
@@ -71,10 +75,11 @@ def main():
     history = checkpoint["history"]
     print(f"Loaded model in epoch {checkpoint["epoch"]} with training loss {checkpoint["train_loss"]} and validation loss {checkpoint["val_loss"]}.")
 
-    print(paths)
+    savedir.mkdir(exist_ok=True, parents=True)
+    print("Created savedir", savedir)
 
     for i, path in enumerate(paths):
-        print(path)
+        print("\nComputing ", path)
         # === Inference ===
         dataset, processor = generate_g2m_dataset_from_paths(config, basis, table, [path], verbose=False)
         dataloader = DataLoader(dataset, 1)
@@ -87,8 +92,6 @@ def main():
 
             h_pred = processor.matrix_from_data(data, predictions={"node_labels": model_predictions["node_labels"], "edge_labels": model_predictions["edge_labels"]})[0]
             h_true = processor.matrix_from_data(data)[0]
-
-        savedir.mkdir(exist_ok=True, parents=True)
 
         n_atoms = int(path.parts[-2].split('_')[2])
         structure = path.parts[-1]
@@ -119,7 +122,11 @@ def main():
             cell = tb.PrimitiveCell(vectors, unit=tb.ANG)
             if ham_idx == 0:
                 h_mat = h.tocsr().tocoo()
+                if only_pred:
+                    continue
             if ham_idx == 1:
+                if only_true:
+                    break
                 h_mat = h_pred.tocsr().tocoo()
 
             rows = h_mat.row
@@ -263,8 +270,9 @@ def main():
             solver = tb.DiagSolver(cell, overlap)
             solver.config.k_points = k_mesh
             solver.config.prefix = "dos"
-            solver.config.e_min = e_min
-            solver.config.e_max = e_max
+            if ham_idx == 0:
+                solver.config.e_min = e_min
+                solver.config.e_max = e_max
             timer = tb.Timer()
             timer.tic("dos")
             energies, dos = solver.calc_dos()
