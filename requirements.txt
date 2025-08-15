@@ -1,5 +1,5 @@
 # graph2mat # Install it manually from source code
-torch==2.5.0
+torch<=2.5.0
 torchvision
 torchaudio
 sisl
