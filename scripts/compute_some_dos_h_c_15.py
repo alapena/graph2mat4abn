@@ -52,12 +52,12 @@ def main():
 
         # h_noc_2:
         # Training:
-        Path("dataset/SHARE_OUTPUTS_2_ATOMS/d249-97ce-4fdf-8948-cfce4078c8ac"), #  B-N overlap
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/d249-97ce-4fdf-8948-cfce4078c8ac"), #  B-N overlap
         # Path("dataset/SHARE_OUTPUTS_2_ATOMS/9b13-4a57-4de9-b863-1b35209370c4"), #  B-N touching AMBOS 2-8 Y 2-8-64
-        Path("dataset/SHARE_OUTPUTS_2_ATOMS/abf6-ddbd-4c06-b266-c1d188d0f599"), #  B-B nears
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/abf6-ddbd-4c06-b266-c1d188d0f599"), #  B-B nears
         # Path("dataset/SHARE_OUTPUTS_2_ATOMS/18a7-265b-4fbf-aae4-52fb83b4760f"), #  B-B Overlap AMBOS 2-8 Y 2-8-64
         # Path("dataset/SHARE_OUTPUTS_2_ATOMS/e486-4f49-4560-a4d2-0363fd9b5157"), #  N-N overlap
-        Path("dataset/SHARE_OUTPUTS_2_ATOMS/f7bc-fcea-4f67-9e15-4bd1ef5678df"), #  N-N overlap AMBOS 2-8 Y 2-8-64
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/f7bc-fcea-4f67-9e15-4bd1ef5678df"), #  N-N overlap AMBOS 2-8 Y 2-8-64
 
 
         # Path("dataset/SHARE_OUTPUTS_64_ATOMS/787c-11ce-4307-b603-b6c431698245"), #  64 of 2-8-64 and 64
@@ -309,8 +309,8 @@ def main():
             e_fermi=read_fermi_level(path / "aiida.out")
             
         
-            solver.config.e_min = e_fermi-3
-            solver.config.e_max = e_fermi+3
+            solver.config.e_min = e_min-3
+            solver.config.e_max = e_max+3
             # solver.config.e_max = e_fermi+10
             timer = tb.Timer()
             timer.tic("dos")

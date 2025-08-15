@@ -1435,3 +1435,27 @@ Output details:
   Prefix     : dos
 
 Using Eigen backend for diagonalization.
+	 dos : 9868.41977
+
+Parallelization details:
+  MPI disabled    
+  OMP_NUM_THREADS  : n/a   
+  MKL_NUM_THREADS  : n/a   
+
+Output details:
+  Directory  : ./
+  Prefix     : bands
+
+Using Eigen backend for diagonalization.
+	 bands :   45.09037
+
+Parallelization details:
+  MPI disabled    
+  OMP_NUM_THREADS  : n/a   
+  MKL_NUM_THREADS  : n/a   
+
+Output details:
+  Directory  : ./
+  Prefix     : dos
+
+Using Eigen backend for diagonalization.
