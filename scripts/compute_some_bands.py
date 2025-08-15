@@ -31,13 +31,13 @@ def main():
     paths = [
         # h_noc_2:
         # Training:
-        Path("dataset/SHARE_OUTPUTS_8_ATOMS/2800-0707-4395-86fa-85a2b8ed818b")
+        Path("dataset/SHARE_OUTPUTS_64_ATOMS/99a9-5416-41e9-940d-70653c6897f9")
         # Val:
     ]
     # The current model:
     model_dir = Path("results/h_noc_2")
     filename = "train_best_model.tar"
-    savedir = Path('results_dos/h_noc_2_train_fullEnergyRange/bands')
+    savedir = Path('results_dos/h_noc_2_train/bands')
     only_pred = False
     only_true = False
 
@@ -235,26 +235,34 @@ def main():
             # k_cart = frac_kpts @ np.array([b1, b2, b3])
             # k_label = ['Γ', 'X', 'M', 'Γ', 'R', 'X', 'M', 'X1']
 
-            # Physical hBN
-            # High-symmetry points in fractional coords (relative to b1, b2, b3)
+            # # Physical hBN
+            # # High-symmetry points in fractional coords (relative to b1, b2, b3)
+            # frac_kpts = np.array([
+            #     [0.0,         0.0,         0.0],  # Γ
+            #     [0.5,         0.0,         0.0],  # M
+            #     [1/3,         1/3,         0.0],  # K
+            #     [0.0,         0.0,         0.0],  # Γ
+            #     [0.0,         0.0,         0.5],  # A
+            #     [0.5,         0.0,         0.5],  # L
+            #     [1/3,         1/3,         0.5],  # H
+            #     [1/3,         1/3,         0.0],  # K
+            #     [1/3,         1/3,        -0.5],  # H2
+            # ])
+            # k_cart = frac_kpts @ np.array([b1, b2, b3])
+            # k_label = ['Γ', 'M', 'K', 'Γ', 'A', 'L', 'H', 'K', 'H2']
+
+            # amorphous
             frac_kpts = np.array([
                 [0.0,         0.0,         0.0],  # Γ
-                [0.5,         0.0,         0.0],  # M
-                [1/3,         1/3,         0.0],  # K
-                [0.0,         0.0,         0.0],  # Γ
-                [0.0,         0.0,         0.5],  # A
-                [0.5,         0.0,         0.5],  # L
-                [1/3,         1/3,         0.5],  # H
-                [1/3,         1/3,         0.0],  # K
-                [1/3,         1/3,        -0.5],  # H2
+                [1.0,         1.0,         1.0],  # Γ
             ])
             k_cart = frac_kpts @ np.array([b1, b2, b3])
-            k_label = ['Γ', 'M', 'K', 'Γ', 'A', 'L', 'H', 'K', 'H2']
+            k_label = ['Γ', 'XYZ']
 
 
             k_frac = np.array([np.linalg.solve(B.T, k) for k in k_cart])
 
-            n_ks = 80
+            n_ks = 160
             k_path, k_idx = tb.gen_kpath(k_frac, [n_ks for _ in range(len(k_frac) -1)])
             len(k_path)
 
