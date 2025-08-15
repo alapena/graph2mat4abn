@@ -1152,3 +1152,286 @@ Output details:
   Prefix     : dos
 
 Using Eigen backend for diagonalization.
+	 dos :  130.34367
+
+Computing  dataset/SHARE_OUTPUTS_64_ATOMS/99a9-5416-41e9-940d-70653c6897f9
+0it [00:00, ?it/s]1it [00:00,  2.24it/s]1it [00:00,  2.24it/s]
+/home/alapena/miniconda3/envs/tbplas/lib/python3.12/site-packages/torch_geometric/deprecation.py:26: UserWarning:
+
+'data.DataLoader' is deprecated, use 'loader.DataLoader' instead
+
+INFO	nodify.node.140019092242208:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019391262080:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019395155664:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092241392:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019394847488:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019395152544:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019391262080:node.py:get()- No need to evaluate
+INFO	nodify.node.140019395155664:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092241392:node.py:get()- No need to evaluate
+INFO	nodify.node.140019394847488:node.py:get()- No need to evaluate
+INFO	nodify.node.140019395152544:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391262080:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391265968:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092226224:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092241920:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019391264624:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092233904:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092232896:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019395150192:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092238176:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019395156912:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019391260256:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019395150240:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092242352:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019395162672:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019395157728:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092230400:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019395163152:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092239136:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092232896:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092227184:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019395154848:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092230976:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092232896:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391259776:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092234432:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092236832:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019391262080:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391264816:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019391259488:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019093997616:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019391219328:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092231504:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019393112032:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092231024:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019391262080:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391265968:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092226224:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391257136:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092231696:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092242352:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233520:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019394224608:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092228960:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140010668575536:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019093576432:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092232896:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092241536:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092232320:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019393461760:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092232896:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391259776:node.py:get()- No need to evaluate
+INFO	nodify.node.140019093573504:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092230160:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092232896:node.py:get()- No need to evaluate
+INFO	nodify.node.140010668577024:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019401020512:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019391262080:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092232896:node.py:get()- No need to evaluate
+INFO	nodify.node.140019395165840:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092235008:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019395154608:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092238368:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092228960:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092230016:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019391262080:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391264816:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092231504:node.py:get()- No need to evaluate
+INFO	nodify.node.140019393112032:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092231024:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391262080:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391265968:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092226224:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391257136:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092231696:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092242352:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233520:node.py:get()- No need to evaluate
+INFO	nodify.node.140019394224608:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092228960:node.py:get()- No need to evaluate
+INFO	nodify.node.140010668575536:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391262080:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092230832:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019391262080:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391265968:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092226224:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092232896:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092883408:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092242352:node.py:get()- No need to evaluate
+INFO	nodify.node.140019395164304:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092235728:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019393111552:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019391266592:node.py:get()- Evaluated because inputs changed.
+INFO	nodify.node.140019092242208:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391262080:node.py:get()- No need to evaluate
+INFO	nodify.node.140019395155664:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092241392:node.py:get()- No need to evaluate
+INFO	nodify.node.140019394847488:node.py:get()- No need to evaluate
+INFO	nodify.node.140019395152544:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391262080:node.py:get()- No need to evaluate
+INFO	nodify.node.140019395155664:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092241392:node.py:get()- No need to evaluate
+INFO	nodify.node.140019394847488:node.py:get()- No need to evaluate
+INFO	nodify.node.140019395152544:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391262080:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391265968:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092226224:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092241920:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092232896:node.py:get()- No need to evaluate
+INFO	nodify.node.140019395150192:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092238176:node.py:get()- No need to evaluate
+INFO	nodify.node.140019395156912:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391260256:node.py:get()- No need to evaluate
+INFO	nodify.node.140019395150240:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092242352:node.py:get()- No need to evaluate
+INFO	nodify.node.140019395162672:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019395157728:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092230400:node.py:get()- No need to evaluate
+INFO	nodify.node.140019395163152:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092239136:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092232896:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092227184:node.py:get()- No need to evaluate
+INFO	nodify.node.140019395154848:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092230976:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092232896:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391259776:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092234432:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092236832:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391262080:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391264816:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092231504:node.py:get()- No need to evaluate
+INFO	nodify.node.140019393112032:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092231024:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391262080:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391265968:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092226224:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391257136:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092231696:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092242352:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233520:node.py:get()- No need to evaluate
+INFO	nodify.node.140019394224608:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092228960:node.py:get()- No need to evaluate
+INFO	nodify.node.140010668575536:node.py:get()- No need to evaluate
+INFO	nodify.node.140019093576432:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092232896:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092241536:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092232320:node.py:get()- No need to evaluate
+INFO	nodify.node.140019393461760:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092232896:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391259776:node.py:get()- No need to evaluate
+INFO	nodify.node.140019093573504:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092230160:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092232896:node.py:get()- No need to evaluate
+INFO	nodify.node.140010668577024:node.py:get()- No need to evaluate
+INFO	nodify.node.140019401020512:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391262080:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092232896:node.py:get()- No need to evaluate
+INFO	nodify.node.140019395165840:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092235008:node.py:get()- No need to evaluate
+INFO	nodify.node.140019395154608:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092238368:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092228960:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092230016:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391262080:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391264816:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092231504:node.py:get()- No need to evaluate
+INFO	nodify.node.140019393112032:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092231024:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391262080:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391265968:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092226224:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391257136:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092231696:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092242352:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233520:node.py:get()- No need to evaluate
+INFO	nodify.node.140019394224608:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092228960:node.py:get()- No need to evaluate
+INFO	nodify.node.140010668575536:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391262080:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092230832:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391262080:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391265968:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092226224:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092232896:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391264624:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092233904:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092883408:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092242352:node.py:get()- No need to evaluate
+INFO	nodify.node.140019395164304:node.py:get()- No need to evaluate
+INFO	nodify.node.140019092235728:node.py:get()- No need to evaluate
+INFO	nodify.node.140019393111552:node.py:get()- No need to evaluate
+INFO	nodify.node.140019391266592:node.py:get()- No need to evaluate
+Keeping all the dataset in memory.
+Computing structure 64atm_99a9-5416-41e9-940d-70653c6897f9...
+Saved structure plot at results_dos/h_crystalls_15/full_range/64atm_99a9-5416-41e9-940d-70653c6897f9.html
+
+Parallelization details:
+  MPI disabled    
+  OMP_NUM_THREADS  : n/a   
+  MKL_NUM_THREADS  : n/a   
+
+Output details:
+  Directory  : ./
+  Prefix     : bands
+
+Using Eigen backend for diagonalization.
+	 bands :   45.29350
+
+Parallelization details:
+  MPI disabled    
+  OMP_NUM_THREADS  : n/a   
+  MKL_NUM_THREADS  : n/a   
+
+Output details:
+  Directory  : ./
+  Prefix     : dos
+
+Using Eigen backend for diagonalization.
