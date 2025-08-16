@@ -31,13 +31,34 @@ def main():
     paths = [
         # h_noc_2:
         # Training:
-        Path("dataset/SHARE_OUTPUTS_64_ATOMS/99a9-5416-41e9-940d-70653c6897f9")
+        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/99a9-5416-41e9-940d-70653c6897f9")
         # Val:
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/a4a5-71a5-463a-a02e-acd977e1dcda"),
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/504a-71cd-4d25-a04a-b7fa45b92200"),
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/72f5-effe-42c4-bc67-12314ba36f5e"),
+        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/16eb-54f8-42cb-bdb1-7b16f24a650c"),
+
+        # h_c_8
+        # train
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/9b13-4a57-4de9-b863-1b35209370c4"),
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/4ed6-914e-4aa3-923a-53c873f0cc31"),
+
+        #val
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/fc1c-6ab6-4c0e-921e-99710e6fe41b"),
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/7b57-1410-4da3-8535-5183ac1f2f61")
+        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/16eb-54f8-42cb-bdb1-7b16f24a650c"),
+
+        #h_c_10
+        #train
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/9b13-4a57-4de9-b863-1b35209370c4"),
+        #val 
+        Path("dataset/SHARE_OUTPUTS_2_ATOMS/a4a5-71a5-463a-a02e-acd977e1dcda"),
+        
     ]
     # The current model:
-    model_dir = Path("results/h_noc_2")
-    filename = "train_best_model.tar"
-    savedir = Path('results_dos/h_noc_2_train/bands')
+    model_dir = Path("results/h_crystalls_10")
+    filename = "val_best_model.tar"
+    savedir = Path('results_dos/h_crystalls_10_val/bands')
     only_pred = False
     only_true = False
 
@@ -45,9 +66,9 @@ def main():
     print(paths)
 
     # Basis generation (needed to initialize the model)
-    # train_paths, val_paths = get_model_dataset(model_dir, verbose=False)
+    train_paths, val_paths = get_model_dataset(model_dir, verbose=False)
     # paths = train_paths + val_paths
-    basis = get_basis_from_structures_paths(paths, verbose=True, num_unique_z=config["dataset"].get("num_unique_z", None))
+    basis = get_basis_from_structures_paths(train_paths, verbose=True, num_unique_z=config["dataset"].get("num_unique_z", None))
     table = BasisTableWithEdges(basis)
 
     print("Initializing model...")
@@ -220,6 +241,10 @@ def main():
             # Compute k path (not definitive to use in the report)
             B = np.vstack([b1, b2, b3])  # shape (3,3)
 
+            # For Molecules:
+            k_cart = np.array([[0.0, 0.0, 0.0], b1, b2, b3])
+            k_label = ['Γ', "X", "Y", "Z"]
+
             # # For cubic:
             # # High-symmetry points in fractional coords (relative to b1, b2, b3)
             # frac_kpts = np.array([
@@ -251,18 +276,18 @@ def main():
             # k_cart = frac_kpts @ np.array([b1, b2, b3])
             # k_label = ['Γ', 'M', 'K', 'Γ', 'A', 'L', 'H', 'K', 'H2']
 
-            # amorphous
-            frac_kpts = np.array([
-                [0.0,         0.0,         0.0],  # Γ
-                [1.0,         1.0,         1.0],  # Γ
-            ])
-            k_cart = frac_kpts @ np.array([b1, b2, b3])
-            k_label = ['Γ', 'XYZ']
+            # # amorphous
+            # frac_kpts = np.array([
+            #     [0.0,         0.0,         0.0],  # Γ
+            #     [1.0,         1.0,         1.0],  # Γ
+            # ])
+            # k_cart = frac_kpts @ np.array([b1, b2, b3])
+            # k_label = ['Γ', 'XYZ']
 
 
             k_frac = np.array([np.linalg.solve(B.T, k) for k in k_cart])
 
-            n_ks = 160
+            n_ks = 80
             k_path, k_idx = tb.gen_kpath(k_frac, [n_ks for _ in range(len(k_frac) -1)])
             len(k_path)
 
