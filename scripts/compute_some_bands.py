@@ -37,6 +37,7 @@ def main():
         # Path("dataset/SHARE_OUTPUTS_2_ATOMS/504a-71cd-4d25-a04a-b7fa45b92200"),
         # Path("dataset/SHARE_OUTPUTS_8_ATOMS/72f5-effe-42c4-bc67-12314ba36f5e"),
         # Path("dataset/SHARE_OUTPUTS_64_ATOMS/16eb-54f8-42cb-bdb1-7b16f24a650c"),
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/f2b9-d7cc-4f42-9ccc-13dd371d22a5")
 
         # h_c_8
         # train
@@ -44,10 +45,31 @@ def main():
         # Path("dataset/SHARE_OUTPUTS_8_ATOMS/4ed6-914e-4aa3-923a-53c873f0cc31"),
 
         #val
-        Path("dataset/SHARE_OUTPUTS_2_ATOMS/fc1c-6ab6-4c0e-921e-99710e6fe41b"),
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/fc1c-6ab6-4c0e-921e-99710e6fe41b"),
         # Path("dataset/SHARE_OUTPUTS_8_ATOMS/7b57-1410-4da3-8535-5183ac1f2f61")
         # Path("dataset/SHARE_OUTPUTS_64_ATOMS/16eb-54f8-42cb-bdb1-7b16f24a650c"),
-        
+
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/504a-71cd-4d25-a04a-b7fa45b92200"),
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/a4a5-71a5-463a-a02e-acd977e1dcda"),
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/72f5-effe-42c4-bc67-12314ba36f5e"),
+
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/9b13-4a57-4de9-b863-1b35209370c4"),
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/e1df-2940-4ada-b9c0-d210a6bb2a19"),
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/4ed6-914e-4aa3-923a-53c873f0cc31"),
+
+        Path("dataset/SHARE_OUTPUTS_64_ATOMS/16eb-54f8-42cb-bdb1-7b16f24a650c"), #extrapolation
+
+        #h_noc_2 test:
+        #train
+        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/e46e-c792-412c-99ac-9e20794f7aad"),
+        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/360d-4d90-478a-9b3f-7abad2fd2238"),
+        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/ae42-0c23-43df-adb6-5f127162d168"),
+        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/a8bf-8aa3-4864-8a1c-edfb0bf48c2d"),
+        #val
+        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/90b9-0d95-49d2-87ed-bd09def740fa"),
+        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/95c7-cddc-4b33-87fd-c790f43c8484"),
+        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/8838-e21d-4305-b568-fbadc54f08da"),
+        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/5d5a-2e97-4efb-b45a-3361c6c3bc1c"),
     ]
     # The current model:
     model_dir = Path("results/h_crystalls_8")
@@ -235,9 +257,9 @@ def main():
             # Compute k path (not definitive to use in the report)
             B = np.vstack([b1, b2, b3])  # shape (3,3)
 
-            # For Molecules:
-            k_cart = np.array([[0.0, 0.0, 0.0], b1, b2, b3])
-            k_label = ['Γ', "X", "Y", "Z"]
+            # # For Molecules:
+            # k_cart = np.array([[0.0, 0.0, 0.0], b1, b2, b3])
+            # k_label = ['Γ', "X", "Y", "Z"]
 
             # # For cubic:
             # # High-symmetry points in fractional coords (relative to b1, b2, b3)
@@ -270,18 +292,18 @@ def main():
             # k_cart = frac_kpts @ np.array([b1, b2, b3])
             # k_label = ['Γ', 'M', 'K', 'Γ', 'A', 'L', 'H', 'K', 'H2']
 
-            # # amorphous
-            # frac_kpts = np.array([
-            #     [0.0,         0.0,         0.0],  # Γ
-            #     [1.0,         1.0,         1.0],  # Γ
-            # ])
-            # k_cart = frac_kpts @ np.array([b1, b2, b3])
-            # k_label = ['Γ', 'XYZ']
+            # amorphous
+            frac_kpts = np.array([
+                [0.0,         0.0,         0.0],  # Γ
+                [1.0,         1.0,         1.0],  # Γ
+            ])
+            k_cart = frac_kpts @ np.array([b1, b2, b3])
+            k_label = ['Γ', 'XYZ']
 
 
             k_frac = np.array([np.linalg.solve(B.T, k) for k in k_cart])
 
-            n_ks = 80
+            n_ks = 160
             k_path, k_idx = tb.gen_kpath(k_frac, [n_ks for _ in range(len(k_frac) -1)])
             len(k_path)
 

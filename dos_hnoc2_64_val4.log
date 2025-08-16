@@ -1,0 +1,234 @@
+nohup: ignoring input
+/home/alapena/miniconda3/envs/tbplas/lib/python3.12/site-packages/e3nn/o3/_wigner.py:10: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  _Jd, _W3j_flat, _W3j_indices = torch.load(os.path.join(os.path.dirname(__file__), 'constants.pt'))
+/home/alapena/miniconda3/envs/tbplas/lib/python3.12/site-packages/tbplas/cython/__init__.py:54: UserWarning: C++ hdf5 extension not found. HDF5 IO not usable.
+  warnings.warn("C++ hdf5 extension not found. HDF5 IO not usable.")
+cuequivariance or cuequivariance_torch is not available. Cuequivariance acceleration will be disabled.
+[PosixPath('dataset/SHARE_OUTPUTS_64_ATOMS/5d5a-2e97-4efb-b45a-3361c6c3bc1c')]
+============================================================
+Basis computation.
+Number of structures to look on: 566
+Looking for unique atoms in each structure...
+0it [00:00, ?it/s]1it [00:00, 49.88it/s]
+/home/alapena/miniconda3/envs/tbplas/lib/python3.12/site-packages/mace/modules/blocks.py:187: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  torch.tensor(atomic_energies, dtype=torch.get_default_dtype()),
+Found enough basis points. Breaking the search...
+Found enough basis points. Breaking the search...
+Found the following atomic numbers: [np.int32(7), np.int32(5)]
+Corresponding path indices: [0, 0]
+Basis with 2 elements built!
+
+Basis for atom 0.
+	Atom type: 5
+	Basis: ((2, 0, 1), (2, 1, -1), (1, 2, 1))
+	Basis convention: siesta_spherical
+	R: [3.02420918 2.02341372 3.73961942 3.73961942 3.73961942 2.51253945
+ 2.51253945 2.51253945 3.73961942 3.73961942 3.73961942 3.73961942
+ 3.73961942]
+
+Basis for atom 1.
+	Atom type: 7
+	Basis: ((2, 0, 1), (2, 1, -1), (1, 2, 1))
+	Basis convention: siesta_spherical
+	R: [2.25704422 1.4271749  2.78012609 2.78012609 2.78012609 1.75309697
+ 1.75309697 1.75309697 2.78012609 2.78012609 2.78012609 2.78012609
+ 2.78012609]
+Initializing model...
+Using Optimizer Adam (
+Parameter Group 0
+    amsgrad: False
+    betas: (0.9, 0.999)
+    capturable: False
+    differentiable: False
+    eps: 1e-08
+    foreach: None
+    fused: None
+    lr: 0.001
+    maximize: False
+    weight_decay: 0
+)
+LR Scheduler:  ReduceLROnPlateau
+Arguments:  None
+Keyword arguments:  {'cooldown': 0, 'eps': 0.0, 'factor': 0.1, 'min_lr': 0.0, 'mode': 'min', 'patience': 20}
+Using Loss function <class 'graph2mat.core.data.metrics.block_type_mse'>
+Loaded model results/h_noc_2 in epoch 14953 with training loss 14567.0966796875 and validation loss 29014.416015625.
+Created savedir results_dos/h_noc_2_val
+
+Computing  dataset/SHARE_OUTPUTS_64_ATOMS/5d5a-2e97-4efb-b45a-3361c6c3bc1c
+0it [00:00, ?it/s]1it [00:00,  1.81it/s]1it [00:00,  1.81it/s]
+/home/alapena/miniconda3/envs/tbplas/lib/python3.12/site-packages/torch_geometric/deprecation.py:26: UserWarning: 'data.DataLoader' is deprecated, use 'loader.DataLoader' instead
+  warnings.warn(out)
+INFO	nodify.node.139865145466784:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460400:node.py:get()- No need to evaluate
+INFO	nodify.node.139865146097792:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145461648:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145474944:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145474752:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460400:node.py:get()- No need to evaluate
+INFO	nodify.node.139865146097792:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145461648:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145474944:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145474752:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460400:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145459536:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145468080:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460640:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460544:node.py:get()- No need to evaluate
+INFO	nodify.node.139865147406288:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145471296:node.py:get()- No need to evaluate
+INFO	nodify.node.139865146098800:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145463712:node.py:get()- No need to evaluate
+INFO	nodify.node.139865146098608:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145474992:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145474560:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145464864:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145474368:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460544:node.py:get()- No need to evaluate
+INFO	nodify.node.139865147406288:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145474080:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460592:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145473744:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145462560:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460544:node.py:get()- No need to evaluate
+INFO	nodify.node.139865147406288:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145471296:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145465632:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145473648:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145473456:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460544:node.py:get()- No need to evaluate
+INFO	nodify.node.139865147406288:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145471296:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145472160:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145462944:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145473360:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460400:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145459296:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145469136:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145468944:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145463328:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460400:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145459536:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145468080:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145468368:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145468656:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145464864:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145469088:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145470192:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460544:node.py:get()- No need to evaluate
+INFO	nodify.node.139865147406288:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145466016:node.py:get()- No need to evaluate
+INFO	nodify.node.139865147403600:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145458912:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460544:node.py:get()- No need to evaluate
+INFO	nodify.node.139865147406288:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145471296:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145465248:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145470960:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145470048:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460544:node.py:get()- No need to evaluate
+INFO	nodify.node.139865147406288:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145471296:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145472160:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145459056:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145459104:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460544:node.py:get()- No need to evaluate
+INFO	nodify.node.139865147406288:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145471296:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145472400:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145471248:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460400:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460544:node.py:get()- No need to evaluate
+INFO	nodify.node.139865147406288:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145471296:node.py:get()- No need to evaluate
+INFO	nodify.node.139865146100672:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145464096:node.py:get()- No need to evaluate
+INFO	nodify.node.139865146100480:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460544:node.py:get()- No need to evaluate
+INFO	nodify.node.139865147406288:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145464480:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145466016:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145473504:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460400:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145459296:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145469136:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145468944:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145463328:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460400:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145459536:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145468080:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145468368:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145468656:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145464864:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145469088:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145470192:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460544:node.py:get()- No need to evaluate
+INFO	nodify.node.139865147406288:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145466016:node.py:get()- No need to evaluate
+INFO	nodify.node.139865147403600:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460400:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145466400:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460400:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145459536:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145468080:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460544:node.py:get()- No need to evaluate
+INFO	nodify.node.139865147406288:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145471296:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145460544:node.py:get()- No need to evaluate
+INFO	nodify.node.139865147406288:node.py:get()- No need to evaluate
+INFO	nodify.node.139865146101488:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145464864:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145473408:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145473024:node.py:get()- No need to evaluate
+INFO	nodify.node.139865145473264:node.py:get()- No need to evaluate
+INFO	nodify.node.139865146102496:node.py:get()- No need to evaluate
+Keeping all the dataset in memory.
+Computing structure 64atm_5d5a-2e97-4efb-b45a-3361c6c3bc1c...
+Saved structure plot at results_dos/h_noc_2_val/64atm_5d5a-2e97-4efb-b45a-3361c6c3bc1c.html
+
+Parallelization details:
+  MPI disabled    
+  OMP_NUM_THREADS  : n/a   
+  MKL_NUM_THREADS  : n/a   
+
+Output details:
+  Directory  : ./
+  Prefix     : bands
+
+Using Eigen backend for diagonalization.
+	 bands :   34.26187
+
+Parallelization details:
+  MPI disabled    
+  OMP_NUM_THREADS  : n/a   
+  MKL_NUM_THREADS  : n/a   
+
+Output details:
+  Directory  : ./
+  Prefix     : dos
+
+Using Eigen backend for diagonalization.
+	 dos : 2810.83706
+
+Parallelization details:
+  MPI disabled    
+  OMP_NUM_THREADS  : n/a   
+  MKL_NUM_THREADS  : n/a   
+
+Output details:
+  Directory  : ./
+  Prefix     : bands
+
+Using Eigen backend for diagonalization.
+	 bands :   33.85720
+
+Parallelization details:
+  MPI disabled    
+  OMP_NUM_THREADS  : n/a   
+  MKL_NUM_THREADS  : n/a   
+
+Output details:
+  Directory  : ./
+  Prefix     : dos
+
+Using Eigen backend for diagonalization.
+	 dos : 2843.09942

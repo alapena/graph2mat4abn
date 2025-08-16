@@ -1,1 +1,2 @@
-gpu 1: 315418
+162518 -- I believe it's the same as: but finishing the computation.
+408323 -- hnoc2 64atm val

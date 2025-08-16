@@ -59,10 +59,10 @@ def main():
         # Path("dataset/SHARE_OUTPUTS_2_ATOMS/e486-4f49-4560-a4d2-0363fd9b5157"), #  N-N overlap
         # Path("dataset/SHARE_OUTPUTS_2_ATOMS/f7bc-fcea-4f67-9e15-4bd1ef5678df"), #  N-N overlap AMBOS 2-8 Y 2-8-64
 
-        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/e1df-2940-4ada-b9c0-d210a6bb2a19"), #  cubic BN
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/e1df-2940-4ada-b9c0-d210a6bb2a19"), #  physical hBN
         # Path("dataset/SHARE_OUTPUTS_8_ATOMS/4ed6-914e-4aa3-923a-53c873f0cc31"), #  cubic BN ---------------------
         # Path("dataset/SHARE_OUTPUTS_8_ATOMS/2800-0707-4395-86fa-85a2b8ed818b"), #  non physical hBN
-        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/33ef-ca33-4bf0-a36e-6e852deab7b5"), #  non physical hBN
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/33ef-ca33-4bf0-a36e-6e852deab7b5"), #  Cubic BN
         # Path("dataset/SHARE_OUTPUTS_8_ATOMS/d4f5-6b48-494f-b1de-c7e944c09f38"), #  physical hBN
         # Path("dataset/SHARE_OUTPUTS_8_ATOMS/ff0d-e0ad-4307-b04b-8be91de51543"), #  physical hBN
 
@@ -71,11 +71,31 @@ def main():
         # Path("dataset/SHARE_OUTPUTS_64_ATOMS/806e-3a78-4e32-9aeb-35dc6e0df137"),  #  64 of 2-8-64 and 64
         # Path("dataset/SHARE_OUTPUTS_64_ATOMS/13df-16c2-48b8-aa26-9b0b4b906db2"), # 64 of 64
 
+        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/e46e-c792-412c-99ac-9e20794f7aad"),
+        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/360d-4d90-478a-9b3f-7abad2fd2238"),
+        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/ae42-0c23-43df-adb6-5f127162d168"),
+        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/a8bf-8aa3-4864-8a1c-edfb0bf48c2d"),
+
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/9b13-4a57-4de9-b863-1b35209370c4"),
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/e1df-2940-4ada-b9c0-d210a6bb2a19"),
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/4ed6-914e-4aa3-923a-53c873f0cc31"), 
+
         # Val:
         # Path("dataset/SHARE_OUTPUTS_2_ATOMS/a4a5-71a5-463a-a02e-acd977e1dcda"),
         # Path("dataset/SHARE_OUTPUTS_2_ATOMS/504a-71cd-4d25-a04a-b7fa45b92200"),
         # Path("dataset/SHARE_OUTPUTS_8_ATOMS/72f5-effe-42c4-bc67-12314ba36f5e"),
         # Path("dataset/SHARE_OUTPUTS_64_ATOMS/16eb-54f8-42cb-bdb1-7b16f24a650c"),
+
+        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/90b9-0d95-49d2-87ed-bd09def740fa"),
+        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/95c7-cddc-4b33-87fd-c790f43c8484"),
+        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/8838-e21d-4305-b568-fbadc54f08da"),
+        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/5d5a-2e97-4efb-b45a-3361c6c3bc1c"),
+
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/504a-71cd-4d25-a04a-b7fa45b92200"),
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/a4a5-71a5-463a-a02e-acd977e1dcda"),
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/72f5-effe-42c4-bc67-12314ba36f5e"),
+
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/f2b9-d7cc-4f42-9ccc-13dd371d22a5")
 
         # h_c_8 
         # train:
@@ -85,20 +105,19 @@ def main():
         # val:
         # Path("dataset/SHARE_OUTPUTS_2_ATOMS/fc1c-6ab6-4c0e-921e-99710e6fe41b"),
         # Path("dataset/SHARE_OUTPUTS_8_ATOMS/7b57-1410-4da3-8535-5183ac1f2f61")
-        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/16eb-54f8-42cb-bdb1-7b16f24a650c"),
+        Path("dataset/SHARE_OUTPUTS_64_ATOMS/16eb-54f8-42cb-bdb1-7b16f24a650c"),
 
         # h_c_10
         # Train:
         # Path("dataset/SHARE_OUTPUTS_2_ATOMS/9b13-4a57-4de9-b863-1b35209370c4"),
 
         # Val:
-        Path("dataset/SHARE_OUTPUTS_2_ATOMS/a4a5-71a5-463a-a02e-acd977e1dcda"),
-
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/a4a5-71a5-463a-a02e-acd977e1dcda"),
     ]
     # The current model:
-    model_dir = Path("results/h_crystalls_10")
-    filename = "checkpoints/model_epoch_34000.tar"
-    savedir = Path('results_dos/h_crystalls_10_val')
+    model_dir = Path("results/h_crystalls_8")
+    filename = "val_best_model.tar"
+    savedir = Path('results_dos/h_crystalls_8_val')
     split = "val"
     only_true = False
 
@@ -283,7 +302,7 @@ def main():
 
             k_frac = np.array([np.linalg.solve(B.T, k) for k in k_cart])
 
-            n_ks = 40
+            n_ks = 30
             k_path, k_idx = tb.gen_kpath(k_frac, [n_ks for _ in range(len(k_frac) -1)])
             len(k_path)
 
@@ -310,6 +329,7 @@ def main():
             if ham_idx == 0:
                 e_min = float(np.min(bands))
                 e_max = float(np.max(bands))
+                # continue
 
             solver = tb.DiagSolver(cell, overlap)
             solver.config.k_points = k_mesh
