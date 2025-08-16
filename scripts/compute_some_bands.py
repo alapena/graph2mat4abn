@@ -44,15 +44,22 @@ def main():
         # Path("dataset/SHARE_OUTPUTS_8_ATOMS/4ed6-914e-4aa3-923a-53c873f0cc31"),
 
         #val
-        Path("dataset/SHARE_OUTPUTS_2_ATOMS/fc1c-6ab6-4c0e-921e-99710e6fe41b"),
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/fc1c-6ab6-4c0e-921e-99710e6fe41b"),
         # Path("dataset/SHARE_OUTPUTS_8_ATOMS/7b57-1410-4da3-8535-5183ac1f2f61")
         # Path("dataset/SHARE_OUTPUTS_64_ATOMS/16eb-54f8-42cb-bdb1-7b16f24a650c"),
+
+        # h_c_15
+        #train 
+        Path("dataset/SHARE_OUTPUTS_8_ATOMS/e1df-2940-4ada-b9c0-d210a6bb2a19"),
+
+        # val
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/ffb8-6623-4c32-9320-49b359a920b6")
         
     ]
     # The current model:
-    model_dir = Path("results/h_crystalls_8")
-    filename = "val_best_model.tar"
-    savedir = Path('results_dos/h_crystalls_8_val/bands')
+    model_dir = Path("results/h_crystalls_15")
+    filename = "train_best_model.tar"
+    savedir = Path('results_dos/h_crystalls_15_train/bands')
     only_pred = False
     only_true = False
 
@@ -235,9 +242,9 @@ def main():
             # Compute k path (not definitive to use in the report)
             B = np.vstack([b1, b2, b3])  # shape (3,3)
 
-            # For Molecules:
-            k_cart = np.array([[0.0, 0.0, 0.0], b1, b2, b3])
-            k_label = ['Γ', "X", "Y", "Z"]
+            # # For Molecules:
+            # k_cart = np.array([[0.0, 0.0, 0.0], b1, b2, b3])
+            # k_label = ['Γ', "X", "Y", "Z"]
 
             # # For cubic:
             # # High-symmetry points in fractional coords (relative to b1, b2, b3)
@@ -254,21 +261,21 @@ def main():
             # k_cart = frac_kpts @ np.array([b1, b2, b3])
             # k_label = ['Γ', 'X', 'M', 'Γ', 'R', 'X', 'M', 'X1']
 
-            # # Physical hBN
-            # # High-symmetry points in fractional coords (relative to b1, b2, b3)
-            # frac_kpts = np.array([
-            #     [0.0,         0.0,         0.0],  # Γ
-            #     [0.5,         0.0,         0.0],  # M
-            #     [1/3,         1/3,         0.0],  # K
-            #     [0.0,         0.0,         0.0],  # Γ
-            #     [0.0,         0.0,         0.5],  # A
-            #     [0.5,         0.0,         0.5],  # L
-            #     [1/3,         1/3,         0.5],  # H
-            #     [1/3,         1/3,         0.0],  # K
-            #     [1/3,         1/3,        -0.5],  # H2
-            # ])
-            # k_cart = frac_kpts @ np.array([b1, b2, b3])
-            # k_label = ['Γ', 'M', 'K', 'Γ', 'A', 'L', 'H', 'K', 'H2']
+            # Physical hBN
+            # High-symmetry points in fractional coords (relative to b1, b2, b3)
+            frac_kpts = np.array([
+                [0.0,         0.0,         0.0],  # Γ
+                [0.5,         0.0,         0.0],  # M
+                [1/3,         1/3,         0.0],  # K
+                [0.0,         0.0,         0.0],  # Γ
+                [0.0,         0.0,         0.5],  # A
+                [0.5,         0.0,         0.5],  # L
+                [1/3,         1/3,         0.5],  # H
+                [1/3,         1/3,         0.0],  # K
+                [1/3,         1/3,        -0.5],  # H2
+            ])
+            k_cart = frac_kpts @ np.array([b1, b2, b3])
+            k_label = ['Γ', 'M', 'K', 'Γ', 'A', 'L', 'H', 'K', 'H2']
 
             # # amorphous
             # frac_kpts = np.array([
