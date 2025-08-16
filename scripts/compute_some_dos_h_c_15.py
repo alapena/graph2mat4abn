@@ -29,51 +29,25 @@ import tbplas as tb
 
 def main():
     paths = [
-        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/d249-97ce-4fdf-8948-cfce4078c8ac"), # Training B-N overlap
-        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/9b13-4a57-4de9-b863-1b35209370c4"), # Val B-N touching AMBOS 2-8 Y 2-8-64
-        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/abf6-ddbd-4c06-b266-c1d188d0f599"), # Training B-B nears
-        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/18a7-265b-4fbf-aae4-52fb83b4760f"), # Val B-B Overlap AMBOS 2-8 Y 2-8-64
-        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/e486-4f49-4560-a4d2-0363fd9b5157"), # Training N-N overlap
-        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/f7bc-fcea-4f67-9e15-4bd1ef5678df"), # Val N-N overlap AMBOS 2-8 Y 2-8-64
-        
-        # Todos están en ambos:
-        Path("dataset/SHARE_OUTPUTS_8_ATOMS/e1df-2940-4ada-b9c0-d210a6bb2a19"), # Training cubic BN
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/e1df-2940-4ada-b9c0-d210a6bb2a19"), # Training cubic BN
         # Path("dataset/SHARE_OUTPUTS_8_ATOMS/4ed6-914e-4aa3-923a-53c873f0cc31"), # Val cubic BN
-        Path("dataset/SHARE_OUTPUTS_8_ATOMS/2800-0707-4395-86fa-85a2b8ed818b"), # Training non physical hBN
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/2800-0707-4395-86fa-85a2b8ed818b"), # Training non physical hBN
         # Path("dataset/SHARE_OUTPUTS_8_ATOMS/33ef-ca33-4bf0-a36e-6e852deab7b5"), # VAl non physical hBN
-        Path("dataset/SHARE_OUTPUTS_8_ATOMS/d4f5-6b48-494f-b1de-c7e944c09f38"), # Training physical hBN
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/d4f5-6b48-494f-b1de-c7e944c09f38"), # Training physical hBN
         # Path("dataset/SHARE_OUTPUTS_8_ATOMS/ff0d-e0ad-4307-b04b-8be91de51543"), # Val physical hBN
-
-        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/99a9-5416-41e9-940d-70653c6897f9"), # Training 64 of 2-8-64 and 64
-        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/787c-11ce-4307-b603-b6c431698245"), # Training 64 of 2-8-64 and 64
-        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/806e-3a78-4e32-9aeb-35dc6e0df137"),  # Val 64 of 2-8-64 and 64
-        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/90b9-0d95-49d2-87ed-bd09def740fa"), # Val 64 of 2-8-64
-        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/13df-16c2-48b8-aa26-9b0b4b906db2"), # Val 64 of 64
-
-        # h_noc_2:
-        # Training:
-        Path("dataset/SHARE_OUTPUTS_2_ATOMS/d249-97ce-4fdf-8948-cfce4078c8ac"), #  B-N overlap
-        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/9b13-4a57-4de9-b863-1b35209370c4"), #  B-N touching AMBOS 2-8 Y 2-8-64
-        Path("dataset/SHARE_OUTPUTS_2_ATOMS/abf6-ddbd-4c06-b266-c1d188d0f599"), #  B-B nears
-        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/18a7-265b-4fbf-aae4-52fb83b4760f"), #  B-B Overlap AMBOS 2-8 Y 2-8-64
-        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/e486-4f49-4560-a4d2-0363fd9b5157"), #  N-N overlap
-        Path("dataset/SHARE_OUTPUTS_2_ATOMS/f7bc-fcea-4f67-9e15-4bd1ef5678df"), #  N-N overlap AMBOS 2-8 Y 2-8-64
-
-
-        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/787c-11ce-4307-b603-b6c431698245"), #  64 of 2-8-64 and 64
-        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/806e-3a78-4e32-9aeb-35dc6e0df137"),  #  64 of 2-8-64 and 64
-        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/13df-16c2-48b8-aa26-9b0b4b906db2"), # 64 of 64
-
-        # Val:
-        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/b4c0-ed55-40d0-ad37-5d549e326606"),
-        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/99a9-5416-41e9-940d-70653c6897f9"),
         
+        #h_c_15
+        #train
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/e1df-2940-4ada-b9c0-d210a6bb2a19"), # Training cubic BN
+
+        #val
+        Path("dataset/SHARE_OUTPUTS_8_ATOMS/ffb8-6623-4c32-9320-49b359a920b6") #physical hBN
     ]
     # The current model:
-    model_dir = Path("results/h_crystalls_10")
-    filename = "train_best_model.tar"
-    savedir = Path('results_dos/h_crystalls_10/full_range')
-    split = "train"
+    model_dir = Path("results/h_crystalls_15")
+    filename = "val_best_model.tar"
+    savedir = Path('results_dos/h_crystalls_15_val')
+    split = "val"
     only_true = False
 
     config = load_config(model_dir / "config.yaml")
@@ -309,8 +283,8 @@ def main():
             e_fermi=read_fermi_level(path / "aiida.out")
             
         
-            solver.config.e_min = e_fermi-3
-            solver.config.e_max = e_fermi+3
+            solver.config.e_min = e_min-3
+            solver.config.e_max = e_max+3
             # solver.config.e_max = e_fermi+10
             timer = tb.Timer()
             timer.tic("dos")

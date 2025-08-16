@@ -167,19 +167,19 @@ def init_mace_g2m_model(config, table):
         ),
         preprocessing_edges_kwargs = get_kwargs(model_config["preprocessing_edges"], config),
 
-        preprocessing_nodes = get_object_from_module(
-            model_config["preprocessing_nodes"], 
-            'graph2mat.bindings.e3nn.modules'
-        ),
-        preprocessing_nodes_kwargs = get_kwargs(model_config["preprocessing_nodes"], config),
+        # preprocessing_nodes = get_object_from_module(
+        #     model_config["preprocessing_nodes"], 
+        #     'graph2mat.bindings.e3nn.modules'
+        # ),
+        # preprocessing_nodes_kwargs = get_kwargs(model_config["preprocessing_nodes"], config),
 
         # Operations
-        node_operation = get_object_from_module(
-            model_config["node_operation"], 
-            'graph2mat.bindings.e3nn.modules'
-        ),
-        node_operation_kwargs = get_kwargs(model_config["node_operation"], config),
-        # node_operation = HamGNNInspiredNodeBlock,
+        # node_operation = get_object_from_module(
+        #     model_config["node_operation"], 
+        #     'graph2mat.bindings.e3nn.modules'
+        # ),
+        # node_operation_kwargs = get_kwargs(model_config["node_operation"], config),
+        node_operation = HamGNNInspiredNodeBlock,
 
         edge_operation = get_object_from_module(
             model_config["edge_operation"], 
