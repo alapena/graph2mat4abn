@@ -39,8 +39,9 @@ def main():
     filename = "val_best_model.tar"
     split = "val"
     true_or_pred_idx = 0
+    delta = 0.04
 
-    n_kpoints_accond = 250
+    n_kpoints_accond = 150
     n_orbs_per_atom = 13
     n_B = 3 #num valence electrons of Boron for DOS calculation
     n_N = 5 #num valence electrons of Nitrogen for DOS calculation
@@ -152,6 +153,7 @@ def main():
             cfg.dimension    = 3             
             cfg.num_spin     = 2              
             cfg.k_grid_size  = (n_kpoints_accond, n_kpoints_accond, n_kpoints_accond)    # k-mesh (increase for convergence)
+            cfg.delta = delta
 
             # Optional (commonly used) physics knobs:
             # cfg.mu            = 0.0           # chemical potential (eV)
