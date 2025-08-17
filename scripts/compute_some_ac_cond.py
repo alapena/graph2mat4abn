@@ -1,0 +1,163 @@
+import torch
+import sisl
+import tbplas as tb
+import numpy as np
+from pathlib import Path
+from graph2mat import BasisTableWithEdges
+from torch_geometric.data import DataLoader
+
+from graph2mat4abn.modules.fermi import get_fermi_energy, read_orbital_count
+from graph2mat4abn.tools.import_utils import load_config
+from graph2mat4abn.tools.scripts_utils import generate_g2m_dataset_from_paths, get_model_dataset, init_mace_g2m_model
+from graph2mat4abn.tools.tbplas_modules import get_tbplas_cell
+from graph2mat4abn.tools.tools import get_basis_from_structures_paths, load_model
+
+import warnings
+warnings.filterwarnings("ignore", message="The TorchScript type system doesn't support")
+warnings.filterwarnings("ignore", message=".*is not a known matrix type key.*")
+
+def main():
+    paths = [
+        Path("..."),
+    ]
+    model_dir = Path("results/h_crystalls_8")
+    filename = "val_best_model.tar"
+    split = "val"
+    n_kpoints_accond = 3
+    n_orbs_per_atom = 13
+    n_B = 3 #num valence electrons of Boron for DOS calculation
+    n_N = 5 #num valence electrons of Nitrogen for DOS calculation
+
+
+    savefolder = model_dir.parts[-1] + "_" + split
+    savedir = Path("results_ac_cond") / savefolder
+    savedir.mkdir(exist_ok=True, parents=True)
+    print("Created savedir", savedir)
+
+    config = load_config(model_dir / "config.yaml")
+    print("Computing the AC Conductivity using TBPLaS of paths:", paths)
+
+    # Basis generation (needed to initialize the model)
+    train_paths, _ = get_model_dataset(model_dir, verbose=False)
+    basis = get_basis_from_structures_paths(train_paths, verbose=True, num_unique_z=config["dataset"].get("num_unique_z", None))
+    table = BasisTableWithEdges(basis)
+
+    print("Initializing model...")
+    model, optimizer, lr_scheduler, loss_fn = init_mace_g2m_model(config, table)
+
+    # Load the model
+    model_path = model_dir / filename
+    model, checkpoint, optimizer, lr_scheduler = load_model(model, optimizer, model_path, lr_scheduler=None, initial_lr=None, device='cpu')
+    history = checkpoint["history"]
+    print(f"Loaded model {model_dir} in epoch {checkpoint["epoch"]} with training loss {checkpoint["train_loss"]} and validation loss {checkpoint["val_loss"]}.")
+
+    for i, path in enumerate(paths):
+        print("\nComputing ", path)
+
+        n_atoms = int(path.parts[-2].split('_')[2])
+        structure = path.parts[-1]
+        print(f"Computing structure {n_atoms}atm_{structure}...")
+
+        # === Inference ===
+        dataset, processor = generate_g2m_dataset_from_paths(config, basis, table, [path], verbose=False)
+        dataloader = DataLoader(dataset, 1)
+        model.eval()
+
+        data = next(iter(dataloader))
+
+        with torch.no_grad():
+            model_predictions = model(data=data)
+
+            h_pred = processor.matrix_from_data(data, predictions={"node_labels": model_predictions["node_labels"], "edge_labels": model_predictions["edge_labels"]})[0]
+
+        # Plot structure
+        file = sisl.get_sile(path / "aiida.fdf")
+        file = sisl.get_sile(path / "aiida.HSX")
+        geometry = file.read_geometry()
+
+        fig = file.plot.geometry(axes="xyz")
+        filepath = savedir / f"{n_atoms}atm_{structure}.png"
+        fig.write_image(str(filepath))
+        filepath = savedir / f"{n_atoms}atm_{structure}.html"
+        fig.write_html(str(filepath))
+        print("Saved structure plot at", filepath)
+
+        # Two iterations per sample: first for true, second for pred.
+        for true_or_pred_idx in range(2):
+            if true_or_pred_idx == 0:
+                # True matrix
+                hamiltonian = file.read_hamiltonian().toscr().tocoo()
+            elif true_or_pred_idx == 1:
+                # Pred matrix
+                hamiltonian = h_pred.tocsr().tocoo()
+            else:
+                raise ValueError("Something went wrong inside the loop.")
+            
+            # For now, we use the true overlap for both.
+            overlap = file.read_overlap().tocsr().tocoo()
+
+            # Build TBPLaS model
+            ham_cell, overlap_cell = get_tbplas_cell(geometry, hamiltonian, overlap, units=tb.ANG)
+
+            # Compute AC Conductivity
+
+            # Load true DOS
+            struct_name = f"{n_atoms}atm_" + structure
+            filename = split + "_" + struct_name + "_dos_mesh30_true.npz"
+            directory_dos = Path("results_dos")
+            filename = directory_dos / filename
+            loaded_file = np.load(filename)
+            energies = loaded_file["energies"]
+            dos_true = loaded_file["dos"]
+            print("DOS data extracted from", filename)
+
+            n_orbs_supercell = read_orbital_count(path / "aiida.out")
+            n_cells = n_orbs_supercell//n_orbs_per_atom//int(n_atoms)
+
+            lind = tb.Lindhard(ham_cell, overlap=overlap_cell)
+            e_min = 0
+            e_fermi = get_fermi_energy(energies, dos_true, n_orbs_per_atom*int(n_atoms)*n_cells, (3*n_B + 5*n_N)*n_cells, ShowPlot=False)
+            # e_max = np.min([np.max(energies), e_fermi+20])
+            e_max = 20
+
+            cfg = lind.config
+            cfg.prefix       = "ac_cond"   # basename for saved results (optional)
+            cfg.e_min        = e_min            
+            cfg.e_max        = e_max
+            cfg.dimension    = 3             
+            cfg.num_spin     = 2              
+            cfg.k_grid_size  = (n_kpoints_accond, n_kpoints_accond, n_kpoints_accond)    # k-mesh (increase for convergence)
+
+            # Optional (commonly used) physics knobs:
+            # cfg.mu            = 0.0           # chemical potential (eV)
+            # cfg.temperature   = 300      # temperature (K)
+            # cfg.back_epsilon  = 1.0           # background dielectric constant
+            cfg.ac_cond_component = 1      # choose σ_xx, σ_yy, etc.
+
+            timer = tb.Timer()
+            timer.tic("ac_cond")
+            omegas, ac_cond = lind.calc_ac_cond()
+            timer.toc("ac_cond")
+            timer.report_total_time()
+
+            if true_or_pred_idx == 0:
+                filepath = savedir / f"{split}_{n_atoms}atm_{structure}_accond_true.npz"
+            if true_or_pred_idx == 1:
+                filepath = savedir / f"{split}_{n_atoms}atm_{structure}_accond_pred.npz"
+            np.savez(filepath, path=str(path), omegas=omegas, ac_cond=ac_cond, time=timer._time_usage["ac_cond"])
+
+            timer = tb.Timer()
+            timer.tic("diel_demo")
+            eps_q0 = lind.calc_epsilon_q0(omegas, ac_cond)
+            timer.toc("diel_demo")
+
+            if true_or_pred_idx == 0:
+                filepath = savedir / f"{split}_{n_atoms}atm_{structure}_epsq0_true.npz"
+            if true_or_pred_idx == 1:
+                filepath = savedir / f"{split}_{n_atoms}atm_{structure}_epsq0_pred.npz"
+            np.savez(filepath, path=str(path), eps_q0=eps_q0, time=timer._time_usage["diel_demo"])
+
+
+
+if __name__=="__main__":
+    main()
