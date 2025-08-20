@@ -57,7 +57,7 @@ def main():
         # Path("dataset/SHARE_OUTPUTS_8_ATOMS/e1df-2940-4ada-b9c0-d210a6bb2a19"),
         # Path("dataset/SHARE_OUTPUTS_8_ATOMS/4ed6-914e-4aa3-923a-53c873f0cc31"),
 
-        Path("dataset/SHARE_OUTPUTS_64_ATOMS/16eb-54f8-42cb-bdb1-7b16f24a650c"), #extrapolation
+        # Path("dataset/SHARE_OUTPUTS_64_ATOMS/16eb-54f8-42cb-bdb1-7b16f24a650c"), #extrapolation
 
         #h_noc_2 test:
         #train
@@ -70,6 +70,9 @@ def main():
         # Path("dataset/SHARE_OUTPUTS_64_ATOMS/95c7-cddc-4b33-87fd-c790f43c8484"),
         # Path("dataset/SHARE_OUTPUTS_64_ATOMS/8838-e21d-4305-b568-fbadc54f08da"),
         # Path("dataset/SHARE_OUTPUTS_64_ATOMS/5d5a-2e97-4efb-b45a-3361c6c3bc1c"),
+
+        #OTHER:
+        Path("dataset/SHARE_OUTPUTS_2_ATOMS/7bbb-6d51-41eb-9de4-329298202ebf"),
     ]
     # The current model:
     model_dir = Path("results/h_crystalls_8")
@@ -257,9 +260,9 @@ def main():
             # Compute k path (not definitive to use in the report)
             B = np.vstack([b1, b2, b3])  # shape (3,3)
 
-            # # For Molecules:
-            # k_cart = np.array([[0.0, 0.0, 0.0], b1, b2, b3])
-            # k_label = ['Γ', "X", "Y", "Z"]
+            # For Molecules:
+            k_cart = np.array([[0.0, 0.0, 0.0], b1, b2, b3])
+            k_label = ['Γ', "X", "Y", "Z"]
 
             # # For cubic:
             # # High-symmetry points in fractional coords (relative to b1, b2, b3)
@@ -292,13 +295,13 @@ def main():
             # k_cart = frac_kpts @ np.array([b1, b2, b3])
             # k_label = ['Γ', 'M', 'K', 'Γ', 'A', 'L', 'H', 'K', 'H2']
 
-            # amorphous
-            frac_kpts = np.array([
-                [0.0,         0.0,         0.0],  # Γ
-                [1.0,         1.0,         1.0],  # Γ
-            ])
-            k_cart = frac_kpts @ np.array([b1, b2, b3])
-            k_label = ['Γ', 'XYZ']
+            # # amorphous
+            # frac_kpts = np.array([
+            #     [0.0,         0.0,         0.0],  # Γ
+            #     [1.0,         1.0,         1.0],  # Γ
+            # ])
+            # k_cart = frac_kpts @ np.array([b1, b2, b3])
+            # k_label = ['Γ', 'XYZ']
 
 
             k_frac = np.array([np.linalg.solve(B.T, k) for k in k_cart])

@@ -97,9 +97,9 @@ class Trainer:
             )
 
 
-            total_loss += loss
-            total_edge_loss += stats["edge_above_threshold_mean"]**2  # Squared because it returns the root.
-            total_node_loss += stats["node_above_threshold_mean"]**2 
+            total_loss += loss *10**6
+            total_edge_loss += stats["edge_rmse"]**2 *10**6 # Squared because it returns the root.
+            total_node_loss += stats["node_rmse"]**2 *10**6
 
             # Compute gradients
             loss.backward()
@@ -161,9 +161,9 @@ class Trainer:
                     edges_ref=batch.edge_labels / (self.mean_abs_edge_nonzero + 1e-10), # Normalize
                     threshold=0.0001 # 10 meV
                 )
-                total_loss += loss
-                total_edge_loss += stats["edge_above_threshold_mean"]**2  # Squared because it returns the root.
-                total_node_loss += stats["node_above_threshold_mean"]**2 
+                total_loss += loss *10**6
+                total_edge_loss += stats["edge_rmse"]**2 *10**6 # Squared because it returns the root.
+                total_node_loss += stats["node_rmse"]**2 *10**6
 
                 num_batches += 1
 

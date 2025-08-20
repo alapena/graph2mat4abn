@@ -12,17 +12,17 @@ dimension 3
 
 num_occ -1
 
-num_spin 1
+num_spin 2
 
 spin_major 1
 
-e_min -5.0
+e_min -10
 
-e_max 5.0
+e_max 10
 
 e_step 0.05
 
-sigma 0.05
+sigma 0.07
 
 smear_func Gaussian
 
