@@ -1,6 +1,9 @@
 # === Simulate a proper Python package (temporal, I did not want to waste time on installing things) ===
 import sys
 from pathlib import Path
+import warnings
+
+from graph2mat4abn.modules.node_operations import HamGNNInspiredNodeBlock
 # Add the root directory to Python path
 root_dir = Path(__file__).parent.parent  # Assuming train.py is in scripts/
 sys.path.append(str(root_dir))
@@ -11,6 +14,7 @@ import sisl
 import torch
 import torch.optim as optim
 from e3nn import o3
+import graph2mat
 
 from sklearn.model_selection import train_test_split
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
@@ -41,6 +45,10 @@ def main():
     
     device = torch.device(config["device"] if (torch.cuda.is_available() and config["device"]!="cpu") 
     else 'cpu')
+
+    # Hide some warnings
+    warnings.filterwarnings("ignore", message="The TorchScript type system doesn't support")
+    warnings.filterwarnings("ignore", message=".*is not a known matrix type key.*")
 
 
 
@@ -185,22 +193,22 @@ def main():
             # print(f"The proportions are \n{[x_atoms_list_train.count(x)/len(train_paths) for x in unique_x]} versus \n{[x_atoms_list_val.count(x)/len(val_paths) for x in unique_x]}.")
 
         # Set extra validation curve
-            val_paths_extra = []
-            if extra_custom_validation:
-                use_only = ["64_ATOMS"]
-                x_atoms_paths = [pointers_folder / f"SHARE_OUTPUTS_{n}" for n in use_only]
-                filepath = "structures.txt"
-                structures_paths = [[] for _ in x_atoms_paths]
-                for i, x_atoms_path in enumerate(x_atoms_paths):
-                    structures = read_structures_paths(str(x_atoms_path / filepath))
-                    for structure in structures:
-                        structures_paths[i].append(x_atoms_path.parts[-1] +"/"+ structure)
+        val_paths_extra = []
+        if extra_custom_validation:
+            use_only = ["64_ATOMS"]
+            x_atoms_paths = [pointers_folder / f"SHARE_OUTPUTS_{n}" for n in use_only]
+            filepath = "structures.txt"
+            structures_paths = [[] for _ in x_atoms_paths]
+            for i, x_atoms_path in enumerate(x_atoms_paths):
+                structures = read_structures_paths(str(x_atoms_path / filepath))
+                for structure in structures:
+                    structures_paths[i].append(x_atoms_path.parts[-1] +"/"+ structure)
 
-                # Now we join them with the true parent folder
-                for structures in structures_paths:
-                    for structure in structures:
-                        true_path = true_dataset_folder / structure
-                        val_paths_extra.append(true_path)
+            # Now we join them with the true parent folder
+            for structures in structures_paths:
+                for structure in structures:
+                    true_path = true_dataset_folder / structure
+                    val_paths_extra.append(true_path)
 
     # Use previous dataset
     else:
@@ -229,6 +237,7 @@ def main():
     # == Basis creation === 
     basis = get_basis_from_structures_paths(paths, verbose=True, num_unique_z=config["dataset"].get("num_unique_z", None))
     table = BasisTableWithEdges(basis)
+    
 
 
     # === Enviroment descriptor initialization ===
@@ -291,6 +300,8 @@ def main():
         ),
         node_operation_kwargs = get_kwargs(model_config["node_operation"], config),
 
+        # node_operation = HamGNNInspiredNodeBlock,
+
         edge_operation = get_object_from_module(
             model_config["edge_operation"], 
             'graph2mat.bindings.e3nn.modules'
@@ -312,23 +323,19 @@ def main():
     scheduler_config = config["scheduler"]
 
     # len_train_dataloader = int(len(paths) * dataset_config.get("train_split_ratio"))
-    scheduler_args, scheduler_kwargs = get_scheduler_args_and_kwargs(config, verbose=True)#, len_train_dataloader=len_train_dataloader)
+    if scheduler_config.get("type", None) is not None:
+        scheduler_args, scheduler_kwargs = get_scheduler_args_and_kwargs(config, verbose=True)#, len_train_dataloader=len_train_dataloader)
 
     scheduler = scheduler_config.get("type", None)
     if scheduler is not None:
         scheduler = get_object_from_module(scheduler_config.get("type", None), "torch.optim.lr_scheduler")(optimizer, *(scheduler_args or ()), **scheduler_kwargs)
-    # scheduler = CosineAnnealingWarmRestarts(
-    #     optimizer,
-    #     T_0=20,
-    #     T_mult=2,
-    #     eta_min=1e-25
-    # )
-    # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=20, cooldown=0, min_lr=0, eps=0)
 
 
     # Loss function
     trainer_config = config["trainer"]
     loss_fn = get_object_from_module(trainer_config["loss_function"], "graph2mat.core.data.metrics")
+    # loss_fn = graph2mat.core.data.metrics.block_type_mse_threshold_custom # CHANGED TO COMPUTE THE MEAN + skip connection
+    # loss_fn = block_type_mse_threshold_custom # We had to copy it in this script
     print(f"Using Loss function {loss_fn}")
 
 
@@ -339,7 +346,7 @@ def main():
     trained_model_path = config.get("trained_model_path", None)
     if trained_model_path is not None:
         initial_lr = float(optimizer_config.get("initial_lr", None))
-        model, checkpoint, optimizer, scheduler = load_model(model, optimizer, trained_model_path, lr_scheduler=scheduler, initial_lr=initial_lr, device=device)
+        model, checkpoint, optimizer, _ = load_model(model, optimizer, trained_model_path, lr_scheduler=None, initial_lr=initial_lr, device=device)
         print(f"Loaded model in epoch {checkpoint["epoch"]} with training loss {checkpoint["train_loss"]} and validation loss {checkpoint["val_loss"]}.")
     else:
         checkpoint = None
@@ -366,6 +373,12 @@ def main():
 
             if matrix == "hamiltonian":
                 true_h = file_h.read_hamiltonian()
+
+                # #Standarization:
+                # x = true_h.tocsr().data
+                # mean = x.mean()
+                # std = x.std()
+                # x_standardized = (true_h - mean) / (std)
 
                 embeddings_config = BasisConfiguration.from_matrix(
                     matrix = true_h,
@@ -394,7 +407,7 @@ def main():
                 true_h = file_h.read_overlap()
 
                 embeddings_config = BasisConfiguration.from_matrix(
-                    matrix = true_h,
+                    matrix = true_h, #I can normalize here instead.
                     geometry = geometry,
                     labels = True,
                     metadata={
@@ -477,6 +490,135 @@ def main():
     
     print("\nTraining completed successfully!")
   
+
+# ChatGPT generated alternative to not use torch.quantile().
+import math
+import torch
+
+def block_type_mse_threshold_custom(
+    nodes_pred,
+    nodes_ref,
+    edges_pred,
+    edges_ref,
+    threshold=1e-4,
+    log_verbose=False,
+    **kwargs,
+):
+    def _isnan(values):
+        """NaN checking compatible with both torch and numpy"""
+        return values != values
+
+    def get_predictions_error(
+        nodes_pred, nodes_ref, edges_pred, edges_ref, remove_nan=True
+    ):
+        """Returns errors for both nodes and edges, removing NaN values."""
+        node_error = nodes_pred - nodes_ref
+
+        if remove_nan:
+            notnan = ~_isnan(edges_ref)
+            edge_error = edges_ref[notnan] - edges_pred[notnan]
+        else:
+            edge_error = edges_ref - edges_pred
+
+        return node_error, edge_error
+
+    def _safe_mean(x):
+        """mean that returns 0 on empty tensors."""
+        return x.mean() if x.numel() > 0 else x.new_tensor(0.0)
+
+    def _percentile_linear(x: torch.Tensor, q: float) -> torch.Tensor:
+        """
+        Quantile via kthvalue with linear interpolation (matches torch.quantile default).
+        Works on 1D input. Uses only torch ops for gradient tracking through values.
+        """
+        x = x.reshape(-1)
+        n = x.numel()
+        if n == 0:
+            return x.new_tensor(float("nan"))
+        if n == 1:
+            return x[0]
+
+        # rank in [0, n-1]
+        r = (n - 1) * float(q)
+        k_low = int(math.floor(r)) + 1   # kthvalue is 1-indexed
+        k_high = int(math.ceil(r)) + 1
+
+        v_low, _ = torch.kthvalue(x, k_low)
+        if k_high == k_low:
+            return v_low
+
+        v_high, _ = torch.kthvalue(x, k_high)
+        w = r - (k_low - 1)  # fractional part as Python float
+        w_t = x.new_tensor(w)
+        return v_low + (v_high - v_low) * w_t
+
+    node_error, edge_error = get_predictions_error(
+        nodes_pred, nodes_ref, edges_pred, edges_ref
+    )
+
+    n_node_els = node_error.shape[0]
+    n_edge_els = edge_error.shape[0]
+
+    abs_node_error = abs(node_error)
+    abs_edge_error = abs(edge_error)
+
+    node_error_above_thresh = node_error[abs_node_error > threshold]
+    edge_error_above_thresh = edge_error[abs_edge_error > threshold]
+
+    # Base losses (safe on empties)
+    node_loss = _safe_mean(node_error_above_thresh**2)
+    edge_loss = _safe_mean(edge_error_above_thresh**2)
+
+    # 75th percentiles using manual quantile
+    if node_error_above_thresh.numel() > 0:
+        abs_node_err_above = node_error_above_thresh.abs()
+        percentile_75 = _percentile_linear(abs_node_err_above, 0.75)
+        hard_mask = abs_node_err_above > percentile_75
+        hard_errors = node_error_above_thresh[hard_mask]
+        if hard_errors.numel() > 0:
+            node_loss = node_loss + _safe_mean(hard_errors**2)
+
+    if edge_error_above_thresh.numel() > 0:
+        abs_edge_err_above = edge_error_above_thresh.abs()
+        edge_percentile_75 = _percentile_linear(abs_edge_err_above, 0.75)
+        edge_hard_mask = abs_edge_err_above > edge_percentile_75
+        edge_hard_errors = edge_error_above_thresh[edge_hard_mask]
+        if edge_hard_errors.numel() > 0:
+            edge_loss = edge_loss + _safe_mean(edge_hard_errors**2)
+
+    # Stats (avoid NaNs on empties for the *_above_threshold_mean)
+    stats = {
+        "node_rmse": torch.sqrt(_safe_mean(node_error**2)),
+        "edge_rmse": torch.sqrt(_safe_mean(edge_error**2)),
+        "node_above_threshold_frac": (
+            node_error_above_thresh.shape[0] / max(1, n_node_els)
+        ),
+        "edge_above_threshold_frac": (
+            edge_error_above_thresh.shape[0] / max(1, n_edge_els)
+        ),
+        "node_above_threshold_mean": _safe_mean(
+            abs_node_error[abs_node_error > threshold]
+        ),
+        "edge_above_threshold_mean": _safe_mean(
+            abs_edge_error[abs_edge_error > threshold]
+        ),
+    }
+
+    if log_verbose:
+        stats.update(
+            {
+                "node_mean": abs_node_error.mean(),
+                "edge_mean": abs_edge_error.mean(),
+                "node_std": abs_node_error.std(),
+                "edge_std": abs_edge_error.std(),
+                "node_max": abs_node_error.max(),
+                "edge_max": abs_edge_error.max(),
+            }
+        )
+
+    return node_loss + edge_loss, stats
+
+
 
 if __name__ == "__main__":
     main()

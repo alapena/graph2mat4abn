@@ -1,0 +1,627 @@
+nohup: ignoring input
+/home/alapena/miniconda3/envs/g2m_upd/lib/python3.12/site-packages/e3nn/o3/_wigner.py:10: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  _Jd, _W3j_flat, _W3j_indices = torch.load(os.path.join(os.path.dirname(__file__), 'constants.pt'))
+============================================================
+Basis computation.
+Number of structures to look on: 629
+Looking for unique atoms in each structure...
+0it [00:00, ?it/s]1it [00:00, 48.12it/s]
+/home/alapena/miniconda3/envs/g2m_upd/lib/python3.12/site-packages/mace/modules/blocks.py:187: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  torch.tensor(atomic_energies, dtype=torch.get_default_dtype()),
+Found enough basis points. Breaking the search...
+Found enough basis points. Breaking the search...
+Found the following atomic numbers: [7, 5]
+Corresponding path indices: [0, 0]
+Basis with 2 elements built!
+
+Basis for atom 0.
+	Atom type: 5
+	Basis: ((2, 0, 1), (2, 1, -1), (1, 2, 1))
+	Basis convention: siesta_spherical
+	R: [3.02420918 2.02341372 3.73961942 3.73961942 3.73961942 2.51253945
+ 2.51253945 2.51253945 3.73961942 3.73961942 3.73961942 3.73961942
+ 3.73961942]
+
+Basis for atom 1.
+	Atom type: 7
+	Basis: ((2, 0, 1), (2, 1, -1), (1, 2, 1))
+	Basis convention: siesta_spherical
+	R: [2.25704422 1.4271749  2.78012609 2.78012609 2.78012609 1.75309697
+ 1.75309697 1.75309697 2.78012609 2.78012609 2.78012609 2.78012609
+ 2.78012609]
+Using Optimizer Adam (
+Parameter Group 0
+    amsgrad: False
+    betas: (0.9, 0.999)
+    capturable: False
+    differentiable: False
+    eps: 1e-08
+    foreach: None
+    fused: None
+    lr: 0.001
+    maximize: False
+    weight_decay: 0
+)
+LR Scheduler:  ReduceLROnPlateau
+Arguments:  None
+Keyword arguments:  {'mode': 'min', 'factor': 0.9, 'patience': 100, 'cooldown': 0, 'min_lr': 1e-09, 'eps': 0.0}
+Using Loss function <class 'graph2mat.core.data.metrics.block_type_mse'>
+Loaded model in epoch 24782 with training loss 11333.201171875 and validation loss 35070.49609375.
+Creating dataset...
+Keeping all the dataset in memory.
+
+TRAINING STARTS with 566 train samples and 63 validation samples.
+Using device: cuda:1
+Training dataset is the same as the loaded one :)
+Validation dataset is the same as the loaded one :)
+self.mean_abs_point_nonzero tensor(1.2167)
+self.mean_abs_edge_nonzero tensor(0.1571)
+============================== Epoch 24784/500000 ==============================
+Train stats. 	 Total loss: 5920418.0000 (edge loss: 5792795.5000, node loss: 127622.0703)
+Validation stats. 	 Total loss: 5045111.5000 (edge loss: 4962920.0000, node loss: 82191.0000)
+Learning rate: 1.0e-04
+Epoch duration: 17.64 s
+Total elapsed time: 28.19 s
+============================== Epoch 24785/500000 ==============================
+Train stats. 	 Total loss: 5022231.5000 (edge loss: 4965240.5000, node loss: 56991.1133)
+Validation stats. 	 Total loss: 4094488.5000 (edge loss: 4041899.2500, node loss: 52590.1094)
+Learning rate: 1.0e-04
+Epoch duration: 7.85 s
+Total elapsed time: 36.12 s
+============================== Epoch 24786/500000 ==============================
+Train stats. 	 Total loss: 3915805.2500 (edge loss: 3881721.0000, node loss: 34084.2070)
+Validation stats. 	 Total loss: 3025972.0000 (edge loss: 2977774.0000, node loss: 48198.0586)
+Learning rate: 1.0e-04
+Epoch duration: 6.97 s
+Total elapsed time: 43.19 s
+============================== Epoch 24787/500000 ==============================
+Train stats. 	 Total loss: 2736568.2500 (edge loss: 2700162.2500, node loss: 36406.1484)
+Validation stats. 	 Total loss: 1981391.7500 (edge loss: 1916432.7500, node loss: 64959.1367)
+Learning rate: 1.0e-04
+Epoch duration: 5.32 s
+Total elapsed time: 48.62 s
+============================== Epoch 24788/500000 ==============================
+Train stats. 	 Total loss: 1662027.3750 (edge loss: 1611980.6250, node loss: 50046.5195)
+Validation stats. 	 Total loss: 1198597.6250 (edge loss: 1091018.3750, node loss: 107579.2734)
+Learning rate: 1.0e-04
+Epoch duration: 6.27 s
+Total elapsed time: 54.98 s
+============================== Epoch 24789/500000 ==============================
+Train stats. 	 Total loss: 968728.3125 (edge loss: 891798.3750, node loss: 76929.9609)
+Validation stats. 	 Total loss: 820586.5625 (edge loss: 705827.0000, node loss: 114759.5781)
+Learning rate: 1.0e-04
+Epoch duration: 6.53 s
+Total elapsed time: 61.63 s
+============================== Epoch 24790/500000 ==============================
+Train stats. 	 Total loss: 701993.3125 (edge loss: 616581.3125, node loss: 85412.0469)
+Validation stats. 	 Total loss: 655470.5625 (edge loss: 571103.9375, node loss: 84366.6016)
+Learning rate: 1.0e-04
+Epoch duration: 6.17 s
+Total elapsed time: 67.91 s
+============================== Epoch 24791/500000 ==============================
+Train stats. 	 Total loss: 579311.2500 (edge loss: 520264.0000, node loss: 59047.1133)
+Validation stats. 	 Total loss: 548243.3750 (edge loss: 481369.5625, node loss: 66873.8047)
+Learning rate: 1.0e-04
+Epoch duration: 6.73 s
+Total elapsed time: 74.75 s
+============================== Epoch 24792/500000 ==============================
+Train stats. 	 Total loss: 471227.2812 (edge loss: 435261.5000, node loss: 35965.8281)
+Validation stats. 	 Total loss: 460917.6875 (edge loss: 407383.5938, node loss: 53534.0781)
+Learning rate: 1.0e-04
+Epoch duration: 6.04 s
+Total elapsed time: 80.87 s
+============================== Epoch 24793/500000 ==============================
+Train stats. 	 Total loss: 399970.0938 (edge loss: 372950.2812, node loss: 27019.8535)
+Validation stats. 	 Total loss: 404826.6875 (edge loss: 354406.3125, node loss: 50420.3711)
+Learning rate: 1.0e-04
+Epoch duration: 5.84 s
+Total elapsed time: 86.77 s
+============================== Epoch 24794/500000 ==============================
+Train stats. 	 Total loss: 351553.9062 (edge loss: 328236.6562, node loss: 23317.2598)
+Validation stats. 	 Total loss: 360327.0625 (edge loss: 314978.2500, node loss: 45348.8398)
+Learning rate: 1.0e-04
+Epoch duration: 6.08 s
+Total elapsed time: 92.94 s
+============================== Epoch 24795/500000 ==============================
+Train stats. 	 Total loss: 314737.1562 (edge loss: 292723.4062, node loss: 22013.6816)
+Validation stats. 	 Total loss: 326709.6562 (edge loss: 282356.2500, node loss: 44353.3828)
+Learning rate: 1.0e-04
+Epoch duration: 5.25 s
+Total elapsed time: 98.30 s
+============================== Epoch 24796/500000 ==============================
+Train stats. 	 Total loss: 284875.2500 (edge loss: 264000.0625, node loss: 20875.2383)
+Validation stats. 	 Total loss: 299125.3750 (edge loss: 256403.2031, node loss: 42722.1445)
+Learning rate: 1.0e-04
+Epoch duration: 5.76 s
+Total elapsed time: 104.12 s
+============================== Epoch 24797/500000 ==============================
+Train stats. 	 Total loss: 261270.5781 (edge loss: 240802.3594, node loss: 20468.2285)
+Validation stats. 	 Total loss: 276940.3750 (edge loss: 234609.2656, node loss: 42331.1016)
+Learning rate: 1.0e-04
+Epoch duration: 6.08 s
+Total elapsed time: 110.29 s
+============================== Epoch 24798/500000 ==============================
+Train stats. 	 Total loss: 241234.8906 (edge loss: 221364.8125, node loss: 19870.0820)
+Validation stats. 	 Total loss: 258078.3438 (edge loss: 216320.4062, node loss: 41757.9219)
+Learning rate: 1.0e-04
+Epoch duration: 5.67 s
+Total elapsed time: 116.06 s
+============================== Epoch 24799/500000 ==============================
+Train stats. 	 Total loss: 224263.5781 (edge loss: 204807.9219, node loss: 19455.6543)
+Validation stats. 	 Total loss: 241723.6719 (edge loss: 200530.4844, node loss: 41193.2031)
+Learning rate: 1.0e-04
+Epoch duration: 5.64 s
+Total elapsed time: 121.77 s
+============================== Epoch 24800/500000 ==============================
+Train stats. 	 Total loss: 209211.5625 (edge loss: 190459.7344, node loss: 18751.8281)
+Validation stats. 	 Total loss: 227488.7500 (edge loss: 186901.4062, node loss: 40587.3477)
+Learning rate: 1.0e-04
+Epoch duration: 5.60 s
+Total elapsed time: 127.45 s
+============================== Epoch 24801/500000 ==============================
+Train stats. 	 Total loss: 195950.2812 (edge loss: 177955.3594, node loss: 17994.9004)
+Validation stats. 	 Total loss: 214918.3438 (edge loss: 174915.7656, node loss: 40002.5977)
+Learning rate: 1.0e-04
+Epoch duration: 5.01 s
+Total elapsed time: 132.56 s
+============================== Epoch 24802/500000 ==============================
+Train stats. 	 Total loss: 184180.4219 (edge loss: 166944.5312, node loss: 17235.9023)
+Validation stats. 	 Total loss: 203835.8125 (edge loss: 164351.0000, node loss: 39484.8203)
+Learning rate: 1.0e-04
+Epoch duration: 7.06 s
+Total elapsed time: 139.72 s
+============================== Epoch 24803/500000 ==============================
+Train stats. 	 Total loss: 173894.2188 (edge loss: 157219.7969, node loss: 16674.4492)
+Validation stats. 	 Total loss: 193831.4375 (edge loss: 154947.7188, node loss: 38883.7383)/home/alapena/GitHub/graph2mat4abn/src/graph2mat4abn/modules/memory_monitor.py:35: RuntimeWarning:
+
+More than 20 figures have been opened. Figures created through the pyplot interface (`matplotlib.pyplot.figure`) are retained until explicitly closed and may consume too much memory. (To control this warning, see the rcParam `figure.max_open_warning`). Consider using `matplotlib.pyplot.close()`.
+
+
+Learning rate: 1.0e-04
+Epoch duration: 6.53 s
+Total elapsed time: 146.36 s
+============================== Epoch 24804/500000 ==============================
+Train stats. 	 Total loss: 164818.8750 (edge loss: 148582.4375, node loss: 16236.4395)
+Validation stats. 	 Total loss: 184746.0000 (edge loss: 146562.8125, node loss: 38183.1953)
+Learning rate: 1.0e-04
+Epoch duration: 5.92 s
+Total elapsed time: 152.38 s
+============================== Epoch 24805/500000 ==============================
+Train stats. 	 Total loss: 156770.4219 (edge loss: 140885.1562, node loss: 15885.2568)
+Validation stats. 	 Total loss: 176536.1250 (edge loss: 139050.7031, node loss: 37485.4219)
+Learning rate: 1.0e-04
+Epoch duration: 7.10 s
+Total elapsed time: 159.60 s
+============================== Epoch 24806/500000 ==============================
+Train stats. 	 Total loss: 149567.4219 (edge loss: 134000.2031, node loss: 15567.2383)
+Validation stats. 	 Total loss: 169188.9062 (edge loss: 132314.6094, node loss: 36874.2812)
+Learning rate: 1.0e-04
+Epoch duration: 6.18 s
+Total elapsed time: 165.85 s
+============================== Epoch 24807/500000 ==============================
+Train stats. 	 Total loss: 143110.7031 (edge loss: 127825.3047, node loss: 15285.4111)
+Validation stats. 	 Total loss: 162649.4062 (edge loss: 126256.0469, node loss: 36393.3398)
+Learning rate: 1.0e-04
+Epoch duration: 6.39 s
+Total elapsed time: 172.76 s
+============================== Epoch 24808/500000 ==============================
+Train stats. 	 Total loss: 137296.3906 (edge loss: 122272.9766, node loss: 15023.4219)
+Validation stats. 	 Total loss: 156802.2031 (edge loss: 120796.2031, node loss: 36005.9961)
+Learning rate: 1.0e-04
+Epoch duration: 6.48 s
+Total elapsed time: 179.36 s
+============================== Epoch 24809/500000 ==============================
+Train stats. 	 Total loss: 132045.4219 (edge loss: 117268.1562, node loss: 14777.2744)
+Validation stats. 	 Total loss: 151543.2500 (edge loss: 115860.1094, node loss: 35683.1211)
+Learning rate: 1.0e-04
+Epoch duration: 5.35 s
+Total elapsed time: 184.82 s
+============================== Epoch 24810/500000 ==============================
+Train stats. 	 Total loss: 127286.2891 (edge loss: 112745.6562, node loss: 14540.6533)
+Validation stats. 	 Total loss: 146766.4062 (edge loss: 111386.7031, node loss: 35379.7148)
+Learning rate: 1.0e-04
+Epoch duration: 5.50 s
+Total elapsed time: 190.38 s
+============================== Epoch 24811/500000 ==============================
+Train stats. 	 Total loss: 122964.8203 (edge loss: 108648.6641, node loss: 14316.1650)
+Validation stats. 	 Total loss: 142405.6406 (edge loss: 107321.1953, node loss: 35084.4609)
+Learning rate: 1.0e-04
+Epoch duration: 6.60 s
+Total elapsed time: 197.08 s
+============================== Epoch 24812/500000 ==============================
+Train stats. 	 Total loss: 119029.6953 (edge loss: 104927.6641, node loss: 14102.0352)
+Validation stats. 	 Total loss: 138407.8750 (edge loss: 103618.3906, node loss: 34789.4883)
+Learning rate: 1.0e-04
+Epoch duration: 6.37 s
+Total elapsed time: 203.55 s
+============================== Epoch 24813/500000 ==============================
+Train stats. 	 Total loss: 115438.3359 (edge loss: 101539.2656, node loss: 13899.0732)
+Validation stats. 	 Total loss: 134741.5469 (edge loss: 100237.8047, node loss: 34503.7500)
+Learning rate: 1.0e-04
+Epoch duration: 6.52 s
+Total elapsed time: 210.13 s
+============================== Epoch 24814/500000 ==============================
+Train stats. 	 Total loss: 112150.7500 (edge loss: 98445.5859, node loss: 13705.1562)
+Validation stats. 	 Total loss: 131371.9375 (edge loss: 97144.6406, node loss: 34227.3125)
+Learning rate: 1.0e-04
+Epoch duration: 6.83 s
+Total elapsed time: 217.05 s
+============================== Epoch 24815/500000 ==============================
+Train stats. 	 Total loss: 109133.8047 (edge loss: 95613.4375, node loss: 13520.3662)
+Validation stats. 	 Total loss: 128271.7422 (edge loss: 94307.5156, node loss: 33964.2266)
+Learning rate: 1.0e-04
+Epoch duration: 5.64 s
+Total elapsed time: 222.78 s
+============================== Epoch 24816/500000 ==============================
+Train stats. 	 Total loss: 106356.9375 (edge loss: 93013.6406, node loss: 13343.3125)
+Validation stats. 	 Total loss: 125409.6328 (edge loss: 91699.1406, node loss: 33710.5039)
+Learning rate: 1.0e-04
+Epoch duration: 6.04 s
+Total elapsed time: 228.88 s
+============================== Epoch 24817/500000 ==============================
+Train stats. 	 Total loss: 103794.4766 (edge loss: 90620.5703, node loss: 13173.9043)
+Validation stats. 	 Total loss: 122761.3828 (edge loss: 89295.0938, node loss: 33466.2852)
+Learning rate: 1.0e-04
+Epoch duration: 6.46 s
+Total elapsed time: 235.42 s
+============================== Epoch 24818/500000 ==============================
+Train stats. 	 Total loss: 101423.0859 (edge loss: 88411.8203, node loss: 13011.2754)
+Validation stats. 	 Total loss: 120303.7656 (edge loss: 87074.1953, node loss: 33229.5703)
+Learning rate: 1.0e-04
+Epoch duration: 5.81 s
+Total elapsed time: 241.34 s
+============================== Epoch 24819/500000 ==============================
+Train stats. 	 Total loss: 99222.8984 (edge loss: 86367.6094, node loss: 12855.2881)
+Validation stats. 	 Total loss: 118018.4219 (edge loss: 85017.5547, node loss: 33000.8633)
+Learning rate: 1.0e-04
+Epoch duration: 6.02 s
+Total elapsed time: 247.42 s
+============================== Epoch 24820/500000 ==============================
+Train stats. 	 Total loss: 97176.0781 (edge loss: 84470.6797, node loss: 12705.4033)
+Validation stats. 	 Total loss: 115888.0703 (edge loss: 83108.6484, node loss: 32779.4258)
+Learning rate: 1.0e-04
+Epoch duration: 6.06 s
+Total elapsed time: 253.57 s
+============================== Epoch 24821/500000 ==============================
+Train stats. 	 Total loss: 95267.2969 (edge loss: 82705.8281, node loss: 12561.4736)
+Validation stats. 	 Total loss: 113897.6562 (edge loss: 81332.7500, node loss: 32564.9121)
+Learning rate: 1.0e-04
+Epoch duration: 5.61 s
+Total elapsed time: 259.30 s
+============================== Epoch 24822/500000 ==============================
+Train stats. 	 Total loss: 93482.7266 (edge loss: 81059.6953, node loss: 12423.0293)
+Validation stats. 	 Total loss: 112034.2500 (edge loss: 79676.9297, node loss: 32357.3086)
+Learning rate: 1.0e-04
+Epoch duration: 6.13 s
+Total elapsed time: 265.49 s
+============================== Epoch 24823/500000 ==============================
+Train stats. 	 Total loss: 91810.4766 (edge loss: 79520.5469, node loss: 12289.9121)
+Validation stats. 	 Total loss: 110285.2109 (edge loss: 78129.6875, node loss: 32155.5254)
+Learning rate: 1.0e-04
+Epoch duration: 6.91 s
+Total elapsed time: 272.53 s
+============================== Epoch 24824/500000 ==============================
+Train stats. 	 Total loss: 90239.7812 (edge loss: 78078.0547, node loss: 12161.7227)
+Validation stats. 	 Total loss: 108640.5469 (edge loss: 76680.8203, node loss: 31959.7266)
+Learning rate: 1.0e-04
+Epoch duration: 5.44 s
+Total elapsed time: 278.09 s
+============================== Epoch 24825/500000 ==============================
+Train stats. 	 Total loss: 88761.4531 (edge loss: 76723.0703, node loss: 12038.3779)
+Validation stats. 	 Total loss: 107090.6406 (edge loss: 75321.2500, node loss: 31769.3867)
+Learning rate: 1.0e-04
+Epoch duration: 5.70 s
+Total elapsed time: 283.85 s
+============================== Epoch 24826/500000 ==============================
+Train stats. 	 Total loss: 87367.0938 (edge loss: 75447.5781, node loss: 11919.5156)
+Validation stats. 	 Total loss: 105627.3984 (edge loss: 74043.0000, node loss: 31584.3965)
+Learning rate: 1.0e-04
+Epoch duration: 7.13 s
+Total elapsed time: 291.08 s
+============================== Epoch 24827/500000 ==============================
+Train stats. 	 Total loss: 86049.4219 (edge loss: 74244.4141, node loss: 11805.0176)
+Validation stats. 	 Total loss: 104243.4453 (edge loss: 72838.8984, node loss: 31404.5508)
+Learning rate: 1.0e-04
+Epoch duration: 5.25 s
+Total elapsed time: 296.40 s
+============================== Epoch 24828/500000 ==============================
+Train stats. 	 Total loss: 84801.9141 (edge loss: 73107.2734, node loss: 11694.6455)
+Validation stats. 	 Total loss: 102931.9531 (edge loss: 71702.5234, node loss: 31229.4297)
+Learning rate: 1.0e-04
+Epoch duration: 6.24 s
+Total elapsed time: 302.70 s
+============================== Epoch 24829/500000 ==============================
+Train stats. 	 Total loss: 83618.7812 (edge loss: 72030.5391, node loss: 11588.2422)
+Validation stats. 	 Total loss: 101687.2500 (edge loss: 70628.1719, node loss: 31059.0820)
+Learning rate: 1.0e-04
+Epoch duration: 5.83 s
+Total elapsed time: 308.63 s
+============================== Epoch 24830/500000 ==============================
+Train stats. 	 Total loss: 82494.7969 (edge loss: 71009.2031, node loss: 11485.6006)
+Validation stats. 	 Total loss: 100503.7266 (edge loss: 69610.7500, node loss: 30892.9727)
+Learning rate: 1.0e-04
+Epoch duration: 5.03 s
+Total elapsed time: 313.73 s
+============================== Epoch 24831/500000 ==============================
+Train stats. 	 Total loss: 81425.3594 (edge loss: 70038.7891, node loss: 11386.5684)
+Validation stats. 	 Total loss: 99376.9609 (edge loss: 68645.6719, node loss: 30731.2871)
+Learning rate: 1.0e-04
+Epoch duration: 6.82 s
+Total elapsed time: 320.61 s
+============================== Epoch 24832/500000 ==============================
+Train stats. 	 Total loss: 80406.3047 (edge loss: 69115.3203, node loss: 11290.9873)
+Validation stats. 	 Total loss: 98302.5469 (edge loss: 67728.8281, node loss: 30573.7305)
+Learning rate: 1.0e-04
+Epoch duration: 5.83 s
+Total elapsed time: 326.56 s
+============================== Epoch 24833/500000 ==============================
+Train stats. 	 Total loss: 79433.8750 (edge loss: 68235.1953, node loss: 11198.6787)
+Validation stats. 	 Total loss: 97276.3438 (edge loss: 66856.4688, node loss: 30419.8828)
+Learning rate: 1.0e-04
+Epoch duration: 5.52 s
+Total elapsed time: 332.14 s
+============================== Epoch 24834/500000 ==============================
+Train stats. 	 Total loss: 78504.7344 (edge loss: 67395.2031, node loss: 11109.5420)
+Validation stats. 	 Total loss: 96295.1719 (edge loss: 66025.2734, node loss: 30269.8887)
+Learning rate: 1.0e-04
+Epoch duration: 6.57 s
+Total elapsed time: 338.79 s
+============================== Epoch 24835/500000 ==============================
+Train stats. 	 Total loss: 77615.8047 (edge loss: 66592.4297, node loss: 11023.3809)
+Validation stats. 	 Total loss: 95355.9688 (edge loss: 65232.2695, node loss: 30123.7031)
+Learning rate: 1.0e-04
+Epoch duration: 6.35 s
+Total elapsed time: 345.23 s
+============================== Epoch 24836/500000 ==============================
+Train stats. 	 Total loss: 76764.3906 (edge loss: 65824.2344, node loss: 10940.1465)
+Validation stats. 	 Total loss: 94455.9219 (edge loss: 64474.6641, node loss: 29981.2598)
+Learning rate: 1.0e-04
+Epoch duration: 5.09 s
+Total elapsed time: 350.40 s
+============================== Epoch 24837/500000 ==============================
+Train stats. 	 Total loss: 75947.8984 (edge loss: 65088.2656, node loss: 10859.6357)
+Validation stats. 	 Total loss: 93591.6562 (edge loss: 63749.9453, node loss: 29841.7070)
+Learning rate: 1.0e-04
+Epoch duration: 5.98 s
+Total elapsed time: 356.44 s
+============================== Epoch 24838/500000 ==============================
+Train stats. 	 Total loss: 75164.1328 (edge loss: 64382.3320, node loss: 10781.7988)
+Validation stats. 	 Total loss: 92761.8359 (edge loss: 63055.9414, node loss: 29705.8867)
+Learning rate: 1.0e-04
+Epoch duration: 6.04 s
+Total elapsed time: 362.57 s
+============================== Epoch 24839/500000 ==============================
+Train stats. 	 Total loss: 74411.0234 (edge loss: 63704.5273, node loss: 10706.4902)
+Validation stats. 	 Total loss: 91963.5781 (edge loss: 62390.5547, node loss: 29573.0234)
+Learning rate: 1.0e-04
+Epoch duration: 5.50 s
+Total elapsed time: 368.18 s
+============================== Epoch 24840/500000 ==============================
+Train stats. 	 Total loss: 73686.5625 (edge loss: 63053.0000, node loss: 10633.5752)
+Validation stats. 	 Total loss: 91195.2812 (edge loss: 61751.9062, node loss: 29443.3730)
+Learning rate: 1.0e-04
+Epoch duration: 6.07 s
+Total elapsed time: 374.33 s
+============================== Epoch 24841/500000 ==============================
+Train stats. 	 Total loss: 72989.1484 (edge loss: 62426.1406, node loss: 10563.0088)
+Validation stats. 	 Total loss: 90455.0000 (edge loss: 61138.3281, node loss: 29316.6777)
+Learning rate: 1.0e-04
+Epoch duration: 6.14 s
+Total elapsed time: 380.57 s
+============================== Epoch 24842/500000 ==============================
+Train stats. 	 Total loss: 72317.1562 (edge loss: 61822.4648, node loss: 10494.6836)
+Validation stats. 	 Total loss: 89740.8047 (edge loss: 60548.2070, node loss: 29192.5957)
+Learning rate: 1.0e-04
+Epoch duration: 5.30 s
+Total elapsed time: 385.99 s
+============================== Epoch 24843/500000 ==============================
+Train stats. 	 Total loss: 71669.0469 (edge loss: 61240.5703, node loss: 10428.4736)
+Validation stats. 	 Total loss: 89051.5781 (edge loss: 59980.1367, node loss: 29071.4434)
+Learning rate: 1.0e-04
+Epoch duration: 6.23 s
+Total elapsed time: 392.29 s
+============================== Epoch 24844/500000 ==============================
+Train stats. 	 Total loss: 71043.5000 (edge loss: 60679.2227, node loss: 10364.2783)
+Validation stats. 	 Total loss: 88385.5781 (edge loss: 59432.7578, node loss: 28952.8164)
+Learning rate: 1.0e-04
+Epoch duration: 5.84 s
+Total elapsed time: 398.21 s
+============================== Epoch 24845/500000 ==============================
+Train stats. 	 Total loss: 70439.3594 (edge loss: 60137.2422, node loss: 10302.1162)
+Validation stats. 	 Total loss: 87741.8594 (edge loss: 58904.9102, node loss: 28836.9531)
+Learning rate: 1.0e-04
+Epoch duration: 5.34 s
+Total elapsed time: 403.62 s
+============================== Epoch 24846/500000 ==============================
+Train stats. 	 Total loss: 69855.3516 (edge loss: 59613.5781, node loss: 10241.7773)
+Validation stats. 	 Total loss: 87119.2109 (edge loss: 58395.4570, node loss: 28723.7578)
+Learning rate: 1.0e-04
+Epoch duration: 6.60 s
+Total elapsed time: 410.29 s
+============================== Epoch 24847/500000 ==============================
+Train stats. 	 Total loss: 69290.4844 (edge loss: 59107.2148, node loss: 10183.2705)
+Validation stats. 	 Total loss: 86515.9766 (edge loss: 57903.3867, node loss: 28612.5996)
+Learning rate: 1.0e-04
+Epoch duration: 6.36 s
+Total elapsed time: 416.73 s
+============================== Epoch 24848/500000 ==============================
+Train stats. 	 Total loss: 68743.7188 (edge loss: 58617.2500, node loss: 10126.4736)
+Validation stats. 	 Total loss: 85931.6250 (edge loss: 57427.7070, node loss: 28503.9199)
+Learning rate: 1.0e-04
+Epoch duration: 5.71 s
+Total elapsed time: 422.51 s
+============================== Epoch 24849/500000 ==============================
+Train stats. 	 Total loss: 68214.2422 (edge loss: 58142.8320, node loss: 10071.4111)
+Validation stats. 	 Total loss: 85365.2031 (edge loss: 56967.5586, node loss: 28397.6465)
+Learning rate: 1.0e-04
+Epoch duration: 7.48 s
+Total elapsed time: 430.07 s
+============================== Epoch 24850/500000 ==============================
+Train stats. 	 Total loss: 67701.0625 (edge loss: 57683.1641, node loss: 10017.8936)
+Validation stats. 	 Total loss: 84815.4688 (edge loss: 56522.1289, node loss: 28293.3457)
+Learning rate: 1.0e-04
+Epoch duration: 5.39 s
+Total elapsed time: 435.57 s
+============================== Epoch 24851/500000 ==============================
+Train stats. 	 Total loss: 67203.4766 (edge loss: 57237.5352, node loss: 9965.9365)
+Validation stats. 	 Total loss: 84281.9844 (edge loss: 56090.6719, node loss: 28191.3086)
+Learning rate: 1.0e-04
+Epoch duration: 5.77 s
+Total elapsed time: 441.40 s
+============================== Epoch 24852/500000 ==============================
+Train stats. 	 Total loss: 66720.7266 (edge loss: 56805.2383, node loss: 9915.4971)
+Validation stats. 	 Total loss: 83763.8203 (edge loss: 55672.4648, node loss: 28091.3594)
+Learning rate: 1.0e-04
+Epoch duration: 6.05 s
+Total elapsed time: 447.53 s
+============================== Epoch 24853/500000 ==============================
+Train stats. 	 Total loss: 66252.0625 (edge loss: 56385.6484, node loss: 9866.4180)
+Validation stats. 	 Total loss: 83260.1797 (edge loss: 55266.8398, node loss: 27993.3340)
+Learning rate: 1.0e-04
+Epoch duration: 5.72 s
+Total elapsed time: 453.37 s
+============================== Epoch 24854/500000 ==============================
+Train stats. 	 Total loss: 65796.9531 (edge loss: 55978.1758, node loss: 9818.7754)
+Validation stats. 	 Total loss: 82770.2266 (edge loss: 54873.1875, node loss: 27897.0410)
+Learning rate: 1.0e-04
+Epoch duration: 5.46 s
+Total elapsed time: 458.89 s
+============================== Epoch 24855/500000 ==============================
+Train stats. 	 Total loss: 65354.6680 (edge loss: 55582.2500, node loss: 9772.4209)
+Validation stats. 	 Total loss: 82293.7031 (edge loss: 54490.9609, node loss: 27802.7344)
+Learning rate: 1.0e-04
+Epoch duration: 6.55 s
+Total elapsed time: 465.55 s
+============================== Epoch 24856/500000 ==============================
+Train stats. 	 Total loss: 64924.6758 (edge loss: 55197.3594, node loss: 9727.3174)
+Validation stats. 	 Total loss: 81830.1328 (edge loss: 54119.6367, node loss: 27710.5020)
+Learning rate: 1.0e-04
+Epoch duration: 5.83 s
+Total elapsed time: 471.49 s
+============================== Epoch 24857/500000 ==============================
+Train stats. 	 Total loss: 64506.5000 (edge loss: 54823.0195, node loss: 9683.4844)
+Validation stats. 	 Total loss: 81378.4297 (edge loss: 53758.6641, node loss: 27619.7637)
+Learning rate: 1.0e-04
+Epoch duration: 6.07 s
+Total elapsed time: 477.61 s
+============================== Epoch 24858/500000 ==============================
+Train stats. 	 Total loss: 64099.5625 (edge loss: 54458.7695, node loss: 9640.7969)
+Validation stats. 	 Total loss: 80938.5312 (edge loss: 53407.6211, node loss: 27530.9160)
+Learning rate: 1.0e-04
+Epoch duration: 6.83 s
+Total elapsed time: 484.55 s
+============================== Epoch 24859/500000 ==============================
+Train stats. 	 Total loss: 63703.4531 (edge loss: 54104.1758, node loss: 9599.2744)
+Validation stats. 	 Total loss: 80509.7422 (edge loss: 53066.0742, node loss: 27443.6738)
+Learning rate: 1.0e-04
+Epoch duration: 5.71 s
+Total elapsed time: 490.38 s
+============================== Epoch 24860/500000 ==============================
+Train stats. 	 Total loss: 63317.6523 (edge loss: 53758.8164, node loss: 9558.8398)
+Validation stats. 	 Total loss: 80091.5312 (edge loss: 52733.5664, node loss: 27357.9590)
+Learning rate: 1.0e-04
+Epoch duration: 5.25 s
+Total elapsed time: 495.70 s
+============================== Epoch 24861/500000 ==============================
+Train stats. 	 Total loss: 62941.8008 (edge loss: 53422.3242, node loss: 9519.4736)
+Validation stats. 	 Total loss: 79683.5781 (edge loss: 52409.7188, node loss: 27273.8574)
+Learning rate: 1.0e-04
+Epoch duration: 6.26 s
+Total elapsed time: 502.08 s
+============================== Epoch 24862/500000 ==============================
+Train stats. 	 Total loss: 62575.4727 (edge loss: 53094.3438, node loss: 9481.1260)
+Validation stats. 	 Total loss: 79285.3516 (edge loss: 52094.2031, node loss: 27191.1504)
+Learning rate: 1.0e-04
+Epoch duration: 5.54 s
+Total elapsed time: 507.71 s
+============================== Epoch 24863/500000 ==============================
+Train stats. 	 Total loss: 62218.2695 (edge loss: 52774.5430, node loss: 9443.7314)
+Validation stats. 	 Total loss: 78896.7812 (edge loss: 51786.6875, node loss: 27110.1016)
+Learning rate: 1.0e-04
+Epoch duration: 5.24 s
+Total elapsed time: 513.06 s
+============================== Epoch 24864/500000 ==============================
+Train stats. 	 Total loss: 61869.9102 (edge loss: 52462.5820, node loss: 9407.3252)
+Validation stats. 	 Total loss: 78517.2734 (edge loss: 51486.7930, node loss: 27030.4785)
+Learning rate: 1.0e-04
+Epoch duration: 5.79 s
+Total elapsed time: 518.91 s
+============================== Epoch 24865/500000 ==============================
+Train stats. 	 Total loss: 61530.0000 (edge loss: 52158.1641, node loss: 9371.8408)
+Validation stats. 	 Total loss: 78146.4453 (edge loss: 51194.2383, node loss: 26952.2090)
+Learning rate: 1.0e-04
+Epoch duration: 5.67 s
+Total elapsed time: 524.69 s
+============================== Epoch 24866/500000 ==============================
+Train stats. 	 Total loss: 61198.2422 (edge loss: 51860.9961, node loss: 9337.2441)
+Validation stats. 	 Total loss: 77783.4922 (edge loss: 50908.7383, node loss: 26874.7637)
+Learning rate: 1.0e-04
+Epoch duration: 5.66 s
+Total elapsed time: 530.45 s
+============================== Epoch 24867/500000 ==============================
+Train stats. 	 Total loss: 60874.3047 (edge loss: 51570.8203, node loss: 9303.4854)
+Validation stats. 	 Total loss: 77429.2031 (edge loss: 50629.9922, node loss: 26799.2109)
+Learning rate: 1.0e-04
+Epoch duration: 5.54 s
+Total elapsed time: 536.07 s
+============================== Epoch 24868/500000 ==============================
+Train stats. 	 Total loss: 60557.9297 (edge loss: 51287.3633, node loss: 9270.5664)
+Validation stats. 	 Total loss: 77082.8750 (edge loss: 50357.8008, node loss: 26725.0762)
+Learning rate: 1.0e-04
+Epoch duration: 6.20 s
+Total elapsed time: 542.36 s
+============================== Epoch 24869/500000 ==============================
+Train stats. 	 Total loss: 60248.8203 (edge loss: 51010.3828, node loss: 9238.4414)
+Validation stats. 	 Total loss: 76743.6250 (edge loss: 50091.8711, node loss: 26651.7559)
+Learning rate: 1.0e-04
+Epoch duration: 5.64 s
+Total elapsed time: 548.08 s
+============================== Epoch 24870/500000 ==============================
+Train stats. 	 Total loss: 59946.7852 (edge loss: 50739.6641, node loss: 9207.1260)
+Validation stats. 	 Total loss: 76411.9141 (edge loss: 49831.9883, node loss: 26579.9219)
+Learning rate: 1.0e-04
+Epoch duration: 5.05 s
+Total elapsed time: 553.20 s
+============================== Epoch 24871/500000 ==============================
+Train stats. 	 Total loss: 59651.4922 (edge loss: 50474.9531, node loss: 9176.5391)
+Validation stats. 	 Total loss: 76087.0312 (edge loss: 49577.9453, node loss: 26509.0859)
+Learning rate: 1.0e-04
+Epoch duration: 5.71 s
+Total elapsed time: 558.97 s
+============================== Epoch 24872/500000 ==============================
+Train stats. 	 Total loss: 59362.7383 (edge loss: 50216.0508, node loss: 9146.6924)
+Validation stats. 	 Total loss: 75769.0312 (edge loss: 49329.4844, node loss: 26439.5488)
+Learning rate: 1.0e-04
+Epoch duration: 5.92 s
+Total elapsed time: 565.00 s
+============================== Epoch 24873/500000 ==============================
+Train stats. 	 Total loss: 59080.3008 (edge loss: 49962.7695, node loss: 9117.5332)
+Validation stats. 	 Total loss: 75457.4375 (edge loss: 49086.4570, node loss: 26370.9844)
+Learning rate: 1.0e-04
+Epoch duration: 5.99 s
+Total elapsed time: 571.07 s
+============================== Epoch 24874/500000 ==============================
+Train stats. 	 Total loss: 58803.9570 (edge loss: 49714.9023, node loss: 9089.0557)
+Validation stats. 	 Total loss: 75152.2344 (edge loss: 48848.6328, node loss: 26303.6055)
+Learning rate: 1.0e-04
+Epoch duration: 6.39 s
+Total elapsed time: 577.52 s
+============================== Epoch 24875/500000 ==============================
+Train stats. 	 Total loss: 58533.5156 (edge loss: 49472.2773, node loss: 9061.2412)
+Validation stats. 	 Total loss: 74852.8594 (edge loss: 48615.8750, node loss: 26236.9844)
+Learning rate: 1.0e-04
+Epoch duration: 6.33 s
+Total elapsed time: 583.93 s
+============================== Epoch 24876/500000 ==============================
+Train stats. 	 Total loss: 58268.7930 (edge loss: 49234.7070, node loss: 9034.0762)
+Validation stats. 	 Total loss: 74559.6172 (edge loss: 48387.9883, node loss: 26171.6211)
+Learning rate: 1.0e-04
+Epoch duration: 5.35 s
+Total elapsed time: 589.37 s
+============================== Epoch 24877/500000 ==============================
+Train stats. 	 Total loss: 58009.5625 (edge loss: 49002.0508, node loss: 9007.5127)
+Validation stats. 	 Total loss: 74272.1953 (edge loss: 48164.8086, node loss: 26107.3828)
+Learning rate: 1.0e-04
+Epoch duration: 5.87 s
+Total elapsed time: 595.30 s
+==============================

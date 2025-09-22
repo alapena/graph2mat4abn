@@ -1,9 +1,9 @@
 debug_mode: false
 device: "cuda:1"
-results_dir: "./results/h_crystalls_2"
-trained_model_path: "./results/h_crystalls_2/val_best_model.tar"
+results_dir: "./results/h_noc_2_continuation"
+trained_model_path: "./results/h_noc_2/train_best_model.tar"
 dataset:
-  train_split_ratio: 0.80
+  train_split_ratio: 0.9
   # test_split_ratio: 0.50
   stratify: true # set to false if max_samples < 200
   # max_samples: null
@@ -14,7 +14,7 @@ dataset:
   use_only: ["2_ATOMS", "8_ATOMS"] # Write dataset subfolders suffix. E.g. ["64_ATOMS"]
   exclude_carbons: true
   custom_dataset: false
-  extra_custom_validation: true
+  extra_custom_validation: false
 
 orbitals:
   1: 13
@@ -54,19 +54,20 @@ model:
   # hidden_neurons: [64, 64, 64, 64]
 
 optimizer:
-  lr: 1e-3 # Useless when loading a model.
+  lr: 1e-3
   # weight_decay: 1e-4
-  initial_lr: 1e-3 # Force an initial lr in the scheduler when loading a model.
+  initial_lr: 1e-4 # Force an initial lr in the scheduler when loading a model.
 
 scheduler:
   type: ReduceLROnPlateau
+  step: train_loss # train_loss or val_loss, or None depending on the scheduler
   args:
   kwargs:
     mode: 'min'
-    factor: 0.5 
-    patience: 30
+    factor: 0.9 
+    patience: 100
     cooldown: 0
-    min_lr: 0.000000000000001
+    min_lr: 1e-9
     eps: 0
 
 
@@ -100,17 +101,17 @@ scheduler:
   
 
 trainer:
-  batch_size: 120
-  checkpoint_freq: 500
+  batch_size: 70
+  checkpoint_freq: 1000
 
   live_plot: true
   live_plot_freq: 1
 
-  live_plot_matrix: true
+  live_plot_matrix: false
   live_plot_matrix_freq: 1000
   live_plot_matrices_num: 1
 
-  num_epochs: 50000
+  num_epochs: 500000
   loss_function: block_type_mse # elementwise_mse, block_type_mse, block_type_mse_threshold
 
   keep_in_memory: true

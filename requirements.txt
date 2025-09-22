@@ -1,16 +1,17 @@
-# graph2mat
-torch==2.5.0
+# graph2mat # Install it manually from source code
+torch<=2.5.0
 torchvision
 torchaudio
 sisl
 torch_geometric
 e3nn
 mace-torch
-numpy
-scipy
+numpy==1.26.3
+scipy==1.11.4
 scikit-learn
-matplotlib
+matplotlib==3.8.0
 pandas
 tqdm
 pyyaml
 kaleido
+nbformat>=4.2.0
