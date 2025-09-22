@@ -1,8 +1,0 @@
-680299 sample1_true
-680160 sample1_pred
-680763 sample2_true
-680581 sample2_pred
-681023 sample3_true
-680945 sample3_pred
-
-GPU1: 756093
