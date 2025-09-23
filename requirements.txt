@@ -1,13 +1,13 @@
 # graph2mat # Install it manually from source code
-torch<=2.5.0
-torchvision
-torchaudio
+# torch<=2.5.0
+# torchvision
+# torchaudio
 sisl
 torch_geometric
-e3nn
-mace-torch
-numpy==1.26.3
-scipy==1.11.4
+mace-torch==0.3.14
+e3nn==0.4.4
+numpy # numpy==1.26.3 (not using this version will cause problems with tbplas)
+scipy # scipy==1.11.4 (not using this version will cause problems with tbplas)
 scikit-learn
 matplotlib==3.8.0
 pandas
