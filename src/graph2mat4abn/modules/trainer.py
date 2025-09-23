@@ -470,9 +470,9 @@ class Trainer:
             self.history["elapsed_time"].append(elapsed_time)
 
             # Print progress
-            print(f"Train stats. \t Total loss: {self.history["train_loss"][-1]:.4f} (edge loss: {self.history['train_edge_loss'][-1]:.4f}, node loss: {self.history['train_node_loss'][-1]:.4f})")
-            print(f"Validation stats. \t Total loss: {self.history["val_loss"][-1]:.4f} (edge loss: {self.history['val_edge_loss'][-1]:.4f}, node loss: {self.history['val_node_loss'][-1]:.4f})")
-            print(f"Learning rate: {self.history["learning_rate"][-1]:.1e}")
+            print(f"Train stats. \t Total loss: {self.history['train_loss'][-1]:.4f} (edge loss: {self.history['train_edge_loss'][-1]:.4f}, node loss: {self.history['train_node_loss'][-1]:.4f})")
+            print(f"Validation stats. \t Total loss: {self.history['val_loss'][-1]:.4f} (edge loss: {self.history['val_edge_loss'][-1]:.4f}, node loss: {self.history['val_node_loss'][-1]:.4f})")
+            print(f"Learning rate: {self.history['learning_rate'][-1]:.1e}")
             print(f"Epoch duration: {self.history['epoch_times'][-1]:.2f} s")
             print(f"Total elapsed time: {self.history['elapsed_time'][-1]:.2f} s")
 
@@ -713,8 +713,8 @@ class Trainer:
                     )[0].todense()
 
                 # Plot
-                title = f"Results of sample {j} of {dataloader_type} dataset (seed {self.config["dataset"]["seed"]}). There are {n_atoms} in the unit cell."
-                predicted_matrix_text = f"Saved training loss at epoch {epoch}:     {self.history["train_loss"][-1]:.2f} eV²\nMSE evaluation:     {loss.item():.2f} eV²" if dataloader_type == "training" else f"Saved training loss at epoch {epoch}:     {self.history["val_loss"][-1]:.2f} eV²\nMSE evaluation:     {loss.item():.2f} eV²"
+                title = f"Results of sample {j} of {dataloader_type} dataset (seed {self.config['dataset']['seed']}). There are {n_atoms} in the unit cell."
+                predicted_matrix_text = f"Saved training loss at epoch {epoch}:     {self.history['train_loss'][-1]:.2f} eV²\nMSE evaluation:     {loss.item():.2f} eV²" if dataloader_type == "training" else f"Saved training loss at epoch {epoch}:     {self.history['val_loss'][-1]:.2f} eV²\nMSE evaluation:     {loss.item():.2f} eV²"
                 if self.config["trainer"]["matrix"] == "hamiltonian" or self.config["trainer"]["matrix"] == "overlap":
                     if n_atoms <= 32:
                         plot_error_matrices_big(

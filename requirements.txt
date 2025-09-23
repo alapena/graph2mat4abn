@@ -1,7 +1,8 @@
-# graph2mat # Install it manually from source code
-# torch<=2.5.0
-# torchvision
-# torchaudio
+graph2mat # Install it manually from source code
+torch<=2.5.0
+torchvision
+torchaudio
+ipykernel
 sisl
 torch_geometric
 mace-torch==0.3.14

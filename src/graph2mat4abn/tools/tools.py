@@ -120,7 +120,7 @@ def get_kwargs(module: str, config: dict) -> dict:
             'irreps': {
                 'node_feats_irreps': in_out_irreps,
                 'edge_attrs_irreps': o3.Irreps.spherical_harmonics(env_config.get("max_ell")),
-                'edge_feats_irreps': o3.Irreps(f"{env_config.get("num_bessel")}x0e"), 
+                'edge_feats_irreps': o3.Irreps(f"{env_config.get('num_bessel')}x0e"), 
             },
         }
 
@@ -129,7 +129,7 @@ def get_kwargs(module: str, config: dict) -> dict:
             'irreps': {
                 'node_feats_irreps': in_out_irreps,
                 'edge_attrs_irreps': o3.Irreps.spherical_harmonics(env_config.get("max_ell")),
-                'edge_feats_irreps': o3.Irreps(f"{env_config.get("num_bessel")}x0e"), 
+                'edge_feats_irreps': o3.Irreps(f"{env_config.get('num_bessel')}x0e"), 
                 'edge_hidden_irreps': in_out_irreps,
             },
         }
