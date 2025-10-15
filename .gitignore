@@ -32,6 +32,7 @@ current ids.txt
 *.dat
 *.pkl
 *.log
+*.npy
 logs
 data_hBN
 exports
