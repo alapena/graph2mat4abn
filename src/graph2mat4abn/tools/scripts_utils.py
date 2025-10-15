@@ -33,12 +33,14 @@ def get_model_dataset(model_dir, verbose=False):
 
 
 def generate_g2m_dataset_from_paths(config, basis, table, train_paths, val_paths=None, device="cpu", verbose=False):
+
     print("Generating dataset...") if verbose else None
 
     trainer_config = config["trainer"]
     processor = MatrixDataProcessor(basis_table=table, symmetric_matrix=True, sub_point_matrix=False)
 
     splits = [train_paths, val_paths] if val_paths is not None else [train_paths]
+    # // splits = [train_paths, val_paths] if not extra_custom_validation else [train_paths, val_paths, val_paths_extra]
     datasets = []
     for j, split in enumerate(splits):
         print(f"Generating split {j}...") if verbose else None
@@ -120,13 +122,14 @@ def generate_g2m_dataset_from_paths(config, basis, table, train_paths, val_paths
 
 
 def init_mace_g2m_model(config, table):
-    # === Enviroment descriptor initialization ===
+    # **************** ENVIRONMENT DESCRIPTOR INIT **************** #
+
     env_config = config["environment_representation"]
 
     num_interactions = env_config["num_interactions"]
     hidden_irreps = o3.Irreps(env_config["hidden_irreps"])
     
-    # ! This operation is somehow time-consuming:
+    # / This operation is time-consuming:
     mace_descriptor = MACE(
         r_max=env_config["r_max"],
         num_bessel=env_config["num_bessel"],
@@ -146,73 +149,79 @@ def init_mace_g2m_model(config, table):
     )
 
 
+    # **************** MODEL GRAPH2MAT+MACE INIT **************** #
 
-    # === Model initialization ===
     model_config = config["model"]
 
-    # === Glue between MACE and E3nnGraph2Mat init ===
     model = MatrixMACE(
         mace = mace_descriptor,
-        readout_per_interaction=model_config.get("readout_per_interaction", False),
+        readout_per_interaction = model_config.get("readout_per_interaction", False),
         graph2mat_cls = E3nnGraph2Mat,
-        
-        # Readout-specific arguments
+
+        # Readout-specific arguments:
         unique_basis = table,
         symmetric = True,
 
-        # Preprocessing
         preprocessing_edges = get_object_from_module(
             model_config["preprocessing_edges"], 
             'graph2mat.bindings.e3nn.modules'
         ),
-        preprocessing_edges_kwargs = get_kwargs(model_config["preprocessing_edges"], config),
-
         preprocessing_nodes = get_object_from_module(
             model_config["preprocessing_nodes"], 
             'graph2mat.bindings.e3nn.modules'
         ),
-        preprocessing_nodes_kwargs = get_kwargs(model_config["preprocessing_nodes"], config),
-
-        # Operations
         node_operation = get_object_from_module(
             model_config["node_operation"], 
             'graph2mat.bindings.e3nn.modules'
         ),
-        node_operation_kwargs = get_kwargs(model_config["node_operation"], config),
-        # node_operation = HamGNNInspiredNodeBlock,
-
         edge_operation = get_object_from_module(
             model_config["edge_operation"], 
             'graph2mat.bindings.e3nn.modules'
         ),
+
+        preprocessing_edges_kwargs = get_kwargs(model_config["preprocessing_edges"], config),
+        preprocessing_nodes_kwargs = get_kwargs(model_config["preprocessing_nodes"], config),
+        node_operation_kwargs = get_kwargs(model_config["node_operation"], config),
         edge_operation_kwargs = get_kwargs(model_config["edge_operation"], config),
     )
 
+    
+    # **************** OPTIMIZER INIT **************** #
 
-
-    # Optimizer
     optimizer_config = config["optimizer"]
+
     optimizer = torch.optim.Adam(
         model.parameters(),
         lr=float(optimizer_config["lr"]),
         # weight_decay=float(optimizer_config["weight_decay"])
     )
+
     print(f"Using Optimizer {optimizer}")
 
-    # Scheduler
-    lr_scheduler_config = config["scheduler"]
-    lr_scheduler = lr_scheduler_config.get("type", None)
-    scheduler_args, scheduler_kwargs = get_scheduler_args_and_kwargs(config, verbose=True)
-    if lr_scheduler is not None:
-        lr_scheduler = get_object_from_module(lr_scheduler_config.get("type", None), "torch.optim.lr_scheduler")(optimizer, *(scheduler_args or ()), **scheduler_kwargs)
 
-    # Loss function
+    # **************** SCHEDULER INIT **************** #
+
+    scheduler_config = config["scheduler"]
+    scheduler = scheduler_config.get("type", None)
+
+    if scheduler_config.get("type", None) is not None:
+        scheduler_args, scheduler_kwargs = get_scheduler_args_and_kwargs(config, verbose=True)
+
+    if scheduler is not None:
+        scheduler = get_object_from_module(scheduler_config.get("type", None), "torch.optim.lr_scheduler")(optimizer, *(scheduler_args or ()), **scheduler_kwargs)
+
+
+    # **************** LOSS FUNCTION INIT **************** #
+
     trainer_config = config["trainer"]
-    loss_fn = get_object_from_module(trainer_config["loss_function"], "graph2mat.core.data.metrics")
-    # loss_fn=None
+    print("LOSS FN SELECTED: ", trainer_config["loss_function"])
+    loss_fn = get_object_from_module(trainer_config["loss_function"], "graph2mat4abn.modules.loss_functions")
+
     print(f"Using Loss function {loss_fn}")
 
-    return model, optimizer, lr_scheduler, loss_fn
+    return model, optimizer, scheduler, loss_fn
+
+
 
 import numpy as np
 

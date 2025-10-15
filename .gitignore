@@ -31,6 +31,7 @@ current ids.txt
 *.1000
 *.dat
 *.pkl
+*.log
 logs
 data_hBN
 exports

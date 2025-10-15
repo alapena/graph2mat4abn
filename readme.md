@@ -170,3 +170,6 @@ the folder `results/test/` will be created. In this folder, the following result
 - An interactive plot `plot_loss.html` of the loss curves
 - The models saved at the epochs where they had the lowest training or validation losses (``train_best_model.tar``, ``val_best_model.tar``)
 - In case the model reaches a minimum on nodes or edges but not on global loss, it also saves ``train_edge_best_model.tar``, ``train_node_best_model.tar``, ``val_edge_best_model.tar`` or ``val_node_best_model.tar``.
+
+# Notes
+- Removed support for extra_validation_paths, extra_custom_valdiation.

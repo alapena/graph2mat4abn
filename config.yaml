@@ -1,20 +1,16 @@
 debug_mode: false
-device: "cpu" # "cpu" or "cuda:0"
-results_dir: "./results/test"
+device: "cuda:0" # "cpu" or "cuda:0"
+results_dir: "./results/block_type_mse_nonzero_2-8ATOMS"
 trained_model_path: null
 dataset:
   train_split_ratio: 0.80
   # test_split_ratio: 0.50
   stratify: true # set to false if max_samples < 200
-  # max_samples: null
   seed: 42
   num_unique_z: 2 # Fasten the basis calculation
-
-  # use_previous_dataset: true # Automatically to true if trained_model_path is not null
-  use_only: ["2_ATOMS"] # Write dataset subfolders suffix. E.g. ["2_ATOMS", "64_ATOMS"]
+  use_only: ["2_ATOMS", "8_ATOMS"] # Write dataset subfolders suffix. E.g. ["2_ATOMS", "64_ATOMS"]
   exclude_carbons: true
   custom_dataset: false
-  extra_custom_validation: false
 
 orbitals:
   1: 13
@@ -65,25 +61,25 @@ scheduler:
   kwargs:
     mode: 'min'
     factor: 0.9 
-    patience: 70
+    patience: 100
     cooldown: 0
-    min_lr: 1e-6
+    min_lr: 1e-9
     eps: 0
   
 
 trainer:
-  batch_size: 240
-  checkpoint_freq: 500
+  batch_size: 70
+  checkpoint_freq: 5000
 
   live_plot: true
-  live_plot_freq: 1
+  live_plot_freq: 5
 
   live_plot_matrix: false
   live_plot_matrix_freq: 1000
   live_plot_matrices_num: 1
 
-  num_epochs: 500000
-  loss_function: block_type_mse # elementwise_mse, block_type_mse, block_type_mse_threshold
+  num_epochs: 1000000
+  loss_function: block_type_mse_nonzero # elementwise_mse, block_type_mse, block_type_mse_threshold, block_type_mse_nonzero
 
   keep_in_memory: true
   rotating_pool: false

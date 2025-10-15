@@ -33,16 +33,24 @@ from graph2mat4abn.tools import load_config, flatten
 from graph2mat4abn.tools.tools import get_basis_from_structures_paths, get_kwargs, get_scheduler_args_and_kwargs, load_model, read_structures_paths
 from graph2mat4abn.tools.import_utils import get_object_from_module
 from graph2mat4abn.modules.trainer import Trainer
+from graph2mat4abn.tools.scripts_utils import generate_g2m_dataset_from_paths, init_mace_g2m_model
 
 
 
 def main():
-    # === Configuration load ===
+    # *********************************** #
+    # * VARIABLES TO CHANGE BY THE USER * #
+    # *********************************** #
+
     config = load_config("./config.yaml")
+
+
+    # **************** CODE **************** #
+
+    # Load configurations
     debug_mode = config.get("debug_mode", False)
     trainer_config = config["trainer"]
     dataset_config = config["dataset"]
-    
     device = torch.device(config["device"] if (torch.cuda.is_available() and config["device"]!="cpu") 
     else 'cpu')
 
@@ -51,23 +59,24 @@ def main():
     warnings.filterwarnings("ignore", message=".*is not a known matrix type key.*")
 
 
-    # === List of paths to all desired structures ===
+    # **************** DATASET - PATHS **************** #
+
+    # Load config variables
     extra_custom_validation = dataset_config.get("extra_custom_validation", False)
     exclude_carbons = dataset_config.get("exclude_carbons", True)
     use_only = dataset_config.get("use_only", None)
     custom_dataset = dataset_config.get("custom_dataset", False)
-    # use_previous_dataset = dataset_config.get("use_previous_dataset", False)
     use_previous_dataset = True if config.get("trained_model_path", None) is not None else False
 
     true_dataset_folder = Path('./dataset')
     pointers_folder = Path('./dataset_nocarbon')
 
-    # Use only determined subset of the dataset
     if use_only is not None:
         x_atoms_paths = [pointers_folder / f"SHARE_OUTPUTS_{n}" for n in use_only]
     else:
         x_atoms_paths = list(pointers_folder.glob('*/'))
 
+    # Gather all structure paths
     paths = []
     if not use_previous_dataset:
         # If you want no carbons
@@ -128,27 +137,6 @@ def main():
         # Custom training dataset
         else:
             pass
-            # Train only on crystalls. This is, just 2, 8 atoms structures. At this point, the paths variable already has only these structures.
-            # Stratify
-            # x_atoms_list = [int(Path(p.parts[1]).stem.split('_')[2]) for p in paths] if config["dataset"]["stratify"] == True else None
-            # train_paths, val_paths = train_test_split(
-            #     paths, 
-            #     train_size=config["dataset"]["train_split_ratio"],
-            #     stratify=x_atoms_list,
-            #     random_state=None # Dataset already shuffled (paths)
-            #     )
-            
-            # Now, take out of the training dataset the structure of standard hBN
-
-
-            # print(f"Dataset splitted in {len(train_paths)} training paths and {len(val_paths)} validation paths.")
-
-            # # Test the stratification.
-            # unique_x = [int(Path(p).stem.split('_')[2]) for p in unique_x_atoms]
-            # x_atoms_list_train = [int(Path(p.parts[1]).stem.split('_')[2]) for p in train_paths]
-            # x_atoms_list_val = [int(Path(p.parts[1]).stem.split('_')[2]) for p in val_paths]
-            # print(f"They are stratified: {[x_atoms_list_train.count(x) for x in unique_x]} versus {[x_atoms_list_val.count(x) for x in unique_x]}.")
-            # print(f"The proportions are \n{[x_atoms_list_train.count(x)/len(train_paths) for x in unique_x]} versus \n{[x_atoms_list_val.count(x)/len(val_paths) for x in unique_x]}.")
 
         # Set extra validation curve
         val_paths_extra = []
@@ -170,6 +158,7 @@ def main():
 
     # Use previous dataset
     else:
+
         if config.get("trained_model_path") is None:
             raise ValueError("There is no pretrained model.")
         
@@ -188,241 +177,47 @@ def main():
             val_paths=[val_paths[0]]
 
 
-    
 
 
-
-    # == Basis creation === 
+    # **************** BASIS GENERATION **************** #
     basis = get_basis_from_structures_paths(paths, verbose=True, num_unique_z=config["dataset"].get("num_unique_z", None))
     table = BasisTableWithEdges(basis)
     
 
+    # **************** MODEL - OPTIMIZER - LR_SCHEDULER - LOSS_FN INIT **************** #
 
-    # === Enviroment descriptor initialization ===
-    env_config = config["environment_representation"]
-
-    num_interactions = env_config["num_interactions"]
-    hidden_irreps = o3.Irreps(env_config["hidden_irreps"])
-    
-    # ! This operation is somehow time-consuming:
-    mace_descriptor = MACE(
-        r_max=env_config["r_max"],
-        num_bessel=env_config["num_bessel"],
-        num_polynomial_cutoff=env_config["num_polynomial_cutoff"],
-        max_ell=env_config["max_ell"],
-        interaction_cls=RealAgnosticResidualInteractionBlock,
-        interaction_cls_first=RealAgnosticResidualInteractionBlock,
-        num_interactions=num_interactions,
-        num_elements=env_config["num_elements"],
-        hidden_irreps=hidden_irreps,
-        MLP_irreps=o3.Irreps(env_config["MLP_irreps"]),
-        atomic_energies=torch.tensor(env_config["atomic_energies"]),
-        avg_num_neighbors=env_config["avg_num_neighbors"],
-        atomic_numbers=env_config["atomic_numbers"],
-        correlation=env_config["correlation"],
-        gate=get_object_from_module(env_config["gate"], "torch.nn.functional"),
-    )
+    model, optimizer, scheduler, loss_fn = init_mace_g2m_model(config, table)
 
 
+    # **************** DATASET GENERATION from paths **************** #
 
-    # === Model initialization ===
-    model_config = config["model"]
+    train_dataset, val_dataset, processor = generate_g2m_dataset_from_paths(config, basis, table, train_paths, val_paths=val_paths, device=device, verbose=True)
 
-    # === Glue between MACE and E3nnGraph2Mat init ===
-    model = MatrixMACE(
-        mace = mace_descriptor,
-        readout_per_interaction=model_config.get("readout_per_interaction", False),
-        graph2mat_cls = E3nnGraph2Mat,
-        
-        # Readout-specific arguments
-        unique_basis = table,
-        symmetric = True,
 
-        # Preprocessing
-        preprocessing_edges = get_object_from_module(
-            model_config["preprocessing_edges"], 
-            'graph2mat.bindings.e3nn.modules'
-        ),
-        preprocessing_edges_kwargs = get_kwargs(model_config["preprocessing_edges"], config),
+    # **************** LOAD PREVIOUS MODEL **************** #
 
-        preprocessing_nodes = get_object_from_module(
-            model_config["preprocessing_nodes"], 
-            'graph2mat.bindings.e3nn.modules'
-        ),
-        preprocessing_nodes_kwargs = get_kwargs(model_config["preprocessing_nodes"], config),
-
-        # Operations
-        node_operation = get_object_from_module(
-            model_config["node_operation"], 
-            'graph2mat.bindings.e3nn.modules'
-        ),
-        node_operation_kwargs = get_kwargs(model_config["node_operation"], config),
-
-        # node_operation = HamGNNInspiredNodeBlock,
-
-        edge_operation = get_object_from_module(
-            model_config["edge_operation"], 
-            'graph2mat.bindings.e3nn.modules'
-        ),
-        edge_operation_kwargs = get_kwargs(model_config["edge_operation"], config),
-    )
-
-    
-    # Optimizer
+    # Load model if specified
     optimizer_config = config["optimizer"]
-    optimizer = optim.Adam(
-        model.parameters(),
-        lr=float(optimizer_config["lr"]),
-        # weight_decay=float(optimizer_config["weight_decay"])
-    )
-    print(f"Using Optimizer {optimizer}")
-
-    # Scheduler
-    scheduler_config = config["scheduler"]
-
-    # len_train_dataloader = int(len(paths) * dataset_config.get("train_split_ratio"))
-    if scheduler_config.get("type", None) is not None:
-        scheduler_args, scheduler_kwargs = get_scheduler_args_and_kwargs(config, verbose=True)#, len_train_dataloader=len_train_dataloader)
-
-    scheduler = scheduler_config.get("type", None)
-    if scheduler is not None:
-        scheduler = get_object_from_module(scheduler_config.get("type", None), "torch.optim.lr_scheduler")(optimizer, *(scheduler_args or ()), **scheduler_kwargs)
-
-
-    # Loss function
-    trainer_config = config["trainer"]
-    loss_fn = get_object_from_module(trainer_config["loss_function"], "graph2mat.core.data.metrics")
-    # loss_fn = graph2mat.core.data.metrics.block_type_mse_threshold_custom # CHANGED TO COMPUTE THE MEAN + skip connection
-    # loss_fn = block_type_mse_threshold_custom # We had to copy it in this script
-    print(f"Using Loss function {loss_fn}")
-
-
-
-    # === Trainer initialization ===
-
-    # Load saved model if required
     trained_model_path = config.get("trained_model_path", None)
+
     if trained_model_path is not None:
+
         initial_lr = float(optimizer_config.get("initial_lr", None))
+
         model, checkpoint, optimizer, _ = load_model(model, optimizer, trained_model_path, lr_scheduler=None, initial_lr=initial_lr, device=device)
+
         print(f"Loaded model in epoch {checkpoint['epoch']} with training loss {checkpoint['train_loss']} and validation loss {checkpoint['val_loss']}.")
     else:
         checkpoint = None
     
-
-    # === Dataset creation ===
-
-    config["dataset"]["max_samples"] = 1 if debug_mode else None#config["dataset"]["max_samples"]
-
-    print("Creating dataset...")
-    processor = MatrixDataProcessor(basis_table=table, symmetric_matrix=True, sub_point_matrix=False)
-    splits = [train_paths, val_paths] if not extra_custom_validation else [train_paths, val_paths, val_paths_extra]
-    datasets = []
-    for split in splits:
-        embeddings_configs = []
-        for i, path in enumerate(split):
-            # Load the structure config
-            file = sisl.get_sile(path / "aiida.fdf")
-            file_h = sisl.get_sile(path / "aiida.HSX")
-            geometry = file.read_geometry()
-            lattice_vectors = geometry.lattice
-
-            matrix = trainer_config.get("matrix", "hamiltonian")
-
-            if matrix == "hamiltonian":
-                true_h = file_h.read_hamiltonian()
-
-                # #Standarization:
-                # x = true_h.tocsr().data
-                # mean = x.mean()
-                # std = x.std()
-                # x_standardized = (true_h - mean) / (std)
-
-                embeddings_config = BasisConfiguration.from_matrix(
-                    matrix = true_h,
-                    geometry = geometry,
-                    labels = True,
-                    metadata={
-                        "device": device,
-                        "atom_types": torch.from_numpy(geometry.atoms.Z), # Unlike point_types, this is not rescaled.
-                        "path": path
-                    },
-                )
-            elif matrix == "tim":
-                h_uc = file_h.read_hamiltonian()
-                true_h = h_uc.Hk([0, 0, 0]).todense()
-
-                embeddings_config = BasisConfiguration(
-                    point_types=geometry.atoms.Z,
-                    positions=geometry.xyz,
-                    basis=basis,
-                    cell=lattice_vectors.cell,
-                    pbc=(True, True, True),
-                    # pbc=(False, False, False),
-                    matrix = true_h
-                )
-            elif matrix == "overlap":
-                true_h = file_h.read_overlap()
-
-                embeddings_config = BasisConfiguration.from_matrix(
-                    matrix = true_h, #I can normalize here instead.
-                    geometry = geometry,
-                    labels = True,
-                    metadata={
-                        "device": device,
-                        "atom_types": torch.from_numpy(geometry.atoms.Z), # Unlike point_types, this is not rescaled.
-                        "path": path
-                    },
-                )
-
-            embeddings_configs.append(embeddings_config)
-
-        datasets.append(TorchBasisMatrixDataset(embeddings_configs, data_processor=processor))
-
-    train_dataset = datasets[0]
-    val_dataset = datasets[1]
-    if extra_custom_validation:
-        val_dataset_extra = datasets[2]
-
-    # # Split dataset (also stratify)
-    # split = config["dataset"]["max_samples"] is None or config["dataset"]["max_samples"] > 1
-    # if split:
-    #     n_atoms_list = [dataset[i].num_nodes for i in range(len(dataset))] if config["dataset"]["stratify"] == True else None
-    #     train_dataset, val_dataset = train_test_split(
-    #         dataset, 
-    #         train_size=config["dataset"]["train_split_ratio"],
-    #         stratify=n_atoms_list,
-    #         random_state=None # Dataset already shuffled (paths)
-    #         )
-    #     print(f"Dataset splitted in {len(train_dataset)} training samples and {len(val_dataset)} validation samples.")
-    # else:
-    #     train_dataset = dataset
-    #     val_dataset = dataset
-    #     print("There is just 1 sample in the dataset. Using it for both train and validation. Use this only for debugging.")
-    
-    # Keep all the dataset in memory
-    keep_in_memory = trainer_config.get("keep_in_memory", False)
-    rotating_pool = trainer_config.get("rotating_pool", False)
-    rotating_pool_size = trainer_config.get("rotating_pool_size", 50)
-    if keep_in_memory:
-        print("Keeping all the dataset in memory.")
-        train_dataset = InMemoryData(train_dataset)
-        val_dataset = InMemoryData(val_dataset)
-        val_dataset_extra = InMemoryData(val_dataset_extra) if extra_custom_validation else None
-    elif rotating_pool:
-        print("Using rotating pool for the dataset.")
-        train_dataset = RotatingPoolData(train_dataset, pool_size=rotating_pool_size)
-        val_dataset = RotatingPoolData(val_dataset, pool_size=rotating_pool_size)
-        val_dataset_extra = RotatingPoolData(val_dataset_extra, pool_size=rotating_pool_size) if extra_custom_validation else None
-
         
-    # Trainer
+    # **************** TRAINER INIT **************** #
+
     trainer = Trainer(
         model = model,
         config = config,
         train_dataset = train_dataset,
         val_dataset = val_dataset,
-        val_dataset_extra = val_dataset_extra,
         loss_fn = loss_fn,
         optimizer = optimizer,
         device = device,
@@ -439,8 +234,8 @@ def main():
     )
 
 
+    # **************** TRAINING LOOP **************** #
 
-    # === Start training ===
     print(f"\nTRAINING STARTS with {len(train_dataset)} train samples and {len(val_dataset)} validation samples.")
     print(f"Using device: {device}")
 

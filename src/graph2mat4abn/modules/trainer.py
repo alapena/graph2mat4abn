@@ -19,7 +19,7 @@ from graph2mat4abn.tools.tools import optimizer_to, read_structures_paths, recon
 from graph2mat4abn.modules.memory_monitor import MemoryMonitor
 
 class Trainer:
-    def __init__(self, model, config, train_dataset, val_dataset, loss_fn, optimizer, device='cpu', val_dataset_extra = None, lr_scheduler=None, live_plot=True, live_plot_freq=1, live_plot_matrix = False, live_plot_matrix_freq = 100, results_dir=None, checkpoint_freq=30, batch_size=1, processor=None, model_checkpoint=None):
+    def __init__(self, model, config, train_dataset, val_dataset, loss_fn, optimizer, device='cpu', lr_scheduler=None, live_plot=True, live_plot_freq=1, live_plot_matrix = False, live_plot_matrix_freq = 100, results_dir=None, checkpoint_freq=30, batch_size=1, processor=None, model_checkpoint=None):
         """_summary_
 
         Args:
@@ -46,7 +46,6 @@ class Trainer:
         self.config = config
         self.train_dataset = train_dataset
         self.val_dataset = val_dataset
-        self.val_dataset_extra = val_dataset_extra
         self.loss_fn = loss_fn
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
@@ -133,7 +132,7 @@ class Trainer:
         self.history['train_node_loss'].append(avg_node_loss.item())
 
 
-    def validate(self, dataloader, extra=False):
+    def validate(self, dataloader):
         """Run validation of the model"""
         self.model.eval()
 
@@ -172,14 +171,9 @@ class Trainer:
         avg_edge_loss = total_edge_loss / num_batches
         avg_node_loss = total_node_loss / num_batches
 
-        if not extra:
-            self.history["val_loss"].append(float(avg_loss.item()))
-            self.history['val_edge_loss'].append(avg_edge_loss.item())
-            self.history['val_node_loss'].append(avg_node_loss.item())
-        else:
-            self.history["val_loss_extra"].append(avg_loss.item())
-            self.history['val_edge_loss_extra'].append(avg_edge_loss.item())
-            self.history['val_node_loss_extra'].append(avg_node_loss.item())
+        self.history["val_loss"].append(float(avg_loss.item()))
+        self.history['val_edge_loss'].append(avg_edge_loss.item())
+        self.history['val_node_loss'].append(avg_node_loss.item())
 
     # def check_for_plateau(self, val_loss, epoch):
     #     """Check if training has plateaued and adjust learning rate if needed"""
@@ -211,15 +205,12 @@ class Trainer:
                 # Total losses
                 'train_loss': [],
                 'val_loss': [],
-                'val_loss_extra': [],
 
                 # Component losses
                 'train_edge_loss': [],
                 'train_node_loss': [],
                 'val_edge_loss': [],
                 'val_node_loss': [],
-                'val_edge_loss_extra': [],
-                'val_node_loss_extra': [],
 
                 'learning_rate': [],
 
@@ -276,28 +267,22 @@ class Trainer:
 
             train_structures = []
             val_structures = []
-            val_structures_extra = []
             for data in self.train_dataset:
                 train_structures.append(str(data.metadata["path"]))
             for data in self.val_dataset:
                 val_structures.append(str(data.metadata["path"]))
-            if self.val_dataset_extra is not None:
-                for data in self.val_dataset_extra:
-                    val_structures_extra.append(str(data.metadata["path"]))
 
             # Check if the training dataset is the same as in the loaded model
             # If first training
             if self.execution_id == 1:
                 write_structures_paths(train_structures, (current_dataset_dir / f"train_dataset.txt"))
                 write_structures_paths(val_structures, (current_dataset_dir / f"val_dataset.txt"))
-                write_structures_paths(val_structures_extra, (current_dataset_dir / f"val_dataset_extra.txt")) if self.val_dataset_extra is not None else None
 
             # If we are loading a model
             else:
                 previous_dataset_dir = Path(*Path(self.config.get("trained_model_path")).parts[:2]) / "dataset"
                 previous_train_structures = read_structures_paths(str(previous_dataset_dir / f"train_dataset.txt"))
                 previous_val_structures = read_structures_paths(str(previous_dataset_dir / f"val_dataset.txt"))
-                previous_val_structures_extra = read_structures_paths(str(previous_dataset_dir / f"val_dataset_extra.txt")) if self.val_dataset_extra is not None else None
 
 
                 # Check training_dataset
@@ -320,23 +305,11 @@ class Trainer:
                     print("Validation dataset is the same as the loaded one :)")
                     write_structures_paths(val_structures, (current_dataset_dir / f"val_dataset.txt"))
 
-                # Check val_dataset_extra
-                if self.val_dataset_extra is not None:
-                    if set(val_structures_extra) != set(previous_val_structures_extra): # We use set() to compare because order does not matter
-                        if not self.config["debug_mode"]:
-                            raise ValueError("The extra validation dataset is different from the loaded one!")
-                        else:
-                            print("Extra validation dataset is not the same but we are in DEBUG MODE so don't worry :).")
-                    else:
-                        print("Extra validation dataset is the same as the loaded one :)")
-                        write_structures_paths(val_structures_extra, (current_dataset_dir / f"val_dataset_extra.txt"))
-
 
         # === Training loop ===
         # Create dataloaders
         train_dataloader = DataLoader(self.train_dataset, self.batch_size)
         val_dataloader = DataLoader(self.val_dataset, self.batch_size)
-        val_dataloader_extra = DataLoader(self.val_dataset_extra, self.batch_size) if self.val_dataset_extra is not None else None
 
         # Compute normalization factors if needed
         all_point_labels = []
@@ -373,13 +346,6 @@ class Trainer:
 
             # Validation phase
             self.validate(val_dataloader)
-            if self.val_dataset_extra is not None:
-                if epoch%100 == 0:
-                    self.validate(val_dataloader_extra, extra=True)
-                else:
-                    self.history["val_loss_extra"].append(None)
-                    self.history['val_edge_loss_extra'].append(None)
-                    self.history['val_node_loss_extra'].append(None)
 
             # Store current learning rate
             self.lr = self.optimizer.param_groups[0]['lr']
@@ -519,36 +485,19 @@ class Trainer:
             ]
         
         # Prepare data
-        if self.val_dataset_extra is None:
-            df = pd.DataFrame(
-                np.array([
-                    detach_list(self.history["train_loss"]),
-                    detach_list(self.history["val_loss"]),
-                    detach_list(self.history["train_edge_loss"]),
-                    detach_list(self.history["val_edge_loss"]),
-                    detach_list(self.history["train_node_loss"]),
-                    detach_list(self.history["val_node_loss"]),
-                    detach_list(self.history["learning_rate"]),
-                ]).T,
-                columns=["Train total", "Val total", "Train edge", "Val edge", "Train node", "Val node", "Learning rate"],
-            )
-        else:
-            df = pd.DataFrame(
-                np.array([
-                    detach_list(self.history["train_loss"]),
-                    detach_list(self.history["val_loss"]),
-                    detach_list(self.history["val_loss_extra"]),
-                    detach_list(self.history["train_edge_loss"]),
-                    detach_list(self.history["val_edge_loss"]),
-                    detach_list(self.history["val_edge_loss_extra"]),
-                    detach_list(self.history["train_node_loss"]),
-                    detach_list(self.history["val_node_loss"]),
-                    detach_list(self.history["val_node_loss_extra"]),
-                    detach_list(self.history["learning_rate"]),
-                ]).T,
-                columns=["Train total", "Val total", "Val_extra total", "Train edge", "Val edge", "Val_extra edge", "Train node", "Val node", "Val_extra node", "Learning rate"],
-            )
-
+        df = pd.DataFrame(
+            np.array([
+                detach_list(self.history["train_loss"]),
+                detach_list(self.history["val_loss"]),
+                detach_list(self.history["train_edge_loss"]),
+                detach_list(self.history["val_edge_loss"]),
+                detach_list(self.history["train_node_loss"]),
+                detach_list(self.history["val_node_loss"]),
+                detach_list(self.history["learning_rate"]),
+            ]).T,
+            columns=["Train total", "Val total", "Train edge", "Val edge", "Train node", "Val node", "Learning rate"],
+        )
+        
         # Create figure with secondary y-axis
         fig = make_subplots(specs=[[{"secondary_y": True}]])
         
@@ -556,24 +505,18 @@ class Trainer:
         loss_colors = {
             "Train total": "blue",
             "Val total": "red",
-            "Val_extra total": "magenta",
             "Train edge": "blue",
             "Val edge": "red",
-            "Val_extra edge": "magenta",
             "Train node": "blue",
             "Val node": "red",
-            "Val_extra node": "magenta",
         }
         loss_dashes = {
             "Train total": "solid",
             "Val total": "solid",
-            "Val_extra total": "solid",
             "Train edge": "dash",
             "Val edge": "dash",
-            "Val_extra edge": "dash",
             "Train node": "dot",
             "Val node": "dot",
-            "Val_extra node": "dot"
         }
         
         for col in df.columns[:-1]:  # All columns except Learning rate

@@ -10,7 +10,7 @@ def get_object_from_module(class_name, module):
     try:
         return getattr(importlib.import_module(module), class_name)
     except AttributeError:
-        return None  # Or raise an error if you prefer
+        raise ValueError(f"Class {class_name} not found in module {module}")
     
 def save_to_yaml(config, path):
     with open(path, 'w') as file:
