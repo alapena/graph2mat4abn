@@ -79,7 +79,9 @@ trainer:
   live_plot_matrices_num: 1
 
   num_epochs: 1000000
-  loss_function: block_type_mse_nonzero # elementwise_mse, block_type_mse, block_type_mse_threshold, block_type_mse_nonzero
+  loss_function: block_type_mse_nonzero_globalsquarenorm # elementwise_mse, block_type_mse, block_type_mse_threshold, block_type_mse_nonzero
+  loss_fn_kwargs:
+    norm: 1e-3 # Global (squared) normalization factor
 
   keep_in_memory: true
   rotating_pool: false

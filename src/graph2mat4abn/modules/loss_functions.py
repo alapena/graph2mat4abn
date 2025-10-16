@@ -50,15 +50,18 @@ def get_predictions_error_nonzero(
 
 
 @OrbitalMatrixMetric.from_metric_func
-def block_type_mse_nonzero(
+def block_type_mse_nonzero_globalsquarenorm(
     nodes_pred, nodes_ref, edges_pred, edges_ref, log_verbose=False, **kwargs
 ) -> Tuple[float, Dict[str, float]]:
     node_error, edge_error = get_predictions_error_nonzero(
         nodes_pred, nodes_ref, edges_pred, edges_ref
     )
+        
+    norm = 1.0 if kwargs["norm"] is None else float(kwargs["norm"])
+    print("Using global normalization factor: ", norm)
 
-    node_loss = (node_error**2).mean()
-    edge_loss = (edge_error**2).mean()
+    node_loss = (node_error**2).mean() * 1/(norm**2)
+    edge_loss = (edge_error**2).mean() * 1/(norm**2)
 
     stats = {
         "node_rmse": node_loss ** (1 / 2),
