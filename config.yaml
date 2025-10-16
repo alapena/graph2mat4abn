@@ -1,6 +1,6 @@
 debug_mode: false
 device: "cuda:0" # "cpu" or "cuda:0"
-results_dir: "./results/block_type_mse_nonzero_2-8ATOMS"
+results_dir: "./results/block_type_mse_nonzero_globalsquarenorm_1e-3_2-8ATOMS"
 trained_model_path: null
 dataset:
   train_split_ratio: 0.80

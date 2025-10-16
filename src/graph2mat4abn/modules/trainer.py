@@ -92,8 +92,7 @@ class Trainer:
                 nodes_ref=batch.point_labels, #/ (self.mean_abs_point_nonzero + 1e-10), # Normalize
                 edges_pred=model_predictions["edge_labels"],
                 edges_ref=batch.edge_labels, #/ (self.mean_abs_edge_nonzero + 1e-10), # Normalize
-                threshold=0.0001, # 10 meV
-                loss_fn_kwargs = self.config["trainer"].get("loss_fn_kwargs", None)
+                **self.config["trainer"].get("loss_fn_kwargs", None)
             )
 
 
@@ -156,14 +155,14 @@ class Trainer:
                 # Compute the loss
                 loss, stats = self.loss_fn(
                     nodes_pred=model_predictions["node_labels"],
-                    nodes_ref=batch.point_labels / (self.mean_abs_point_nonzero + 1e-10), # Normalize
+                    nodes_ref=batch.point_labels, #/ (self.mean_abs_point_nonzero + 1e-10), # Normalize
                     edges_pred=model_predictions["edge_labels"],
-                    edges_ref=batch.edge_labels / (self.mean_abs_edge_nonzero + 1e-10), # Normalize
-                    threshold=0.0001 # 10 meV
+                    edges_ref=batch.edge_labels, #/ (self.mean_abs_edge_nonzero + 1e-10), # Normalize
+                    **self.config["trainer"].get("loss_fn_kwargs", None)
                 )
-                total_loss += loss *10**6
-                total_edge_loss += stats["edge_rmse"]**2 *10**6 # Squared because it returns the root.
-                total_node_loss += stats["node_rmse"]**2 *10**6
+                total_loss += loss 
+                total_edge_loss += stats["edge_rmse"]**2  # Squared because it returns the root.
+                total_node_loss += stats["node_rmse"]**2 
 
                 num_batches += 1
 

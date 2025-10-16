@@ -177,7 +177,10 @@ def main():
             val_paths=[val_paths[0]]
 
 
-
+    if debug_mode:
+        train_paths=train_paths[:2]
+        val_paths=val_paths[:2]
+        print("Debug mode: only 2 structures in train and validation.")
 
     # **************** BASIS GENERATION **************** #
     basis = get_basis_from_structures_paths(paths, verbose=True, num_unique_z=config["dataset"].get("num_unique_z", None))

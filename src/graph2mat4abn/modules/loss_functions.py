@@ -58,7 +58,6 @@ def block_type_mse_nonzero_globalsquarenorm(
     )
         
     norm = 1.0 if kwargs["norm"] is None else float(kwargs["norm"])
-    print("Using global normalization factor: ", norm)
 
     node_loss = (node_error**2).mean() * 1/(norm**2)
     edge_loss = (edge_error**2).mean() * 1/(norm**2)
