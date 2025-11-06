@@ -85,35 +85,20 @@ def update_loss_plots(history, verbose=False):
     
     # Prepare data
 
-    if not history["val_loss_extra"]:
-        df = pd.DataFrame(
-            np.array([
-                detach_list(history["train_loss"]),
-                detach_list(history["val_loss"]),
-                detach_list(history["train_edge_loss"]),
-                detach_list(history["val_edge_loss"]),
-                detach_list(history["train_node_loss"]),
-                detach_list(history["val_node_loss"]),
-                detach_list(history["learning_rate"]),
-            ]).T,
-            columns=["Train total", "Val total", "Train edge", "Val edge", "Train node", "Val node", "Learning rate"],
-        )
-    else:
-        df = pd.DataFrame(
-            np.array([
-                detach_list(history["train_loss"]),
-                detach_list(history["val_loss"]),
-                detach_list(history["val_loss_extra"]),
-                detach_list(history["train_edge_loss"]),
-                detach_list(history["val_edge_loss"]),
-                detach_list(history["val_edge_loss_extra"]),
-                detach_list(history["train_node_loss"]),
-                detach_list(history["val_node_loss"]),
-                detach_list(history["val_node_loss_extra"]),
-                detach_list(history["learning_rate"]),
-            ]).T,
-            columns=["Train total", "Val total", "Val_extra total", "Train edge", "Val edge", "Val_extra edge", "Train node", "Val node", "Val_extra node", "Learning rate"],
-        )
+
+    df = pd.DataFrame(
+        np.array([
+            detach_list(history["train_loss"]),
+            detach_list(history["val_loss"]),
+            detach_list(history["train_edge_loss"]),
+            detach_list(history["val_edge_loss"]),
+            detach_list(history["train_node_loss"]),
+            detach_list(history["val_node_loss"]),
+            detach_list(history["learning_rate"]),
+        ]).T,
+        columns=["Train total", "Val total", "Train edge", "Val edge", "Train node", "Val node", "Learning rate"],
+    )
+    
 
     # Create figure with secondary y-axis
     fig = make_subplots(specs=[[{"secondary_y": True}]])
