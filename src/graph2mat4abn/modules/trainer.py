@@ -2,6 +2,7 @@
 import time
 
 import scipy
+from graph2mat4abn.modules.trainer_tools import force_zeroes_below_threshold
 from graph2mat4abn.tools.import_utils import save_to_yaml
 from graph2mat4abn.tools.plot import plot_error_matrices_big, plot_error_matrices_small
 import torch
@@ -19,7 +20,7 @@ from graph2mat4abn.tools.tools import optimizer_to, read_structures_paths, recon
 from graph2mat4abn.modules.memory_monitor import MemoryMonitor
 
 class Trainer:
-    def __init__(self, model, config, train_dataset, val_dataset, loss_fn, optimizer, device='cpu', lr_scheduler=None, live_plot=True, live_plot_freq=1, live_plot_matrix = False, live_plot_matrix_freq = 100, results_dir=None, checkpoint_freq=30, batch_size=1, processor=None, model_checkpoint=None):
+    def __init__(self, model, config, train_dataset, val_dataset, loss_fn, optimizer, device='cpu', lr_scheduler=None, live_plot=True, live_plot_freq=1, live_plot_matrix = False, live_plot_matrix_freq = 100, results_dir=None, checkpoint_freq=30, batch_size=1, processor=None, model_checkpoint=None, threshold=None):
         """_summary_
 
         Args:
@@ -54,6 +55,7 @@ class Trainer:
         self.results_dir = Path(results_dir)
         self.checkpoint_freq = checkpoint_freq
         self.model_checkpoint = model_checkpoint
+        self.threshold = threshold
 
         # Live plotting setup
         self.live_plot = live_plot
@@ -85,6 +87,10 @@ class Trainer:
             # Model forward pass
             # model_predictions = self.model(data=batch, node_feats=enviroment_description["node_feats"])
             model_predictions = self.model(data=batch)
+
+            # Force predictions that should be zero to be zero
+            if self.threshold is not None:
+                force_zeroes_below_threshold(batch, model_predictions, self.threshold, update_true_labels=True) # ! Warning! We are modifying the true labels too here!
 
             # Compute the loss
             loss, stats = self.loss_fn(

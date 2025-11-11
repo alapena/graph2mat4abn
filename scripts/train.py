@@ -234,6 +234,7 @@ def main():
         batch_size = trainer_config["batch_size"],
         processor=processor,
         model_checkpoint = checkpoint,
+        threshold = float(trainer_config["threshold"])
     )
 
 

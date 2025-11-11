@@ -1,7 +1,7 @@
 debug_mode: false
 device: "cuda:0" # "cpu" or "cuda:0"
-results_dir: "./results/block_type_mse_nonzero_globalsquarenorm_1e-3_2-8ATOMS"
-trained_model_path: null
+results_dir: "./results/zerobelow1e-6eV"
+trained_model_path: "./results/block_type_mse_nonzero_globalsquarenorm_1e-3_2-8ATOMS/checkpoints/model_epoch_50000.tar"
 dataset:
   train_split_ratio: 0.80
   # test_split_ratio: 0.50
@@ -82,6 +82,7 @@ trainer:
   loss_function: block_type_mse_nonzero_globalsquarenorm # elementwise_mse, block_type_mse, block_type_mse_threshold, block_type_mse_nonzero
   loss_fn_kwargs:
     norm: 1e-3 # Global (squared) normalization factor
+  threshold: 1e-6 # True energy (eV) below which the model will force the predictions to be zero.
 
   keep_in_memory: true
   rotating_pool: false
