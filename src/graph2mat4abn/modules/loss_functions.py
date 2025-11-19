@@ -33,8 +33,8 @@ def get_predictions_error_nonzero(
     nodes_pred, nodes_ref, edges_pred, edges_ref, remove_nan=True,
 ):
     """Returns errors for both nodes and edges, removing NaN values and zero values."""
-    nodes_ref, nodes_pred = _remove_zeros_simultaneously(nodes_ref, nodes_pred)
-    edges_ref, edges_pred = _remove_zeros_simultaneously(edges_ref, edges_pred)
+    nodes_ref, nodes_pred = _remove_zeros_simultaneously(nodes_pred, nodes_ref)
+    edges_ref, edges_pred = _remove_zeros_simultaneously(edges_pred, edges_ref)
 
     node_error = nodes_pred - nodes_ref
 
