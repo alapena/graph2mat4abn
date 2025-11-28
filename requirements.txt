@@ -5,7 +5,7 @@ torchaudio
 ipykernel
 sisl
 torch_geometric
-mace-torch==0.3.14
+mace-torch==0.3.13
 e3nn==0.4.4
 numpy # numpy==1.26.3 (not using this version will cause problems with tbplas)
 scipy # scipy==1.11.4 (not using this version will cause problems with tbplas)
