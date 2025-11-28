@@ -72,12 +72,18 @@ def main():
         # Path("dataset/SHARE_OUTPUTS_64_ATOMS/5d5a-2e97-4efb-b45a-3361c6c3bc1c"),
 
         #OTHER:
-        Path("dataset/SHARE_OUTPUTS_2_ATOMS/7bbb-6d51-41eb-9de4-329298202ebf"),
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/7bbb-6d51-41eb-9de4-329298202ebf"),
+
+        # Post TFM:
+        # Path("dataset/SHARE_OUTPUTS_2_ATOMS/52b6-d4b4-4aa1-bf10-8c7d44c978d3"),
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/02e5-66b7-491e-a2a9-492390da1112"), # hBN
+        Path("dataset/SHARE_OUTPUTS_8_ATOMS/e0f4-41e6-4ebc-a38b-f41adc8a7e1f"), # cBN
     ]
     # The current model:
-    model_dir = Path("results/h_crystalls_8")
-    filename = "val_best_model.tar"
-    savedir = Path('results_dos/h_crystalls_8_val/bands')
+    type_struct = "hBN" # 2atm, hBN, cBN, amorphous (from Gamma to Gamma)
+    model_dir = Path("results/correctzeroesissue2")
+    filename = "train_best_model.tar"
+    savedir = Path('results/correctzeroesissue2/bands')
     only_pred = False
     only_true = False
 
@@ -260,48 +266,52 @@ def main():
             # Compute k path (not definitive to use in the report)
             B = np.vstack([b1, b2, b3])  # shape (3,3)
 
-            # For Molecules:
-            k_cart = np.array([[0.0, 0.0, 0.0], b1, b2, b3])
-            k_label = ['Γ', "X", "Y", "Z"]
+            if type_struct == "2atm":
+                # For Molecules:
+                k_cart = np.array([[0.0, 0.0, 0.0], b1, b2, b3])
+                k_label = ['Γ', "X", "Y", "Z"]
 
-            # # For cubic:
-            # # High-symmetry points in fractional coords (relative to b1, b2, b3)
-            # frac_kpts = np.array([
-            #     [0.0, 0.0, 0.0],  # Γ
-            #     [0.0, 0.5, 0.0],  # X
-            #     [0.5, 0.5, 0.0],  # M
-            #     [0.0, 0.0, 0.0],  # Γ
-            #     [0.5, 0.5, 0.5],  # R
-            #     [0.0, 0.5, 0.0],  # X
-            #     [0.5, 0.5, 0.0],  # M
-            #     [0.5, 0.0, 0.0],  # X1
-            # ])
-            # k_cart = frac_kpts @ np.array([b1, b2, b3])
-            # k_label = ['Γ', 'X', 'M', 'Γ', 'R', 'X', 'M', 'X1']
+            elif type_struct == "cBN":
+                # For cubic:
+                # High-symmetry points in fractional coords (relative to b1, b2, b3)
+                frac_kpts = np.array([
+                    [0.0, 0.0, 0.0],  # Γ
+                    [0.0, 0.5, 0.0],  # X
+                    [0.5, 0.5, 0.0],  # M
+                    [0.0, 0.0, 0.0],  # Γ
+                    [0.5, 0.5, 0.5],  # R
+                    [0.0, 0.5, 0.0],  # X
+                    [0.5, 0.5, 0.0],  # M
+                    [0.5, 0.0, 0.0],  # X1
+                ])
+                k_cart = frac_kpts @ np.array([b1, b2, b3])
+                k_label = ['Γ', 'X', 'M', 'Γ', 'R', 'X', 'M', 'X1']
 
-            # # Physical hBN
-            # # High-symmetry points in fractional coords (relative to b1, b2, b3)
-            # frac_kpts = np.array([
-            #     [0.0,         0.0,         0.0],  # Γ
-            #     [0.5,         0.0,         0.0],  # M
-            #     [1/3,         1/3,         0.0],  # K
-            #     [0.0,         0.0,         0.0],  # Γ
-            #     [0.0,         0.0,         0.5],  # A
-            #     [0.5,         0.0,         0.5],  # L
-            #     [1/3,         1/3,         0.5],  # H
-            #     [1/3,         1/3,         0.0],  # K
-            #     [1/3,         1/3,        -0.5],  # H2
-            # ])
-            # k_cart = frac_kpts @ np.array([b1, b2, b3])
-            # k_label = ['Γ', 'M', 'K', 'Γ', 'A', 'L', 'H', 'K', 'H2']
+            if type_struct == "hBN":
+                # Physical hBN
+                # High-symmetry points in fractional coords (relative to b1, b2, b3)
+                frac_kpts = np.array([
+                    [0.0,         0.0,         0.0],  # Γ
+                    [0.5,         0.0,         0.0],  # M
+                    [1/3,         1/3,         0.0],  # K
+                    [0.0,         0.0,         0.0],  # Γ
+                    [0.0,         0.0,         0.5],  # A
+                    [0.5,         0.0,         0.5],  # L
+                    [1/3,         1/3,         0.5],  # H
+                    [1/3,         1/3,         0.0],  # K
+                    [1/3,         1/3,        -0.5],  # H2
+                ])
+                k_cart = frac_kpts @ np.array([b1, b2, b3])
+                k_label = ['Γ', 'M', 'K', 'Γ', 'A', 'L', 'H', 'K', 'H2']
 
-            # # amorphous
-            # frac_kpts = np.array([
-            #     [0.0,         0.0,         0.0],  # Γ
-            #     [1.0,         1.0,         1.0],  # Γ
-            # ])
-            # k_cart = frac_kpts @ np.array([b1, b2, b3])
-            # k_label = ['Γ', 'XYZ']
+            if type_struct == "amorphous":
+                # amorphous
+                frac_kpts = np.array([
+                    [0.0,         0.0,         0.0],  # Γ
+                    [1.0,         1.0,         1.0],  # Γ
+                ])
+                k_cart = frac_kpts @ np.array([b1, b2, b3])
+                k_label = ['Γ', 'XYZ']
 
 
             k_frac = np.array([np.linalg.solve(B.T, k) for k in k_cart])

@@ -115,14 +115,16 @@ def main():
         # Path("dataset/SHARE_OUTPUTS_2_ATOMS/a4a5-71a5-463a-a02e-acd977e1dcda"),
 
 
-        #OTHER:
-        Path("dataset/SHARE_OUTPUTS_2_ATOMS/7bbb-6d51-41eb-9de4-329298202ebf"),
+        # Post TFM:
+        Path("dataset/SHARE_OUTPUTS_2_ATOMS/52b6-d4b4-4aa1-bf10-8c7d44c978d3"),
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/02e5-66b7-491e-a2a9-492390da1112"), # hBN
+        # Path("dataset/SHARE_OUTPUTS_8_ATOMS/e0f4-41e6-4ebc-a38b-f41adc8a7e1f"), # cBN
     ]
     # The current model:
-    model_dir = Path("results/h_crystalls_8")
-    filename = "val_best_model.tar"
-    savedir = Path('results_dos/h_crystalls_8_val')
-    split = "val"
+    model_dir = Path("results/correctzeroesissue2")
+    filename = "train_best_model.tar"
+    savedir = Path('results/correctzeroesissue2/dos')
+    # split = "train"
     only_true = False
 
     config = load_config(model_dir / "config.yaml")
@@ -294,41 +296,44 @@ def main():
             add_hopping_terms(overlap, iscs, orbs_in, orbs_out, hoppings)
 
 
-            # Define a path in k-space
+            # # Define a path in k-space
 
-            b1, b2, b3 = cell.get_reciprocal_vectors()/10 # Angstrom^-1
-            # k_pos_frac, k_pos_cart = real_space_to_kspace(positions, b1, b2, b3)
+            # b1, b2, b3 = cell.get_reciprocal_vectors()/10 # Angstrom^-1
+            # # k_pos_frac, k_pos_cart = real_space_to_kspace(positions, b1, b2, b3)
 
-            # Compute k path (not definitive to use in the report)
-            B = np.vstack([b1, b2, b3])  # shape (3,3)
-            k_cart = np.array([[0.0, 0.0, 0.0], b1, b2, b3])
-            k_label = ['Γ', "X", "Y", "Z"]
+            # # Compute k path (not definitive to use in the report)
+            # B = np.vstack([b1, b2, b3])  # shape (3,3)
+            # k_cart = np.array([[0.0, 0.0, 0.0], b1, b2, b3])
+            # k_label = ['Γ', "X", "Y", "Z"]
 
-            k_frac = np.array([np.linalg.solve(B.T, k) for k in k_cart])
+            # k_frac = np.array([np.linalg.solve(B.T, k) for k in k_cart])
 
-            n_ks = 30
-            k_path, k_idx = tb.gen_kpath(k_frac, [n_ks for _ in range(len(k_frac) -1)])
-            len(k_path)
+            # n_ks = 30
+            # k_path, k_idx = tb.gen_kpath(k_frac, [n_ks for _ in range(len(k_frac) -1)])
+            # len(k_path)
 
-            solver = tb.DiagSolver(cell, overlap)
-            solver.config.k_points = k_path
-            solver.config.prefix = "bands"
+            # solver = tb.DiagSolver(cell, overlap)
+            # solver.config.k_points = k_path
+            # solver.config.prefix = "bands"
 
-            timer = tb.Timer()
-            timer.tic("bands")
-            k_len, bands = solver.calc_bands()
-            timer.toc("bands")
-            timer.report_total_time()
-
-
-            if ham_idx == 0:
-                filepath = savedir / f"{split}_{n_atoms}atm_{structure}_bands_true.npz"
-            if ham_idx == 1:
-                filepath = savedir / f"{split}_{n_atoms}atm_{structure}_bands_pred.npz"
-            np.savez(filepath, path=str(path), k_idx=k_idx, k_label=k_label, k_len=k_len, bands=bands,)
+            # timer = tb.Timer()
+            # timer.tic("bands")
+            # k_len, bands = solver.calc_bands()
+            # timer.toc("bands")
+            # timer.report_total_time()
 
 
-            n_ks=30
+            # if ham_idx == 0:
+            #     filepath = savedir / f"{split}_{n_atoms}atm_{structure}_bands_true.npz"
+            # if ham_idx == 1:
+            #     filepath = savedir / f"{split}_{n_atoms}atm_{structure}_bands_pred.npz"
+            # np.savez(filepath, path=str(path), k_idx=k_idx, k_label=k_label, k_len=k_len, bands=bands,)
+
+            # Load bands
+            bands = np.load(model_dir / "bands" / f"{n_atoms}atm_{structure}_bands_true.npz")
+
+
+            n_ks=15
             k_mesh = tb.gen_kmesh((n_ks, n_ks, n_ks))  # Uniform meshgrid
             if ham_idx == 0:
                 e_min = float(np.min(bands))
@@ -338,13 +343,10 @@ def main():
             solver = tb.DiagSolver(cell, overlap)
             solver.config.k_points = k_mesh
             solver.config.prefix = "dos"
-
-            e_fermi=read_fermi_level(path / "aiida.out")
-            
-        
             solver.config.e_min = e_min-3
             solver.config.e_max = e_max+3
-            # solver.config.e_max = e_fermi+10
+            solver.config.sigma = 0.1
+
             timer = tb.Timer()
             timer.tic("dos")
             energies, dos = solver.calc_dos()
@@ -352,9 +354,11 @@ def main():
             timer.report_total_time()
 
             if ham_idx == 0:
-                filepath = savedir / f"{split}_{n_atoms}atm_{structure}_dos_mesh{n_ks}_true.npz"
+                filepath = savedir / f"{n_atoms}atm_{structure}_dos_mesh{n_ks}_true.npz"
+                print(f"Saving true DOS saved at {filepath}...")
             if ham_idx == 1:
-                filepath = savedir / f"{split}_{n_atoms}atm_{structure}_dos_mesh{n_ks}_pred.npz"
+                filepath = savedir / f"{n_atoms}atm_{structure}_dos_mesh{n_ks}_pred.npz"
+                print(f"Saving pred DOS saved at {filepath}...")
             np.savez(filepath, path=str(path), energies=energies, dos=dos)
 
 
