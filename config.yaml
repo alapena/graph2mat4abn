@@ -83,6 +83,7 @@ trainer:
   loss_fn_kwargs:
     norm: 1e-3 # Global (squared) normalization factor
   threshold: null # True energy (eV) below which the model will force the predictions to be zero.
+  loss2: bands # null, bands. Add a second term to the loss function.
 
   keep_in_memory: true
   rotating_pool: false

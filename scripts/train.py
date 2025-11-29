@@ -222,6 +222,7 @@ def main():
         train_dataset = train_dataset,
         val_dataset = val_dataset,
         loss_fn = loss_fn,
+        loss2_fn = config["trainer"].get("loss2", None),
         optimizer = optimizer,
         device = device,
         lr_scheduler = scheduler,

@@ -274,8 +274,11 @@ def get_orbital_indices_and_shifts_from_sile(sile):
 
 
 def reconstruct_tim_from_coo(k_point, M_coo, geometry, cell):
+
     no = M_coo.shape[0]  # Number of orbitals in the unit cell
-    H_g = np.zeros((no, no), dtype=complex)  # Output matrix
+    k_point = np.atleast_2d(k_point)
+    n_kpoints = k_point.shape[0]
+    H_g = np.zeros((k_point.shape[0], no, no), dtype=complex)  # Output matrix
     
     for k in range(M_coo.nnz):
         # Extract row index (already in unit cell basis)
@@ -289,9 +292,12 @@ def reconstruct_tim_from_coo(k_point, M_coo, geometry, cell):
         Phase = np.exp(1j * k_point.dot(R_uc))
         
         # Accumulate value with phase
-        H_g[i_uc, j_uc] += M_coo.data[k] * Phase
+        H_g[:, i_uc, j_uc] += M_coo.data[k] * Phase
     
+    if H_g.shape[0] == 1:
+        return H_g[0]
     return H_g
+
 
 
 def reduced_coord(kpt, cell):

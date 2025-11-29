@@ -20,7 +20,7 @@ from graph2mat4abn.tools.tools import optimizer_to, read_structures_paths, recon
 from graph2mat4abn.modules.memory_monitor import MemoryMonitor
 
 class Trainer:
-    def __init__(self, model, config, train_dataset, val_dataset, loss_fn, optimizer, device='cpu', lr_scheduler=None, live_plot=True, live_plot_freq=1, live_plot_matrix = False, live_plot_matrix_freq = 100, results_dir=None, checkpoint_freq=30, batch_size=1, processor=None, model_checkpoint=None, threshold=None):
+    def __init__(self, model, config, train_dataset, val_dataset, loss_fn, optimizer, device='cpu', loss2_fn=None, lr_scheduler=None, live_plot=True, live_plot_freq=1, live_plot_matrix = False, live_plot_matrix_freq = 100, results_dir=None, checkpoint_freq=30, batch_size=1, processor=None, model_checkpoint=None, threshold=None):
         """_summary_
 
         Args:
@@ -48,6 +48,7 @@ class Trainer:
         self.train_dataset = train_dataset
         self.val_dataset = val_dataset
         self.loss_fn = loss_fn
+        self.loss2_fn = loss2_fn
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
         self.batch_size = batch_size
@@ -64,7 +65,7 @@ class Trainer:
         self.live_plot_matrix_freq = live_plot_matrix_freq
         self.processor = processor
 
-    def train_epoch(self, dataloader):
+    def train_epoch(self, dataloader, dataloader2=None):
         """Run one epoch of training"""
         self.model.train()
 
@@ -100,6 +101,35 @@ class Trainer:
                 edges_ref=batch.edge_labels, #/ (self.mean_abs_edge_nonzero + 1e-10), # Normalize
                 **self.config["trainer"].get("loss_fn_kwargs", None)
             )
+
+            # Additional loss
+            if loss2 == "bands":
+                # We need to create a batch of (graph --> H, k, E, S, state)
+                batch_paths = batch.metadata["path"]
+                eigen_paths = [Path(str(p).replace("dataset", "dataset_eigen")) for p in batch.metadata["path"]]
+
+                # The hamiltonians are stored in sparse COO format. Batching is not efficient with sparse matrices so we will iterate through each structure instead.
+                # This is also more memory friendly.
+                for path in eigen_paths:
+                    bands = np.load(path/"bands.npz")["bands"]
+                    states = np.load(path/"states.npz")["states"]
+                    overlap_coo = np.load(path/"overlap.npz")["overlap"]
+                    k = np.load(path/"k_path.npz")
+                    k_path = k["k_path"]
+                    k_idx = k["k_idx"]
+                    k_label = k["k_label"]
+                    k_len = k["k_len"]
+
+                    bands = torch.tensor(bands, dtype=torch.float32, device=self.device, requires_grad=True)
+                    states = torch.tensor(states, dtype=torch.float32, device=self.device, requires_grad=True)
+                    overlap_coo = torch.tensor(overlap_coo, dtype=torch.float32, device=self.device, requires_grad=True)
+                    k_path = torch.tensor(k_path, dtype=torch.float32, device=self.device, requires_grad=True)
+
+                    # TODO: Call the bands loss fn and kepp going.
+
+                    
+                loss2 = self.loss2_fn(hamiltonian_coo, ...)
+                loss += loss2
 
 
             total_loss += loss
