@@ -1,7 +1,7 @@
 debug_mode: false
 device: "cuda:0" # "cpu" or "cuda:0"
-results_dir: "./results/correctzeroesissue2"
-trained_model_path: "./results/correctzeroesissue/train_node_best_model.tar"
+results_dir: "./results/loss2_schrodeq"
+trained_model_path: "./results/correctzeroesissue2/train_best_model.tar"
 dataset:
   train_split_ratio: 0.80
   # test_split_ratio: 0.50
@@ -83,7 +83,8 @@ trainer:
   loss_fn_kwargs:
     norm: 1e-3 # Global (squared) normalization factor
   threshold: null # True energy (eV) below which the model will force the predictions to be zero.
-  loss2: bands # null, bands. Add a second term to the loss function.
+  loss2: "bands" # null, "bands". Add a second term to the loss function. Usually a Physics Informed term.
+  n_samples_batch: 2 # The nr of samples per batch that will be used to pass through the loss2_fn.
 
   keep_in_memory: true
   rotating_pool: false

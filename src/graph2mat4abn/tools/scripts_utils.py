@@ -216,10 +216,12 @@ def init_mace_g2m_model(config, table):
     trainer_config = config["trainer"]
     print("LOSS FN SELECTED: ", trainer_config["loss_function"])
     loss_fn = get_object_from_module(trainer_config["loss_function"], "graph2mat4abn.modules.loss_functions")
+    loss2_fn = trainer_config.get("loss2", None)
 
     print(f"Using Loss function {loss_fn}")
+    print(f"Additional loss function: {loss2_fn}")
 
-    return model, optimizer, scheduler, loss_fn
+    return model, optimizer, scheduler, loss_fn, loss2_fn
 
 
 

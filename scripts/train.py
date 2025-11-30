@@ -189,7 +189,7 @@ def main():
 
     # **************** MODEL - OPTIMIZER - LR_SCHEDULER - LOSS_FN INIT **************** #
 
-    model, optimizer, scheduler, loss_fn = init_mace_g2m_model(config, table)
+    model, optimizer, scheduler, loss_fn, loss2_fn = init_mace_g2m_model(config, table)
 
 
     # **************** DATASET GENERATION from paths **************** #
@@ -222,7 +222,7 @@ def main():
         train_dataset = train_dataset,
         val_dataset = val_dataset,
         loss_fn = loss_fn,
-        loss2_fn = config["trainer"].get("loss2", None),
+        loss2_fn = loss2_fn,
         optimizer = optimizer,
         device = device,
         lr_scheduler = scheduler,

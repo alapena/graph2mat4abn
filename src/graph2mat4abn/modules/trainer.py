@@ -1,7 +1,8 @@
 
+import random
 import time
 
-import scipy
+from scipy.sparse import load_npz
 from graph2mat4abn.modules.trainer_tools import force_zeroes_below_threshold
 from graph2mat4abn.tools.import_utils import save_to_yaml
 from graph2mat4abn.tools.plot import plot_error_matrices_big, plot_error_matrices_small
@@ -18,6 +19,7 @@ import sisl
 
 from graph2mat4abn.tools.tools import optimizer_to, read_structures_paths, reconstruct_tim_from_coo, reduced_coord, write_structures_paths
 from graph2mat4abn.modules.memory_monitor import MemoryMonitor
+from graph2mat4abn.modules.loss_functions_residual import loss2_bands, loss_schrod_eq
 
 class Trainer:
     def __init__(self, model, config, train_dataset, val_dataset, loss_fn, optimizer, device='cpu', loss2_fn=None, lr_scheduler=None, live_plot=True, live_plot_freq=1, live_plot_matrix = False, live_plot_matrix_freq = 100, results_dir=None, checkpoint_freq=30, batch_size=1, processor=None, model_checkpoint=None, threshold=None):
@@ -103,32 +105,8 @@ class Trainer:
             )
 
             # Additional loss
-            if loss2 == "bands":
-                # We need to create a batch of (graph --> H, k, E, S, state)
-                batch_paths = batch.metadata["path"]
-                eigen_paths = [Path(str(p).replace("dataset", "dataset_eigen")) for p in batch.metadata["path"]]
-
-                # The hamiltonians are stored in sparse COO format. Batching is not efficient with sparse matrices so we will iterate through each structure instead.
-                # This is also more memory friendly.
-                for path in eigen_paths:
-                    bands = np.load(path/"bands.npz")["bands"]
-                    states = np.load(path/"states.npz")["states"]
-                    overlap_coo = np.load(path/"overlap.npz")["overlap"]
-                    k = np.load(path/"k_path.npz")
-                    k_path = k["k_path"]
-                    k_idx = k["k_idx"]
-                    k_label = k["k_label"]
-                    k_len = k["k_len"]
-
-                    bands = torch.tensor(bands, dtype=torch.float32, device=self.device, requires_grad=True)
-                    states = torch.tensor(states, dtype=torch.float32, device=self.device, requires_grad=True)
-                    overlap_coo = torch.tensor(overlap_coo, dtype=torch.float32, device=self.device, requires_grad=True)
-                    k_path = torch.tensor(k_path, dtype=torch.float32, device=self.device, requires_grad=True)
-
-                    # TODO: Call the bands loss fn and kepp going.
-
-                    
-                loss2 = self.loss2_fn(hamiltonian_coo, ...)
+            if self.loss2_fn == "bands":
+                loss2 = loss2_bands(self.config, batch, self.processor, model_predictions, device=torch.device("cpu"))
                 loss += loss2
 
 
@@ -196,6 +174,13 @@ class Trainer:
                     edges_ref=batch.edge_labels, #/ (self.mean_abs_edge_nonzero + 1e-10), # Normalize
                     **self.config["trainer"].get("loss_fn_kwargs", None)
                 )
+
+                # Additional loss
+                if self.loss2_fn == "bands":
+                    loss2 = loss2_bands(self.config, batch, self.processor, model_predictions, device=torch.device("cpu"))
+                    print(f"Loss2 of epoch {self.epoch}: {loss2}")
+                    loss += loss2
+
                 total_loss += loss 
                 total_edge_loss += stats["edge_rmse"]**2  # Squared because it returns the root.
                 total_node_loss += stats["node_rmse"]**2 
